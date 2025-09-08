@@ -1,0 +1,41 @@
+
+
+h1,h2,h3{
+	font-family: Open Sans;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 500;
+}
+h2 {
+	font-variant:small-caps;
+}
+p, table, pre {
+	font-family: Open Sans;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: 400;
+
+}
+blockquote {
+	font-family: SerifOpen;
+	font-style: italic;
+	font-variant: normal;
+	font-weight: 400;
+}
+
+.signinbtn{
+	font-size: 18px;
+}
+
+@media only screen and (max-width: 736px) {
+	.signinbtn{
+		font-size: 14px;
+	}
+}
+
+@media only screen and (min-width: 736px) and (max-width: 768px) {
+	.signinbtn{
+		font-size: 16px;
+	}
+}
+

@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+
+# secrets
+secrets.env
+
+#commit notes
+NOTES.md
+
+# pm2 logs/dumps
+*/.pm2/*

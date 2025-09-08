@@ -1,0 +1,173 @@
+<!-- <div class="menu float-right indexbuttons">
+    <ul>
+        <li><a ng-href="/dashboard/procedure/running/{{procedure.id}}" ng-click="changeColor('Live',procedure.id,procedure.name)" class="indexBtns">Live Index</a></li>
+        <li><a ng-href="/dashboard/procedure/archived/{{procedure.id}}" ng-click="changeColor('Archived',procedure.id,procedure.name)" class="indexBtns">AS-Run Archive Index</a></li>
+        <li ng-style="icons.usersicon" class="indexBtns usersBtn">
+            <a ng-click="openRightNav()"><i class="fa fa-users" aria-hidden="true" style="color:#337ab7"></i></a>
+        </li>
+    </ul>
+</div> -->
+<div id="liveprocedures">
+    <table class="table table-hover">
+        <thead>
+            <tr class="procheader">
+                <th>
+                    <a href="#"></a>
+                </th>
+                <th>
+                    <a href="#">Step</a>
+                </th>
+                <th>
+                    <a href="#">Role</a>
+                </th>
+                <th>
+                    <a href="#">Type</a>
+                </th>
+                <th>
+                    <a href="#">Content</a>
+                </th>
+                <th>
+                    <a href="#">Comments</a>
+                </th>
+                <th>
+                    <a href="#">Status</a>
+                </th>
+                <th>
+                    <a href="#">Info</a>
+                </th>
+            </tr>
+        </thead>
+        <tbody class="details">
+            <tr id="{{'step-'+$index}}" ng-repeat="step in steps" ng-show="step.openstatus" ng-style="step.rowstyle.rowcolor"  data-ng-init="showNextStep($index,step)">
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff">
+                    <a href="#" ng-click="showPList($index,step.index,step.headertype,step.Type)">
+                    <span class="{{step.class}}" ng-style="step.sectionbtn.styles"></span></a>
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff">{{ step.Step }}</td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff">{{ step.Role }}</td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff"><span class="{{step.typeicon}}" title="{{step.Type}}" ng-style="step.typecolor"></span></td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-if="step.contenttype === 'String'">{{ step.Content }}
+                    <p><a href="{{step.Reference}}" target="_blank" ng-show="step.Reference && step.Reference.length > 0">Reference Link</a><p>
+                        <br>
+                    <p ng-show="step.Procedures.length > 0">Shortcuts to procedure</p>
+                    <div class="dropdown" ng-repeat="proc in step.dependentProcedures">
+                        <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="cursor:pointer">
+                            {{proc.id}}
+                            <md-tooltip md-direction="top" ng-show="!proc.exists">Procedure does not exist.</md-tooltip>
+                            <span class="caret" ng-show="proc.exists"></span>
+                        </a>
+                        <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" ng-show="proc.exists">
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/{{proc.id}}" ng-click="createNewProc(proc.id)" ng-show="role.cRole.callsign !== 'VIP'">Open new instance</a></li>
+                            <li role="presentation" ng-show="proc.running > 0"><a role="menuitem" tabindex="-1" href="dashboard/procedure/runninginstance/{{proc.id}}/{{proc.version}}/{{proc.revision}}">Open latest instance</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/running/{{proc.id}}" >Open Live index</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/archived/{{proc.id}}">Open Archive index</a></li>
+                        </ul>
+                    </div>
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-if="step.contenttype === 'Array'">
+                    <ul class="contentList">
+                        <li ng-repeat="item in step.Content track by $index">
+                            {{item}}
+                        </li>
+                    </ul>
+                    <p><a href="{{step.Reference}}" target="_blank" ng-show="step.Reference && step.Reference.length > 0">Reference Link</a></p>
+                    <br>
+                    <p ng-show="step.Procedures.length > 0">Shortcuts to procedure</p>
+                                         <div class="dropdown" ng-repeat="proc in step.dependentProcedures">
+                        <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="cursor:pointer">
+                            {{proc.id}}
+                            <md-tooltip md-direction="top" ng-show="!proc.exists">Procedure does not exist.</md-tooltip>
+                            <span class="caret" ng-show="proc.exists"></span>
+                        </a>
+                        <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" ng-show="proc.exists">
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/{{proc.id}}" ng-click="createNewProc(proc.id)" ng-show="role.cRole.callsign !== 'VIP'">Open new instance</a></li>
+                            <li role="presentation" ng-show="proc.running > 0"><a role="menuitem" tabindex="-1" href="dashboard/procedure/runninginstance/{{proc.id}}/{{proc.version}}/{{proc.revision}}">Open latest instance</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/running/{{proc.id}}" >Open Live index</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/archived/{{proc.id}}">Open Archive index</a></li>
+                        </ul>
+                    </div>
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-if="step.contenttype === 'Input'" >
+                    <p>{{step.Content}}</p>
+                    <label>TLM Recorded Value:</label><strong>{{step.recordedValue}}</strong>
+                    <br/>
+                    <label>Enter Value:</label><input type="text" ng-model="tempValues[$index].ivalue" ng-keypress="whenTyping($index)" ng-disabled="step.chkval || step.status"/>
+                    <button ng-click="updateInputValue($index,tempValues[$index].ivalue)" ng-style="step.buttonStatus" ng-disabled="step.chkval || step.status" class="inputsetbuttton">Set</button>
+                    <span id="{{ 'object-' + $index }}" style="display:block" class="inputNotification"></span>
+                    <span id="{{ 'objectid-' + $index }}" style="display:block;" class="infoNotification"></span>
+                    <p><a href="{{step.Reference}}" target="_blank" ng-show="step.Reference && step.Reference.length > 0">Reference Link</a></p>
+                    <br>
+                     <p ng-show="step.Procedures.length > 0">Shortcuts to procedure</p>
+                    <div class="dropdown" ng-repeat="proc in step.dependentProcedures">
+                        <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="cursor:pointer">
+                            {{proc.id}}
+                            <md-tooltip md-direction="top" ng-show="!proc.exists">Procedure does not exist.</md-tooltip>
+                            <span class="caret" ng-show="proc.exists"></span>
+                        </a>
+                        <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" ng-show="proc.exists">
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/{{proc.id}}" ng-click="createNewProc(proc.id)" ng-show="role.cRole.callsign !== 'VIP'">Open new instance</a></li>
+                            <li role="presentation" ng-show="proc.running > 0"><a role="menuitem" tabindex="-1" href="dashboard/procedure/runninginstance/{{proc.id}}/{{proc.version}}/{{proc.revision}}">Open latest instance</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/running/{{proc.id}}" >Open Live index</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/archived/{{proc.id}}">Open Archive index</a></li>
+                        </ul>
+                    </div>
+
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-if="step.contenttype === 'AlertInfo'">
+                    <p>{{step.Content}}</p>
+                    <p><a href="{{step.Reference}}" target="_blank" ng-show="step.Reference && step.Reference.length > 0">Reference Link</a></p>
+                    <br>
+                     <p ng-show="step.Procedures.length > 0">Shortcuts to procedure</p>
+                    <div class="dropdown" ng-repeat="proc in step.dependentProcedures">
+                        <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="cursor:pointer">
+                            {{proc.id}}
+                            <md-tooltip md-direction="top" ng-show="!proc.exists">Procedure does not exist.</md-tooltip>
+                            <span class="caret" ng-show="proc.exists"></span>
+                        </a>
+                        <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" ng-show="proc.exists">
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/{{proc.id}}" ng-click="createNewProc(proc.id)" ng-show="role.cRole.callsign !== 'VIP'">Open new instance</a></li>
+                            <li role="presentation" ng-show="proc.running > 0"><a role="menuitem" tabindex="-1" href="dashboard/procedure/runninginstance/{{proc.id}}/{{proc.version}}/{{proc.revision}}">Open latest instance</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/running/{{proc.id}}" >Open Live index</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/archived/{{proc.id}}">Open Archive index</a></li>
+                        </ul>
+                    </div>
+
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-if="step.contenttype === 'DecisionInfo'">
+                    <p>{{step.Content}}</p>
+                    <p><a href="{{step.Reference}}" target="_blank" ng-show="step.Reference && step.Reference.length > 0">Reference Link</a></p>
+                    <br>
+                     <p ng-show="step.Procedures.length > 0">Shortcuts to procedure</p>
+                    <div class="dropdown" ng-repeat="proc in step.dependentProcedures">
+                        <a class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" style="cursor:pointer">
+                            {{proc.id}}
+                            <md-tooltip md-direction="top" ng-show="!proc.exists">Procedure does not exist.</md-tooltip>
+                            <span class="caret" ng-show="proc.exists"></span>
+                        </a>
+                        <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1" ng-show="proc.exists">
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/{{proc.id}}" ng-click="createNewProc(proc.id)" ng-show="role.cRole.callsign !== 'VIP'">Open new instance</a></li>
+                            <li role="presentation" ng-show="proc.running > 0"><a role="menuitem" tabindex="-1" href="dashboard/procedure/runninginstance/{{proc.id}}/{{proc.version}}/{{proc.revision}}">Open latest instance</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/running/{{proc.id}}" >Open Live index</a></li>
+                            <li role="presentation"><a role="menuitem" tabindex="-1" href="/dashboard/procedure/archived/{{proc.id}}">Open Archive index</a></li>
+                        </ul>
+                    </div>
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff"><input ng-show="step.checkbox" type="checkbox" ng-disabled="step.status" ng-click="setInfo($index,step.chkval)" ng-model="step.chkval">
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff">{{ step.Info }}</td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" class="commentsCol" ng-show="step.headertype === 'listitem'">
+                    <a href="#" editable-textarea="tempValues[$index].comments" e-rows="3" e-cols="15" ng-if="running === true" ng-click="whenTypingComments($index,comments)" onaftersave="saveComments(tempValues[$index].comments,$index)">
+                        <div ng-if="tempValues[$index].comments.length > 0 || step.comments.length > 0" style="border:1px solid #F8F8F8;background: #fff;color:#000000de;padding:4px;font-style: normal">{{ tempValues[$index].comments || step.comments }}</div>
+                        <div ng-if="!tempValues[$index].comments && !step.comments" style="color:#ccc;border:1px solid #F8F8F8;background: #fff;padding:4px;font-style: normal;">{{ 'Enter comments here' }}</div>
+                    </a>
+                    <div ng-if="running === false" e-rows="3" e-cols="15" style="border:1px solid #F8F8F8;background: #fff;padding:4px;font-style: normal;">
+                        <div ng-if="step.comments.length > 0" style="color:#000000de">{{ step.comments }}</div>
+                        <div ng-if="!step.comments || step.comments.length === 0" style="color:#ccc;background: #fff;  font-style: normal;">{{ 'Enter comments here' }}</div>
+                    </div>
+                </td>
+                <td style="border-top:1px solid #fff;border-bottom:1px solid #fff" ng-show="step.headertype !== 'listitem'">
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
