@@ -7,6 +7,121 @@ Quantum consists of a modular front-end (UI), and a REST API backend. The applic
 ## Purpose
 Quantum is intended as a minimalist turn-key solution for test and flight operations procedure management. While orginally developed for spaceflight operations, it should be equally suitable to any other activity where multiple & geographically dispered people need to execute a real-time activity in a structured, repeatable, and auditable manner.
 
+
+---
+
+## 🚀 Quick Start — Docker Development Setup (NEW)
+
+### Requirements
+- **Docker**
+  - Windows/macOS: Docker Desktop → <https://www.docker.com/products/docker-desktop/>
+  - Linux: Docker Engine → <https://docs.docker.com/engine/install/>
+- **Git Bash (Windows only)** to run shell scripts (`.sh`) → <https://git-scm.com/download/win>
+
+> **Tip (Windows):** In File Explorer, right-click the project folder and choose **“Git Bash Here”** to open a Bash shell in the repo root.
+
+---
+
+### 1) Ensure Docker is running
+Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
+
+---
+
+### 2) Open a shell in the repo root
+- **Windows (Git Bash):**
+  ```bash
+  pwd   # should end with /Quantum
+  ```
+- **Linux / macOS:**
+  ```bash
+  cd /path/to/Quantum
+  ```
+
+> Prefer PowerShell? You can still invoke Git Bash:
+> ```powershell
+> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
+> ```
+
+---
+
+### 3) Bring the stack up (recommended)
+```bash
+./start.sh up
+```
+- Runs `docker compose up --build -d` under the hood.
+- Builds images and starts **MongoDB** and **Quantum** in the background with healthy startup order.
+
+---
+
+### 4) Alternative: dev hot-reload style
+```bash
+./start.sh docker
+```
+Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits are reflected inside the container (ideal for active development).
+
+---
+
+### 5) Open the app
+- Navigate to **http://localhost:3000**
+
+### 6) Default login (first run)
+Use the built-in credentials:
+```text
+AUTH_CLIENT_ID     = sys.admin@localhost
+AUTH_CLIENT_SECRET = 2infinity
+```
+
+---
+
+## Script usage (for reference)
+
+```text
+Usage: ./start.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
+
+  debug    Run node directly on host (dev)
+  pm2      Run with pm2 on host (dev)
+  docker   Run built image, mounting ./node (dev hot-reload style)
+  deploy   Run built image without mounting source (prod-like)
+  build    docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
+  up       docker compose up --build -d
+  down     docker compose down
+  clean    Remove container and image
+  rebuild  Clean + build
+
+Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
+```
+
+**Which should I use?**
+- **First time / most users:** `./start.sh up` ✅  
+- **Active local development:** `./start.sh docker`  
+- **Rebuild only:** `./start.sh build`  
+- **Stop everything:** `./start.sh down`
+
+---
+
+## 🛠️ Troubleshooting
+
+- **Windows asks “which app to open .sh with?”**  
+  `.sh` files need **Git Bash** (or WSL). Open **Git Bash** in the repo root and run the commands there.
+
+- **`$'\r': command not found` in Git Bash**  
+  Convert Windows line endings once:
+  ```bash
+  dos2unix start.sh setup.sh
+  ```
+
+- **Re-run without rebuilding**  
+  ```bash
+  docker compose up -d
+  ```
+  Use `--build` again only after Dockerfile/code changes.
+
+---
+
+## 📚 Documentation (Legacy)
+
+> These wiki guides are kept for reference. For getting started, use the **Quick Start** above.
+
 ## Docs
 Documentation is structured in three sections:
 

@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6
+    container_name: quantum-mongo
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - quantum-net
+
+  quantum:
+    build:
+      context: node
+      dockerfile: ../docker/Dockerfile
+    image: xenon130/quantum
+    container_name: quantum
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - secrets.env
+    volumes:
+      - ./node:/node
+      - node_modules:/node/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - quantum-net
+
+volumes:
+  mongo-data:
+  node_modules:
+
+networks:
+  quantum-net:
+    driver: bridge

@@ -16,7 +16,7 @@ RUN yum -y install nodejs  && \
 	npm install -g bower && \
 	npm install -g gulp  && \
 	npm install -g mean-cli && \
-	npm install -g pm2 \
+	npm install -g pm2 &&\
 	npm install -g express
 
 ## install logrotate for pm2
