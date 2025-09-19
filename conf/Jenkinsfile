@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Preamble') {
+            // show what + how
+            steps {
+                echo 'Using https git access with user jenkins'
+                echo 'Using conf/Jenkinsfile from SCM (git)'
+            }
+        }
+
+        stage('Test'){
+            // Validate changes
+            steps {
+                echo 'Validating new code'
+            }
+        }
+
+        stage('Publish'){
+            // Push updates to GitHub
+            steps {
+                echo 'Publishing changes on GitHub'
+            }
+        }
+
+        stage('Deploy'){
+            // Deploy on Outlyer server
+            steps {
+                echo 'Deploying on production server'
+            }
+        }
+
+        stage('Cleanup') {
+            // delete workspace
+            steps {
+                echo 'Cleaning up workspace'
+                cleanWs()
+            }
+        }
+    }
+
+}
