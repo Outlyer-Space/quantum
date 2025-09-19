@@ -1,12 +1,41 @@
 pipeline {
     agent any
 
+
+    // GitHub access credentials
+    environment {
+        GITHUB_CRED = credentials('github-outlyercode')
+        GITHUB_REMOTE = 'github'
+        GITHUB_URL = 'https://github.com/Outlyer-Space/quantum.git'
+
+        OUTLYER_CRED = credentials('799397d3-a707-4acc-b61f-989c3a584289')
+        OUTLYER_URL = 'https://dev.outlyer.space/git/Quantum.git'
+    }
+
     stages {
-        stage('Preamble') {
-            // show what + how
+        stage('Checkout') {
             steps {
-                echo 'Using https git access with user jenkins'
                 echo 'Using conf/Jenkinsfile from SCM (git)'
+                echo 'Using https git access with user jenkins'
+
+                // Checkout the private repo (default remote = origin)
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    extensions: [
+                        // Add a second remote called "github"
+                        [$class: 'RemoteConfig',
+                         name: env.GITHUB_REMOTE,
+                         url: env.GITHUB_URL,
+                         // Attach the credential only to the GitHub remote
+                         credentialsId: env.GITHUB_CRED]
+                    ],
+                    userRemoteConfigs: [[
+                        // Private server remote (origin)
+                        url: env.OUTLYER_URL,
+                        credentialsId: env.OUTLYER_CRED
+                    ]]
+                ])
             }
         }
 
@@ -17,10 +46,23 @@ pipeline {
             }
         }
 
-        stage('Publish'){
-            // Push updates to GitHub
+        stage('Publish') {
+            when {
+                // Only push if the build succeeded and we’re on main
+                branch 'main'
+                // optional: only push on certain triggers (e.g., after a commit)
+            }
             steps {
-                echo 'Publishing changes on GitHub'
+                // Ensure the local ref is up‑to‑date with origin/main
+                sh '''
+                    git fetch origin main
+                    git reset --hard origin/main
+                '''
+
+                // Push the current HEAD to the GitHub remote
+                sh """
+                    git push ${env.GITHUB_REMOTE} HEAD:refs/heads/main
+                """
             }
         }
 
