@@ -44,7 +44,36 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
 
 ---
 
-### 3) Bring the stack up (recommended)
+### 3) Create `secrets.env` file (Mandatory)
+
+This is a **mock `secrets.env` file** you can create and include to get the system up and running in a **local development environment**.  
+It assumes access is hosted through a **local MongoDB instance** (the one running inside the container) and **not** through Azure services.
+
+**Important notes:**
+1. Do **not** quote values.  
+2. Values cannot contain spaces.  
+3. Save the file as **`secrets.env`**.  
+
+```env
+# Node running mode
+NODE_ENV=development
+
+# Database credentials - LOCAL MongoDB (no auth needed)
+MONGO_DB_URL=mongodb://mongo:27017/quantum
+MONGO_URL=mongodb://mongo:27017/quantum
+MONGO_DB_USR=
+MONGO_DB_PWD=
+
+# User authentication via LOCAL MongoDB (not Microsoft Azure)
+AUTH_PROVIDER=Mongo
+AUTH_TENANT_ID=
+AUTH_CALLBACK_URL=
+AUTH_CLIENT_ID=sys.admin@localhost
+AUTH_CLIENT_SECRET=22infinity
+```
+
+### 4) Bring the stack up (recommended)
+After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on linux:
 ```bash
 ./start.sh up
 ```
@@ -53,7 +82,7 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
 
 ---
 
-### 4) Alternative: dev hot-reload style
+### 5) Alternative: dev hot-reload style
 ```bash
 ./start.sh docker
 ```
@@ -61,10 +90,10 @@ Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits ar
 
 ---
 
-### 5) Open the app
+### 6) Open the app
 - Navigate to **http://localhost:3000**
 
-### 6) Default login (first run)
+### 7) Default login (first run)
 Use the built-in credentials:
 ```text
 AUTH_CLIENT_ID     = sys.admin@localhost

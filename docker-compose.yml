@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   mongo:
     image: mongo:6
@@ -23,7 +21,6 @@ services:
       dockerfile: ../docker/Dockerfile
     image: xenon130/quantum
     container_name: quantum
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       mongo:

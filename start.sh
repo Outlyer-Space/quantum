@@ -23,7 +23,6 @@ export AUTH_CLIENT_SECRET=${AUTH_CLIENT_SECRET:-2infinity}
 # Docker build settings (tunable via env)
 IMAGE="${IMAGE:-xenon130/quantum}"
 CONTAINER="${CONTAINER:-quantum}"
-# Build from project root using Dockerfile in docker/ but context at node/
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
 CONTEXT="${CONTEXT:-node}"
 PULL="${PULL:-false}"
@@ -31,6 +30,21 @@ PULL="${PULL:-false}"
 log()  { printf "\033[1;34m[start]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
 die()  { printf "\033[1;31m[fail]\033[0m %s\n" "$*" >&2; exit 1; }
+
+# ---------- Beautified runner ----------
+run() {
+  local desc="$1"
+  shift
+  printf "\033[1;34m[run]\033[0m %-40s ... " "$desc"
+  if output=$("$@" 2>&1); then
+    printf "\033[1;32m[ OK ]\033[0m\n"
+    [ -n "$output" ] && echo "$output"
+  else
+    printf "\033[1;31m[FAIL]\033[0m\n"
+    echo "$output" >&2
+    return 1
+  fi
+}
 
 usage() {
   cat <<EOF
@@ -58,7 +72,7 @@ fi
 
 # ---------- Print effective config (dev) ----------
 printf '%s\n' "$(cat ./node/app/media/quantum.banner 2>/dev/null || true)"
-echo " -""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-"
+echo " --------------------------------------------------------------"
 echo " > NODE_ENV            : $NODE_ENV"
 echo " > MONGO_DB_URL        : $MONGO_DB_URL"
 echo " > MONGO_DB_USR        : $MONGO_DB_USR"
@@ -68,16 +82,15 @@ echo " > AUTH_TENANT_ID      : $AUTH_TENANT_ID"
 echo " > AUTH_CALLBACK_URL   : $AUTH_CALLBACK_URL"
 echo " > AUTH_CLIENT_ID      : $AUTH_CLIENT_ID"
 echo " > AUTH_CLIENT_SECRET  : ${AUTH_CLIENT_SECRET:+***}"
-echo " -""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-""-"
+echo " --------------------------------------------------------------"
 
 cmd="${1:-up}"
 
-# ---------- Host prerequisites for legacy host modes ----------
+# ---------- Host prerequisites ----------
 ensure_host_tools() {
   if ! command -v node >/dev/null 2>&1; then
     warn "NodeJS not found; installing via nvm (16.0.0)"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-    # shellcheck disable=SC1090
     . ~/.nvm/nvm.sh
     nvm install 16.0.0
   fi
@@ -93,23 +106,18 @@ ensure_host_tools() {
 # ---------- Actions ----------
 case "$cmd" in
   build)
-    log "Stopping old container (if any): $CONTAINER"
-    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-    log "Removing old image (if any): $IMAGE"
-    docker rmi -f "$IMAGE" >/dev/null 2>&1 || true
-    log "Building image..."
+    run "Removing old container: $CONTAINER" docker rm -f "$CONTAINER"
+    run "Removing old image: $IMAGE" docker rmi -f "$IMAGE"
     args=( -t "$IMAGE" -f "$DOCKERFILE" )
     $PULL && args+=( --pull )
-    docker build "${args[@]}" "$CONTEXT"
-    log "Build complete."
-    docker image ls "$IMAGE" || true
+    run "Building image" docker build "${args[@]}" "$CONTEXT"
+    run "Listing image" docker image ls "$IMAGE"
     ;;
 
   up)
     if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-      log "Starting stack with docker compose (rebuild + detach)..."
-      docker compose up --build -d
-      docker compose ps
+      run "Starting stack (rebuild + detach)" docker compose up --build -d
+      run "Showing stack status" docker compose ps
     else
       die "No docker-compose.yml/compose.yml found. Use 'build' or add a compose file."
     fi
@@ -117,18 +125,15 @@ case "$cmd" in
 
   down)
     if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-      log "Stopping stack..."
-      docker compose down
+      run "Stopping stack" docker compose down
     else
-      warn "No compose file found; stopping single container if present."
-      docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+      run "Stopping single container" docker rm -f "$CONTAINER"
     fi
     ;;
 
   clean)
-    log "Removing container and image..."
-    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-    docker rmi -f "$IMAGE" >/dev/null 2>&1 || true
+    run "Removing container" docker rm -f "$CONTAINER"
+    run "Removing image" docker rmi -f "$IMAGE"
     ;;
 
   rebuild)
@@ -144,35 +149,31 @@ case "$cmd" in
 
   pm2)
     ensure_host_tools
-    log "Starting PM2 mode on host"
-    ( cd node && pm2 start pm2.config.js && pm2 show quantum )
+    run "Starting PM2 mode on host" pm2 start node/pm2.config.js
+    run "Showing PM2 quantum process" pm2 show quantum
     ;;
 
   docker)
-    log "Stopping old instances ..."
-    docker stop "$CONTAINER" >/dev/null 2>&1 || true
-    docker rm   "$CONTAINER" >/dev/null 2>&1 || true
-    log "Starting DEVELOPER mode (local source mount)"
-    docker run -d -t \
+    run "Stopping container" docker stop "$CONTAINER"
+    run "Removing container" docker rm "$CONTAINER"
+    run "Starting DEVELOPER mode" docker run -d -t \
       --name "$CONTAINER" \
       --env-file secrets.env \
       -v "$(pwd)/node:/node" \
       -p 3000:3000 \
-      "$IMAGE" >/dev/null
-    docker ps -a
+      "$IMAGE"
+    run "Listing containers" docker ps -a
     ;;
 
   deploy)
-    log "Stopping old instances ..."
-    docker stop "$CONTAINER" >/dev/null 2>&1 || true
-    docker rm   "$CONTAINER" >/dev/null 2>&1 || true
-    log "Starting DEPLOY mode"
-    docker run -d -t \
+    run "Stopping container" docker stop "$CONTAINER"
+    run "Removing container" docker rm "$CONTAINER"
+    run "Starting DEPLOY mode" docker run -d -t \
       --name "$CONTAINER" \
       --env-file secrets.env \
       -p 3000:3000 \
-      "$IMAGE" >/dev/null
-    docker ps -a
+      "$IMAGE"
+    run "Listing containers" docker ps -a
     ;;
 
   *)

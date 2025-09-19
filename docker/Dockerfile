@@ -3,7 +3,7 @@
 
 ## base system & updates
 
-FROM --platform=linux/amd64 redhat/ubi9
+FROM redhat/ubi9
 RUN  yum swap -y fakesystemd systemd && \
 	 yum -y update --setopt=tsflags=nodocs && \
 	 yum -y install git wget nano make dos2unix
