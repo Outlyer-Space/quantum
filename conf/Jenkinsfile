@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    // This pipeline will push repo changes on the local Outlyer server
+    // to GitHub at https://github.com/Outlyer-Space/quantum
+    // the post receive hook script on the server will only
+    // trigger this pipeline for "main" or "master" branches.
+
     // Access credentials
     environment {
         GITHUB_CRED = credentials('github-outlyercode')
@@ -32,8 +37,6 @@ pipeline {
         }
 
         stage('Publish') {
-            // the post receive hook script on the server will only
-            // trigger this pipeline for "main" or "master" branches.
             steps {
                 echo 'Publishing changes to GitHub'
 
