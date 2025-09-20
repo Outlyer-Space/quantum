@@ -33,9 +33,11 @@ pipeline {
 
         stage('Publish') {
             steps {
+                echo 'Publishing changes to GitHub'
+
                 // Add GitHub as second git remote
                 sh """
-                    git remote add ${GITHUB_REMOTE} ${GITHUB_URL}
+                    git remote add github ${GITHUB_URL}
                     git config credential.${GITHUB_URL}.username ${GITHUB_CRED_USR}
                 """
 
