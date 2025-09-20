@@ -11,8 +11,9 @@ pipeline {
 
         stage('Setup'){
             steps {
-                echo "Starting build # ${env.BRANCH_NUMBER}"
-                echo "Building branch: ${env.BRANCH_NAME}"
+                echo "Starting build # ${env.BUILD_DISPLAY_NAME}"
+                echo "cloning source to ${env.WORKSPACE}"
+                echo "Building branch: ${env.GIT_LOCAL_BRANCH}"
             }
         }
 
