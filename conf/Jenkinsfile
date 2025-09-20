@@ -40,15 +40,9 @@ pipeline {
                     git remote add github ${GITHUB_URL}
                 """
 
-                // Ensure local ref is up‑to‑date with origin/main
-                sh '''
-                    git fetch origin main
-                    git reset --hard origin/main
-                '''
-
                 // Push the current HEAD to the GitHub remote
                 sh """
-                    git push ${env.GITHUB_REMOTE} HEAD:refs/heads/main
+                    git push github HEAD:refs/heads/main
                 """
             }
         }
