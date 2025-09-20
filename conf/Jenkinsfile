@@ -53,7 +53,10 @@ pipeline {
                 echo 'Cleaning up workspace'
                 // forcing immedeate directory removal to avoid "remote exists"
                 // errors on successive pipeline runs in quick order
-                cleanWs(deleteDirs: true, defer: false)
+                cleanWs(
+                    deleteDirs: true,
+                    disableDeferredWipeout: true
+                    )
             }
         }
     }
