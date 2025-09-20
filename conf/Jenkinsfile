@@ -4,7 +4,7 @@ pipeline {
     // Access credentials
     environment {
         GITHUB_CRED = credentials('github-outlyercode')
-        GITHUB_URL = 'https://github.com/Outlyer-Space/quantum.git'
+        GITHUB_URL = 'github.com/Outlyer-Space/quantum.git'
     }
 
     stages {
@@ -38,6 +38,7 @@ pipeline {
                 // Add GitHub as second git remote
                 sh """
                     git remote add github ${GITHUB_URL}
+                    git remote add github https://${GITHUB_CRED}@${GITHUB_URL}
                 """
 
                 // Push the current HEAD to the GitHub remote
