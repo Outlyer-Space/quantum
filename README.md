@@ -43,12 +43,6 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
   cd /path/to/Quantum
   ```
 
-> Prefer PowerShell? You can still invoke Git Bash:
->
-> ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
-> ```
-
 ---
 
 ### 3) Create `secrets.env` file (Mandatory)
@@ -87,6 +81,12 @@ After making sure Docker is running, run the following command inside Git Bash (
 ```bash
 ./start.sh up
 ```
+
+> Prefer PowerShell? You can still invoke Git Bash:
+>
+> ```powershell
+> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
+> ```
 
 - Runs `docker compose up --build -d` under the hood.
 - Builds images and starts **MongoDB** and **Quantum** in the background with healthy startup order.
