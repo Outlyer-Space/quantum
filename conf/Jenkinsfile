@@ -9,7 +9,6 @@ pipeline {
     // Access credentials
     environment {
         GITHUB_CRED = credentials('github-outlyercode')
-        GITHUB_REMOTE = 'github'
         GITHUB_URL = 'https://github.com/Outlyer-Space/quantum.git'
 
         OUTLYER_CRED = credentials('799397d3-a707-4acc-b61f-989c3a584289')
@@ -17,31 +16,37 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Using conf/Jenkinsfile from SCM (git)'
-                echo 'Using https git access with user jenkins'
-
-                // Checkout the private repo (default remote = origin)
+                echo 'Checkout repo (origin) and add GitHub as a second remote.'
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/main']],
-                    extensions: [
-                        // Add a second remote called "github"
-                        [$class: 'RemoteConfig',
-                         name: env.GITHUB_REMOTE,
-                         url: env.GITHUB_URL,
-                         // Attach the credential only to the GitHub remote
-                         credentialsId: env.GITHUB_CRED]
+
+                    // ---------- REMOTES ----------
+                    userRemoteConfigs: [
+                        // 1️⃣ Private server – default remote “origin”
+                        [
+                            url: env.OUTLYER_URL,
+                            credentialsId: env.OUTLYER_CRED,
+                            name: 'origin'
+                        ],
+
+                        // 2️⃣ GitHub – extra remote we will push to later
+                        [
+                            url: env.GITHUB_URL,
+                            credentialsId: env.GITHUB_CRED,
+                            name: 'github'
+                        ]
                     ],
-                    userRemoteConfigs: [[
-                        // Private server remote (origin)
-                        url: env.OUTLYER_URL,
-                        credentialsId: env.OUTLYER_CRED
-                    ]]
+
                 ])
             }
         }
+
+
+
 
         stage('Test'){
             // Validate changes
