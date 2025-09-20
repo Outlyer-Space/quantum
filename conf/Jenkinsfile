@@ -32,6 +32,8 @@ pipeline {
         }
 
         stage('Publish') {
+            // the post receive hook script on the server will only
+            // trigger this pipeline for "main" or "master" branches.
             steps {
                 echo 'Publishing changes to GitHub'
 
