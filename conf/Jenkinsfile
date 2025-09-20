@@ -11,7 +11,7 @@ pipeline {
 
         stage('Setup'){
             steps {
-                echo "Starting build # ${env.BUILD_DISPLAY_NAME}"
+                echo "Starting build ${env.BUILD_DISPLAY_NAME}"
                 echo "cloning source to ${env.WORKSPACE}"
                 echo "Building branch: ${env.GIT_LOCAL_BRANCH}"
             }
@@ -32,10 +32,6 @@ pipeline {
         }
 
         stage('Publish') {
-            when {
-                // Only push if the build succeeded and we’re on main
-                branch 'main'
-            }
             steps {
                 // Add GitHub as second git remote
                 sh """
