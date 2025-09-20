@@ -1,8 +1,12 @@
 pipeline {
     agent any
 
+    // Disable default / implicit "checkout scm" step
+    options {
+        skipDefaultCheckout()
+    }
 
-    // GitHub access credentials
+    // Access credentials
     environment {
         GITHUB_CRED = credentials('github-outlyercode')
         GITHUB_REMOTE = 'github'
