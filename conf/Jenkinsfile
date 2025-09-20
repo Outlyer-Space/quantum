@@ -9,6 +9,13 @@ pipeline {
 
     stages {
 
+        stage('Setup'){
+            steps {
+                echo "Starting build # ${env.BRANCH_NUMBER}"
+                echo "Building branch: ${env.BRANCH_NAME}"
+            }
+        }
+
         stage('Test'){
             // Validate changes
             steps {
