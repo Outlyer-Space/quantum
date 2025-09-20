@@ -37,7 +37,6 @@ pipeline {
 
                 // Add GitHub as second git remote
                 sh """
-                    git remote add github ${GITHUB_URL}
                     git remote add github https://${GITHUB_CRED}@${GITHUB_URL}
                 """
 
