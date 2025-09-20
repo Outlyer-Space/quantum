@@ -1,52 +1,13 @@
 pipeline {
     agent any
 
-    // Disable default / implicit "checkout scm" step
-    options {
-        skipDefaultCheckout()
-    }
-
     // Access credentials
     environment {
         GITHUB_CRED = credentials('github-outlyercode')
         GITHUB_URL = 'https://github.com/Outlyer-Space/quantum.git'
-
-        OUTLYER_CRED = credentials('799397d3-a707-4acc-b61f-989c3a584289')
-        OUTLYER_URL = 'https://dev.outlyer.space/git/Quantum.git'
     }
 
     stages {
-
-        stage('Checkout') {
-            steps {
-                echo 'Checkout repo (origin) and add GitHub as a second remote.'
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-
-                    // ---------- REMOTES ----------
-                    userRemoteConfigs: [
-                        // 1️⃣ Private server – default remote “origin”
-                        [
-                            url: env.OUTLYER_URL,
-                            credentialsId: env.OUTLYER_CRED,
-                            name: 'origin'
-                        ],
-
-                        // 2️⃣ GitHub – extra remote we will push to later
-                        [
-                            url: env.GITHUB_URL,
-                            credentialsId: env.GITHUB_CRED,
-                            name: 'github'
-                        ]
-                    ],
-
-                ])
-            }
-        }
-
-
-
 
         stage('Test'){
             // Validate changes
@@ -55,14 +16,26 @@ pipeline {
             }
         }
 
+        stage('Deploy'){
+            // Deploy on Outlyer server
+            steps {
+                echo 'Deploying on production server'
+            }
+        }
+
         stage('Publish') {
             when {
                 // Only push if the build succeeded and we’re on main
                 branch 'main'
-                // optional: only push on certain triggers (e.g., after a commit)
             }
             steps {
-                // Ensure the local ref is up‑to‑date with origin/main
+                // Add GitHub as second git remote
+                sh """
+                    git remote add ${GITHUB_REMOTE} ${GITHUB_URL}
+                    git config credential.${GITHUB_URL}.username ${GITHUB_CRED_USR}
+                """
+
+                // Ensure local ref is up‑to‑date with origin/main
                 sh '''
                     git fetch origin main
                     git reset --hard origin/main
@@ -72,13 +45,6 @@ pipeline {
                 sh """
                     git push ${env.GITHUB_REMOTE} HEAD:refs/heads/main
                 """
-            }
-        }
-
-        stage('Deploy'){
-            // Deploy on Outlyer server
-            steps {
-                echo 'Deploying on production server'
             }
         }
 
