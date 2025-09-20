@@ -38,7 +38,6 @@ pipeline {
                 // Add GitHub as second git remote
                 sh """
                     git remote add github ${GITHUB_URL}
-                    git config credential.${GITHUB_URL}.username ${GITHUB_CRED_USR}
                 """
 
                 // Ensure local ref is up‑to‑date with origin/main
