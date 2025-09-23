@@ -26,6 +26,7 @@ CONTAINER="${CONTAINER:-quantum}"
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
 CONTEXT="${CONTEXT:-node}"
 PULL="${PULL:-false}"
+COMPOSE_FILE="docker/docker-compose.yml"
 
 log()  { printf "\033[1;34m[start]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
@@ -115,20 +116,12 @@ case "$cmd" in
     ;;
 
   up)
-    if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-      run "Starting stack (rebuild + detach)" docker compose up --build -d
-      run "Showing stack status" docker compose ps
-    else
-      die "No docker-compose.yml/compose.yml found. Use 'build' or add a compose file."
-    fi
+    run "Starting stack (rebuild + detach)" docker compose -f "$COMPOSE_FILE" up --build -d
+    run "Showing stack status" docker compose -f "$COMPOSE_FILE" ps
     ;;
 
   down)
-    if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-      run "Stopping stack" docker compose down
-    else
-      run "Stopping single container" docker rm -f "$CONTAINER"
-    fi
+    run "Stopping stack" docker compose -f "$COMPOSE_FILE" down
     ;;
 
   clean)
