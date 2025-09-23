@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    // This pipeline will push repo changes on the local Outlyer server
+    // to GitHub at https://github.com/Outlyer-Space/quantum
+    // the post receive hook script on the server will only
+    // trigger this pipeline for "main" or "master" branches.
+
+    // Access credentials
+    environment {
+        GITHUB_CRED = credentials('github-outlyercode')
+        GITHUB_URL = 'github.com/Outlyer-Space/quantum.git'
+    }
+
+    stages {
+
+        stage('Setup'){
+            steps {
+                echo "Starting build ${env.BUILD_DISPLAY_NAME}"
+                echo "cloning source to ${env.WORKSPACE}"
+                echo "Building branch: ${env.GIT_LOCAL_BRANCH}"
+            }
+        }
+
+        stage('Test'){
+            // Validate changes
+            steps {
+                echo 'Validating new code'
+            }
+        }
+
+        stage('Deploy'){
+            // Deploy on Outlyer server
+            steps {
+                echo 'Deploying on production server'
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                echo 'Publishing changes to GitHub'
+
+                // Add GitHub as second git remote
+                sh """
+                    git remote add github https://${GITHUB_CRED}@${GITHUB_URL}
+                """
+
+                // Push the current HEAD to the GitHub remote
+                sh """
+                    git push github HEAD:refs/heads/main
+                """
+            }
+        }
+
+        stage('Cleanup') {
+            // delete workspace
+            steps {
+                echo 'Cleaning up workspace'
+                // forcing immedeate directory removal to avoid "remote exists"
+                // errors on successive pipeline runs in quick order
+                cleanWs(
+                    deleteDirs: true,
+                    disableDeferredWipeout: true
+                    )
+            }
+        }
+    }
+
+}

@@ -2,17 +2,18 @@
 
 Quantum is a collaborative procedure management application used by ground operators during test/flight for launch vehicles or satellites. Procedures are sequences of tasks to be executed for implementing a mission by multiple operators with different assigned roles. Quantum includes a library of available procedures, live execution, and an "as-run" archive. It was originally developed by a Silicon Valley based startup called Audacy which shut down in 2019.
 
-Quantum consists of a modular front-end (UI), and a REST API backend. The application is browser based using the MEAN technology stack (Mongo db, Exrepss, Angular, NodeJS) with the aim of incorporating rapid maintenance and upgradability while operating in a mission critical environment.
+Quantum consists of a modular front-end (UI), and a REST API backend. The application is browser based using the MEAN technology stack (Mongo db, Express, Angular, NodeJS) with the aim of incorporating rapid maintenance and upgradeability while operating in a mission critical environment.
 
 ## Purpose
-Quantum is intended as a minimalist turn-key solution for test and flight operations procedure management. While orginally developed for spaceflight operations, it should be equally suitable to any other activity where multiple & geographically dispered people need to execute a real-time activity in a structured, repeatable, and auditable manner.
 
+Quantum is intended as a minimalist turn-key solution for test and flight operations procedure management. While originally developed for spaceflight operations, it should be equally suitable to any other activity where multiple & geographically distributed people need to execute a real-time activity in a structured, repeatable, and auditable manner.
 
 ---
 
 ## 🚀 Quick Start — Docker Development Setup (NEW)
 
 ### Requirements
+
 - **Docker**
   - Windows/macOS: Docker Desktop → <https://www.docker.com/products/docker-desktop/>
   - Linux: Docker Engine → <https://docs.docker.com/engine/install/>
@@ -23,16 +24,21 @@ Quantum is intended as a minimalist turn-key solution for test and flight operat
 ---
 
 ### 1) Ensure Docker is running
+
 Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
 
 ---
 
 ### 2) Open a shell in the repo root
+
 - **Windows (Git Bash):**
+
   ```bash
   pwd   # should end with /Quantum
   ```
+
 - **Linux / macOS:**
+
   ```bash
   cd /path/to/Quantum
   ```
@@ -46,9 +52,17 @@ Prefer PowerShell? You can still invoke Git Bash:
 
 ### 3) Bring the stack up (recommended)
 After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on linux:
+
 ```bash
 ./start.sh up
 ```
+
+> Prefer PowerShell? You can still invoke Git Bash:
+>
+> ```powershell
+> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
+> ```
+
 - Runs `docker compose up --build -d` under the hood.
 - Builds images and starts **MongoDB** and **Quantum** in the background with healthy startup order.
 
@@ -58,6 +72,7 @@ After making sure Docker is running, run the following command inside Git Bash (
 ```bash
 ./start.sh docker
 ```
+
 Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits are reflected inside the container (ideal for active development).
 
 ---
@@ -67,6 +82,7 @@ Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits ar
 
 ### 6) Default login (first run)
 Use the built-in credentials:
+
 ```text
 AUTH_CLIENT_ID     = sys.admin@localhost
 AUTH_CLIENT_SECRET = 2infinity
@@ -93,9 +109,10 @@ Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 ```
 
 **Which should I use?**
-- **First time / most users:** `./start.sh up` ✅  
-- **Active local development:** `./start.sh docker`  
-- **Rebuild only:** `./start.sh build`  
+
+- **First time / most users:** `./start.sh up` ✅
+- **Active local development:** `./start.sh docker`
+- **Rebuild only:** `./start.sh build`
 - **Stop everything:** `./start.sh down`
 
 ---
@@ -130,19 +147,22 @@ AUTH_CLIENT_SECRET=2infinity
 
 ## 🛠️ Troubleshooting
 
-- **Windows asks “which app to open .sh with?”**  
+- **Windows asks “which app to open .sh with?”**
   `.sh` files need **Git Bash** (or WSL). Open **Git Bash** in the repo root and run the commands there.
 
-- **`$'\r': command not found` in Git Bash**  
+- **`$'\r': command not found` in Git Bash**
   Convert Windows line endings once:
+
   ```bash
   dos2unix start.sh setup.sh
   ```
 
-- **Re-run without rebuilding**  
+- **Re-run without rebuilding**
+
   ```bash
   docker compose up -d
   ```
+
   Use `--build` again only after Dockerfile/code changes.
 
 ---
@@ -152,6 +172,7 @@ AUTH_CLIENT_SECRET=2infinity
 > These wiki guides are kept for reference. For getting started, use the **Quick Start** above.
 
 ## Docs
+
 Documentation is structured in three sections:
 
  1. [Users Guide](https://github.com/Xenon130/quantum/wiki/User-Guide) - how to use
@@ -159,4 +180,5 @@ Documentation is structured in three sections:
  1. [Developer Guide](https://github.com/Xenon130/quantum/wiki/Dev-Guide) - how to contribute
 
 ## License
+
 Quantum is released under the MIT License (see [LICENSE](/LICENSE)).
