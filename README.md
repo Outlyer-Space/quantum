@@ -44,6 +44,7 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
   ```
 
 Prefer PowerShell? You can still invoke Git Bash:
+>
 > ```powershell
 > & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
 > ```
@@ -51,16 +52,17 @@ Prefer PowerShell? You can still invoke Git Bash:
 ---
 
 ### 3) Bring the stack up (recommended)
+
 After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on linux:
 
 ```bash
-./start.sh up
+./quantum.sh up
 ```
 
 > Prefer PowerShell? You can still invoke Git Bash:
 >
 > ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
+> & "C:\Program Files\Git\bin\bash.exe" -lc "./quantum.sh up"
 > ```
 
 - Runs `docker compose up --build -d` under the hood.
@@ -69,8 +71,9 @@ After making sure Docker is running, run the following command inside Git Bash (
 ---
 
 ### 4) Alternative: dev hot-reload style
+
 ```bash
-./start.sh docker
+./quantum.sh docker
 ```
 
 Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits are reflected inside the container (ideal for active development).
@@ -78,9 +81,11 @@ Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits ar
 ---
 
 ### 5) Open the app
-- Navigate to **http://localhost:3000**
+
+- Navigate to **<http://localhost:3000>**
 
 ### 6) Default login (first run)
+
 Use the built-in credentials:
 
 ```text
@@ -93,7 +98,7 @@ AUTH_CLIENT_SECRET = 2infinity
 ## Script usage (for reference)
 
 ```text
-Usage: ./start.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
+Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
 
   debug    Run node directly on host (dev)
   pm2      Run with pm2 on host (dev)
@@ -110,22 +115,23 @@ Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 
 **Which should I use?**
 
-- **First time / most users:** `./start.sh up` ✅
-- **Active local development:** `./start.sh docker`
-- **Rebuild only:** `./start.sh build`
-- **Stop everything:** `./start.sh down`
+- **First time / most users:** `./quantum.sh up` ✅
+- **Active local development:** `./quantum.sh docker`
+- **Rebuild only:** `./quantum.sh build`
+- **Stop everything:** `./quantum.sh down`
 
 ---
 
 ### Creating a `secrets.env` file (Production)
 
-This is a **mock `secrets.env` file** you can create and include to get the system up and running in a **local development environment** or to setup for a **Production** setting.  
+This is a **mock `secrets.env` file** you can create and include to get the system up and running in a **local development environment** or to setup for a **Production** setting.
 It assumes access is hosted through a **local MongoDB instance** (the one running inside the container) and **not** through Azure services, although the latter is still possible.
 
 **Important notes:**
-1. Do **not** quote values.  
-2. Values cannot contain spaces.  
-3. Save the file as **`secrets.env`**.  
+
+1. Do **not** quote values.
+2. Values cannot contain spaces.
+3. Save the file as **`secrets.env`**.
 
 ```env
 # Node running mode
@@ -167,13 +173,9 @@ AUTH_CLIENT_SECRET=2infinity
 
 ---
 
-## 📚 Documentation (Legacy)
+## 📚 Documentation
 
-> These wiki guides are kept for reference. For getting started, use the **Quick Start** above.
-
-## Docs
-
-Documentation is structured in three sections:
+For getting started, use the **Quick Start** above, or refer to the following for more details:
 
  1. [Users Guide](https://github.com/Xenon130/quantum/wiki/User-Guide) - how to use
  1. [Admin Guide](https://github.com/Xenon130/quantum/wiki/Admin-Guide) - how to install/admin
