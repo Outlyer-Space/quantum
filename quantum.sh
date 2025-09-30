@@ -49,7 +49,7 @@ run() {
 
 usage() {
   cat <<EOF
-Usage: ./start.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
+Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
   debug    Run node directly on host (dev)
   pm2      Run with pm2 on host (dev)
   docker   Run built image, mounting ./node (dev hot-reload style)
