@@ -1,6 +1,10 @@
 {
     "recommendations": [
-        "ms-python.black-formatter",
+        "ms-vscode.vscode-eslint",
+        "xabikos.JavaScriptSnippets",
+        "ms-azuretools.vscode-docker",
+        "mongodb.mongodb-vscode",
+        "angular.ng-template",
         "streetsidesoftware.code-spell-checker",
         "davidanson.vscode-markdownlint"
     ]
