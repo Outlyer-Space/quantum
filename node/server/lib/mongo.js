@@ -19,7 +19,7 @@ module.exports = function (myconfig) {
 
   if (myconfig.mongo.usr && myconfig.mongo.pwd) {
     url.username = myconfig.mongo.usr
-    url.password = myconfig.mongo.pwd
+    url.password = encodeURIComponent(myconfig.mongo.pwd)
   }
   if (url.protocol.includes('srv')) {
     url.search = 'retryWrites=true&w=majority'

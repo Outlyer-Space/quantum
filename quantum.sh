@@ -158,6 +158,11 @@ case "$cmd" in
     run "Listing containers" docker ps -a
     ;;
 
+    app)
+    run "Starting only quantum (no deps)" \
+      docker compose -f "$COMPOSE_FILE" up -d --build --no-deps quantum
+    ;;
+
   deploy)
     run "Stopping container" docker stop "$CONTAINER"
     run "Removing container" docker rm "$CONTAINER"
