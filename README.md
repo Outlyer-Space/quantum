@@ -139,7 +139,6 @@ NODE_ENV=development
 
 # Database credentials - LOCAL MongoDB (no auth needed)
 MONGO_DB_URL=mongodb://mongo:27017/quantum
-MONGO_URL=mongodb://mongo:27017/quantum
 MONGO_DB_USR=
 MONGO_DB_PWD=
 
