@@ -176,9 +176,10 @@ AUTH_CLIENT_SECRET=2infinity
 
 For getting started, use the **Quick Start** above, or refer to the following for more details:
 
- 1. [Users Guide](https://github.com/Xenon130/quantum/wiki/User-Guide) - how to use
- 1. [Admin Guide](https://github.com/Xenon130/quantum/wiki/Admin-Guide) - how to install/admin
- 1. [Developer Guide](https://github.com/Xenon130/quantum/wiki/Dev-Guide) - how to contribute
+ 1. [Users Guide](https://github.com/Outlyer-Space/quantum/wiki/User-Guide) - how to use
+ 1. [Admin Guide](https://github.com/Outlyer-Space/quantum/wiki/Admin-Guide) - how to install/admin
+ 1. [Developer Guide](https://github.com/Outlyer-Space/quantum/wiki/Dev-Guide) - how to contribute
+
 
 ## License
 
