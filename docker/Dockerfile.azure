@@ -1,0 +1,55 @@
+# --------------------------------------------------------------
+# 1️⃣  Base image – Red Hat Universal Base Image 9
+# --------------------------------------------------------------
+FROM registry.access.redhat.com/ubi9/ubi:latest
+RUN dnf -y update --setopt=tsflags=nodocs && \
+    dnf -y install \
+        nodejs \
+        openssh-server \
+        sudo \
+        nano \
+    && dnf clean all && rm -rf /var/cache/dnf
+
+# --------------------------------------------------------------
+# 2️⃣  SSH daemon for diagnostics (local image testing only)
+# --------------------------------------------------------------
+RUN mkdir -p /var/run/sshd
+ARG USERNAME=devuser
+ARG USER_UID=1001
+ARG USER_GID=${USER_UID}
+ARG USER_PASSWORD=Password123!   # <-- replace at runtime or use key
+
+RUN groupadd --gid ${USER_GID} ${USERNAME} && \
+    useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} && \
+    echo "${USERNAME}:${USER_PASSWORD}" | chpasswd && \
+    echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME}
+
+RUN sed -i 's/^#Port .*/Port 22/' /etc/ssh/sshd_config && \
+    sed -i 's/^#PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/^#PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    echo "AllowUsers ${USERNAME}" >> /etc/ssh/sshd_config
+
+# --------------------------------------------------------------
+# 3️⃣  npm tools (bower, gulp, pm2, etc.) + app (quantum)
+# --------------------------------------------------------------
+RUN npm install -g \
+        bower \
+        gulp-cli \
+        mean-cli \
+        pm2 \
+        express
+
+COPY /node /node
+WORKDIR /node
+RUN npm install --no-save
+
+# --------------------------------------------------------------
+# 4️⃣  Expose ports (app + ssh) and entrypoint
+# --------------------------------------------------------------
+EXPOSE 3000
+EXPOSE 22
+
+COPY ./docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -180,7 +180,6 @@ For getting started, use the **Quick Start** above, or refer to the following fo
  1. [Admin Guide](https://github.com/Outlyer-Space/quantum/wiki/Admin-Guide) - how to install/admin
  1. [Developer Guide](https://github.com/Outlyer-Space/quantum/wiki/Dev-Guide) - how to contribute
 
-
 ## License
 
 Quantum is released under the MIT License (see [LICENSE](/LICENSE)).
