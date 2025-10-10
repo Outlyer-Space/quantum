@@ -1,5 +1,8 @@
 {
     "cSpell.words": [
         "Audacy"
-    ]
+    ],
+
+    // Tell VS Code which profile should be the default for this workspace
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
 }
