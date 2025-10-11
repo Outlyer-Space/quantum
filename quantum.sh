@@ -9,7 +9,33 @@ IFS=$'\n\t'
 # - Loads env from secrets.env and prints effective config
 # --------------------------------------------------------------
 
-# ---------- Defaults for local dev ----------
+# ---------- Load secrets if present ----------
+SECRETS_FILE="./secrets.env"
+if [[ -f "$SECRETS_FILE" ]]; then
+  echo " > found $SECRETS_FILE; parsing ..."
+  while IFS= read -r line || [[ -n $line ]]; do
+      # Strip leading/trailing whitespace
+      line="${line#"${line%%[![:space:]]*}"}"
+      line="${line%"${line##*[![:space:]]}"}"
+
+      # Skip blanks and comment lines
+      [[ -z $line || $line == \#* ]] && continue
+
+      # Only read lines that look like VAR=VALUE
+      if [[ $line =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+          var_name="${BASH_REMATCH[1]}"
+          var_value="${BASH_REMATCH[2]}"
+          export "$var_name=$var_value"
+      else
+          echo "Skipping bad line: $line"
+      fi
+  done < "$SECRETS_FILE"
+
+else
+  echo " > no $SECRETS_FILE found; using defaults."
+fi
+
+# ---------- Defaults for local dev (only if not set by secrets.env) ----------
 export NODE_ENV=${NODE_ENV:-development}
 export MONGO_DB_URL=${MONGO_DB_URL:-mongodb://localhost:27017/quantum}
 export MONGO_DB_USR=${MONGO_DB_USR:-}
@@ -28,9 +54,10 @@ CONTEXT="${CONTEXT:-node}"
 PULL="${PULL:-false}"
 COMPOSE_FILE="docker/docker-compose.yml"
 
-log()  { printf "\033[1;34m[start]\033[0m %s\n" "$*"; }
-warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
-die()  { printf "\033[1;31m[fail]\033[0m %s\n" "$*" >&2; exit 1; }
+log()    { printf "\033[1;34m[start]\033[0m %s\n" "$*"; }
+notice() { printf "\033[1;32m[notice]\033[0m %s\n" "$*"; }
+warn()   { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
+die()    { printf "\033[1;31m[fail]\033[0m %s\n" "$*" >&2; exit 1; }
 
 # ---------- Beautified runner ----------
 run() {
@@ -49,7 +76,7 @@ run() {
 
 usage() {
   cat <<EOF
-Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
+  Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild|help]
   debug    Run node directly on host (dev)
   pm2      Run with pm2 on host (dev)
   docker   Run built image, mounting ./node (dev hot-reload style)
@@ -59,33 +86,27 @@ Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
   down     docker compose down
   clean    Remove container and image
   rebuild  Clean + build
-Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
+  help     Show this help message (default when no command specified)
+  Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 EOF
 }
 
-# ---------- Load secrets if present ----------
-if [ -f ./secrets.env ]; then
-  set -a
-    # shellcheck disable=SC1091
-    source ./secrets.env
-  set +a
+cmd="${1:-help}"
+
+# ---------- Print effective config (dev) - skip for down/clean commands ----------
+if [[ "$cmd" != "down" && "$cmd" != "clean" ]]; then
+  printf '%s\n' "$(cat ./node/app/media/quantum.banner 2>/dev/null || true)"
+  echo " > NODE_ENV            : $NODE_ENV"
+  echo " > MONGO_DB_USR        : $MONGO_DB_USR"
+  echo " > MONGO_DB_PWD        : $MONGO_DB_PWD"
+  echo " > MONGO_DB_URL        : $MONGO_DB_URL"
+  echo " > AUTH_PROVIDER       : $AUTH_PROVIDER"
+  echo " > AUTH_TENANT_ID      : $AUTH_TENANT_ID"
+  echo " > AUTH_CALLBACK_URL   : $AUTH_CALLBACK_URL"
+  echo " > AUTH_CLIENT_ID      : $AUTH_CLIENT_ID"
+  echo " > AUTH_CLIENT_SECRET  : $AUTH_CLIENT_SECRET"
+  echo ""
 fi
-
-# ---------- Print effective config (dev) ----------
-printf '%s\n' "$(cat ./node/app/media/quantum.banner 2>/dev/null || true)"
-echo " --------------------------------------------------------------"
-echo " > NODE_ENV            : $NODE_ENV"
-echo " > MONGO_DB_URL        : $MONGO_DB_URL"
-echo " > MONGO_DB_USR        : $MONGO_DB_USR"
-echo " > MONGO_DB_PWD        : ${MONGO_DB_PWD:+***}"
-echo " > AUTH_PROVIDER       : $AUTH_PROVIDER"
-echo " > AUTH_TENANT_ID      : $AUTH_TENANT_ID"
-echo " > AUTH_CALLBACK_URL   : $AUTH_CALLBACK_URL"
-echo " > AUTH_CLIENT_ID      : $AUTH_CLIENT_ID"
-echo " > AUTH_CLIENT_SECRET  : ${AUTH_CLIENT_SECRET:+***}"
-echo " --------------------------------------------------------------"
-
-cmd="${1:-up}"
 
 # ---------- Host prerequisites ----------
 ensure_host_tools() {
@@ -174,8 +195,15 @@ case "$cmd" in
     run "Listing containers" docker ps -a
     ;;
 
+  help)
+    usage
+    ;;
+
   *)
     usage; exit 1;;
 esac
+
+# ---------- Success confirmation ----------
+notice "Command '$cmd' completed successfully"
 
 exit 0

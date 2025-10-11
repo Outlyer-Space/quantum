@@ -1,8 +1,8 @@
-name: quantum
+name: outlyer
 services:
   mongo:
     image: mongo:6
-    container_name: quantum-mongo
+    container_name: local-mongo
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -20,8 +20,8 @@ services:
     build:
       context: ../node
       dockerfile: ../docker/Dockerfile
-    image: xenon130/quantum
-    container_name: quantum-app
+    image: outlyer/quantum
+    container_name: quantum
     restart: unless-stopped
     depends_on:
       mongo:
