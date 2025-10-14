@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
-        "Audacy"
+        "Audacy",
+        "OIDC",
+        "outlyer"
     ],
 
     // Tell VS Code which profile should be the default for this workspace
