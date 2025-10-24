@@ -2,6 +2,7 @@
 const passportLocalMongoose = require('passport-local-mongoose')
 const passportAzureADoauth2 = require('passport-azure-ad-oauth2')
 const jwt                   = require('jsonwebtoken')
+const configRole = require('../../config/role')
 
 /** Defines the user model, exports to mongoose
  *
@@ -151,6 +152,25 @@ module.exports = function (config, mongoose) {
     const self = this
     const newDoc = doc
 
+    // Ensure newly created users have at least one mission with default role (VIP)
+    try {
+      const defaultRole = {
+        name: configRole.roles['VIP'].name,
+        callsign: configRole.roles['VIP'].callsign
+      }
+      const defaultMission = {
+        name: 'Quantum',
+        currentRole: defaultRole,
+        allowedRoles: [defaultRole]
+      }
+      if (!newDoc.missions || !Array.isArray(newDoc.missions) || newDoc.missions.length === 0) {
+        newDoc.missions = [defaultMission]
+      }
+    } catch (e) {
+      // if configRole isn't available or something fails, proceed without blocking creation
+      // console.error('Warning: could not apply default mission to new user:', e)
+    }
+
     return new Promise((resolve, reject) => {
       // search for user
       return self.findOne(condition)
@@ -182,10 +202,35 @@ module.exports = function (config, mongoose) {
         const emailUser   = 'sys.user' + emailDomain
         const password    = config.auth.clientSecret
         const sysAdmin    = { email: emailAdmin, name: 'Sys Admin' }
-        const sysUser     = { email: emailUser,  name: 'Sys User'  }
+        
+        // Admin gets MD (Mission Director) role
+        const adminRole = {
+          name: configRole.roles['MD'].name,
+          callsign: configRole.roles['MD'].callsign
+        }
+        const adminMission = {
+          name: 'Quantum',
+          currentRole: adminRole,
+          allowedRoles: [adminRole]
+        }
+        
+        // Default role for regular users remains VIP
+        const defaultRole = {
+          name: configRole.roles['VIP'].name,
+          callsign: configRole.roles['VIP'].callsign
+        }
+        const defaultMission = {
+          name: 'Quantum',
+          currentRole: defaultRole,
+          allowedRoles: [defaultRole]
+        }
 
-        User.register({ auth: sysAdmin }, password)
-        User.register({ auth: sysUser }, password)
+        const sysUser     = { email: emailUser,  name: 'Sys User', missions: [defaultMission]  }
+        // Local dev startup user creation
+        // Register sys admin with MD role
+        User.register({ auth: sysAdmin, missions: [adminMission] }, password)
+        // Register regular users with VIP role
+        User.register({ auth: sysUser, missions: [defaultMission] }, password)
         console.log(`::: Created 1st User ::: ${sysAdmin.email}`)
         console.log(`::: Created 2nd User ::: ${sysUser.email}`)
       }

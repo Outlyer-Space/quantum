@@ -5,67 +5,92 @@ var XLSX = require("xlsx");
 var configRole = require('../../config/role');
 
 module.exports = {
-    getCurrentRole: function(req, res){
-        var email = req.query.email;
-        var mission = req.query.mission;
-
-        //update the current role of the user
-        User.findOne({ 'auth.email' : email, 'missions.name' : mission }, { 'missions.$' : 1 }, function(err, user) {
-            if(err){
-                console.log(err);
+    getCurrentRole: async function(req, res) {
+        try {
+            const { email, mission } = req.query;
+            
+            if (!email || !mission) {
+                return res.status(400).send([]);
             }
 
-            if(user){
-                res.send(user.missions[0].currentRole);
+            const user = await User.findOne(
+                { 'auth.email': email, 'missions.name': mission },
+                { 'missions.$': 1 }
+            );
+
+            if (!user || !user.missions || !user.missions[0]) {
+                return res.status(404).send([]);
             }
 
-        });
+            return res.status(200).send(user.missions[0].currentRole);
 
+        } catch (error) {
+            console.error('Error in getCurrentRole:', error);
+            return res.status(500).send([]);
+        }
     },
-    getAllowedRoles: function(req,res){
-        var email = req.query.email;
-        var mission = req.query.mission;
-
-        //update allowed roles of the user
-        User.findOne({ 'auth.email' : email, 'missions.name' : mission }, { 'missions.$' : 1 }, function(err, user) {
-            if(err){
-                console.log(err);
+    getAllowedRoles: async function(req, res) {
+        try {
+            const { email, mission } = req.query;
+            
+            if (!email || !mission) {
+                return res.status(400).send([]);
             }
 
-            if(user){
-                res.send(user.missions[0].allowedRoles);
+            const user = await User.findOne(
+                { 'auth.email': email, 'missions.name': mission },
+                { 'missions.$': 1 }
+            );
+
+            if (!user || !user.missions || !user.missions[0]) {
+                return res.status(404).send([]);
             }
 
-        });
+            return res.status(200).json(user.missions[0].allowedRoles);
+
+        } catch (error) {
+            console.error('Error in getAllowedRoles:', error);
+            return res.status(500).send([]);
+        }
     },
-    getUsers: function(req,res){
-        var mission = req.query.mission;
-        var allUsers = [];
-
-        User.find( { 'missions.name' : mission }, { 'auth' : 1, 'missions.$' : 1 }, function(err, users) {
-            if(err){
-                console.log(err);
+    getUsers: async function(req, res) {
+        try {
+            const { mission } = req.query;
+            
+            if (!mission) {
+                return res.status(400).send([]);
             }
 
-            if(users){
-                for(var i=0; i<users.length; i++){
-                    allUsers[i] = new Object();
-                    allUsers[i].auth = users[i].auth;
-                    allUsers[i].currentRole = users[i].missions[0].currentRole;
-                    var aRoles = {};
+            const users = await User.find(
+                { 'missions.name': mission },
+                { 'auth': 1, 'missions.$': 1 }
+            );
 
-                    var roles = users[i].missions[0].allowedRoles;
-
-                    for(var j=0; j<roles.length; j++){
-                        aRoles[roles[j].callsign] = 1;
-                    }
-                    allUsers[i].allowedRoles = aRoles;
-                }
-                res.send(allUsers);
+            if (!users || users.length === 0) {
+                return res.status(404).send([]);
             }
 
-        });
+            const allUsers = users.map(user => {
+                if (!user.missions || !user.missions[0]) return null;
 
+                const aRoles = user.missions[0].allowedRoles.reduce((acc, role) => {
+                    acc[role.callsign] = 1;
+                    return acc;
+                }, {});
+
+                return {
+                    auth: user.auth,
+                    currentRole: user.missions[0].currentRole,
+                    allowedRoles: aRoles
+                };
+            }).filter(Boolean);
+
+            return res.status(200).send(allUsers);
+
+        } catch (error) {
+            console.error('Error in getUsers:', error);
+            return res.status(500).send([]);
+        }
     },
     getRoles: function(req,res){
         res.send(configRole);
@@ -150,84 +175,93 @@ module.exports = {
             });
         });
     },
-    setUserRole: function(req,res){
-        var email = req.body.email;
-        var role = req.body.role;
-        var mission = req.body.mission;
-
-        //update the current role of the user
-        User.findOne({ 'auth.email' : email, 'missions.name' : mission }, function(err, user) {
-            if(err){
-                console.log(err);
-            }
-            if(user){
-                for(var i=0; i<user.missions.length; i++) {
-                    if(user.missions[i].name === mission) {
-                        user.missions[i].currentRole = role;
-                    }
-                }
-
-                user.markModified('missions');
-                user.save(function(err,result) {
-                    if (err){
-                        console.log(err);
-                    }
-
-                    if(result){
-                        res.send(result);
-                    }
-
-                });
+    setUserRole: async function(req, res) {
+        try {
+            const { email, role, mission } = req.body;
+            
+            if (!email || !role || !mission) {
+                return res.status(400).send([]);
             }
 
-        });
+            const user = await User.findOne(
+                { 'auth.email': email, 'missions.name': mission }
+            );
+
+            if (!user) {
+                return res.status(404).send([]);
+            }
+
+            const missionIndex = user.missions.findIndex(m => m.name === mission);
+            if (missionIndex === -1) {
+                return res.status(400).send([]);
+            }
+
+            user.missions[missionIndex].currentRole = role;
+            user.markModified('missions');
+            
+            const result = await user.save();
+            return res.status(200).send(result);
+
+        } catch (error) {
+            console.error('Error in setUserRole:', error);
+                return res.status(500).send([]);
+        }
     },
-    setAllowedRoles: function(req,res){
-        var email = req.body.email;
-        var roles = req.body.roles;
-        var mission = req.body.mission;
-
-        //update allowed roles of the user
-        User.findOne({ 'auth.email' : email, 'missions.name' : mission }, function(err, user) {
-            if(err){
-                console.log(err);
+    setAllowedRoles: async function(req, res) {
+        try {
+            const { email, roles, mission } = req.body;
+            
+            if (!email || !roles || !mission) {
+                return res.status(400).send([]);
             }
 
-            if(user){
-                for(var i=0; i<user.missions.length; i++) {
-                    if(user.missions[i].name === mission) {
-                        user.missions[i].allowedRoles = roles;
-                    }
-                }
+            const user = await User.findOne(
+                { 'auth.email': email, 'missions.name': mission }
+            );
 
-                user.markModified('missions');
-
-                user.save(function(err,result) {
-                    if (err) {
-                        console.log(err);
-                    }
-
-                    if(result){
-                        res.send(result);
-                    }
-
-                });
+            if (!user) {
+                return res.status(404).send([]);
             }
 
-        });
+            const missionIndex = user.missions.findIndex(m => m.name === mission);
+            if (missionIndex === -1) {
+                return res.status(404).send([]);
+            }
+
+            user.missions[missionIndex].allowedRoles = roles;
+            user.markModified('missions');
+            
+            const result = await user.save();
+            return res.status(200).send(result);
+
+        } catch (error) {
+            console.error('Error in setAllowedRoles:', error);
+                return res.status(500).send([]);
+        }
     },
-    getUsersCurrentRole: function(req,res){
-        var mission = req.query.mission;
-        var onlineUsers = [];
-        //update the current role of the user
-        User.find({'missions.name' : mission}, {'auth' : 1, 'missions.$' : 1}, function(err, users) {
-            if(err){
-                console.log(err);
+    getUsersCurrentRole: async function(req, res) {
+        try {
+            const { mission } = req.query;
+            
+            if (!mission) {
+                return res.status(400).send([]);
             }
-            if(users){
-                res.send(users);
+
+            const users = await User.find(
+                { 'missions.name': mission },
+                { 'auth': 1, 'missions.$': 1 }
+            );
+
+            if (!users || users.length === 0) {
+                return res.status(404).send([]);
             }
-        });
+
+            return res.status(200).send(users);
+
+        } catch (error) {
+            console.error('Error in getUsersCurrentRole:', error);
+                return res.status(500).send([]);
+        }
     }
 };
 
