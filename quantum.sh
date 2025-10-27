@@ -11,32 +11,6 @@ IFS=$'\n\t'
 
 # DEFAULTs -----------------------------------------------------
 
-# write secrets for local dev (if no ./secrets.env found)
-SECRETS_FILE="./secrets.env"
-if ! [[ -e "$SECRETS_FILE" ]]; then
-echo "⚠️  No $SECRETS_FILE found; creating with defaults."
-cat <<'EOF' > $SECRETS_FILE
-
-# default secrets file for local dev/demo
-NODE_ENV=development
-
-MONGO_DB_URL=mongodb://localhost:27017/quantum
-MONGO_DB_USR=
-MONGO_DB_PWD=
-
-AUTH_PROVIDER=Mongo
-AUTH_TENANT_ID=
-AUTH_CALLBACK_URL=
-AUTH_CLIENT_ID=sys.admin@localhost
-AUTH_CLIENT_SECRET=2infinity
-EOF
-
-file_path=$(readlink -f "$SECRETS_FILE")
-echo "✅ Defaults saved to: $file_path"
-fi
-
-
-# Docker build settings (tunable via env)
 IMAGE="${IMAGE:-outlyer/quantum}"
 CONTAINER="${CONTAINER:-quantum}"
 DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
@@ -122,36 +96,48 @@ check_docker(){
   fi
 }
 
-# MAIN     -----------------------------------------------------
+# Host prereq (secrets.env)
+check_secrets(){
+  SECRETS_FILE="./secrets.env"
 
-if [[ $# -eq 0 ]]; then
-  # no command given -> show help & exit
-  usage
-  exit 1
-fi
+  # ---------- create secrets.env (if needed) ----------
+  if ! [[ -e "$SECRETS_FILE" ]]; then
+    echo "⚠️  No $SECRETS_FILE found; creating with defaults."
 
-# ---------- Load secrets.env ----------
-while IFS= read -r line || [[ -n $line ]]; do
-    # Strip leading/trailing whitespace
-    line="${line#"${line%%[![:space:]]*}"}"
-    line="${line%"${line##*[![:space:]]}"}"
+    src="./secrets.env.example"
+    dst=$SECRETS_FILE
 
-    # Skip blanks and comment lines
-    [[ -z $line || $line == \#* ]] && continue
+    # Copy the file, if source is newer
+    cp -u -- "$src" "$dst"
 
-    # Only read lines that look like VAR=VALUE
-    if [[ $line =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
-        var_name="${BASH_REMATCH[1]}"
-        var_value="${BASH_REMATCH[2]}"
-        export "$var_name=$var_value"
-    else
-        echo "Skipping bad line: $line"
-    fi
-done < "$SECRETS_FILE"
+    # show where it is
+    file_path=$(readlink -f "$SECRETS_FILE")
+    echo "✅ Defaults saved to: $file_path"
+  fi
 
-# ---------- get command & show config (skip for down/clear) --------
-cmd="${1}"
-if [[ "$cmd" != "down" && "$cmd" != "clean" ]]; then
+  # ---------- Load secrets.env ----------
+  while IFS= read -r line || [[ -n $line ]]; do
+      # Strip leading/trailing whitespace
+      line="${line#"${line%%[![:space:]]*}"}"
+      line="${line%"${line##*[![:space:]]}"}"
+
+      # Skip blanks and comment lines
+      [[ -z $line || $line == \#* ]] && continue
+
+      # Only read lines that look like VAR=VALUE
+      if [[ $line =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+          var_name="${BASH_REMATCH[1]}"
+          var_value="${BASH_REMATCH[2]}"
+          export "$var_name=$var_value"
+      else
+          echo "Skipping bad line: $line"
+      fi
+  done < "$SECRETS_FILE"
+
+}
+
+# show active config
+show_config(){
   printf '%s\n' "$(cat ./node/app/media/quantum.banner 2>/dev/null || true)"
   echo " > NODE_ENV            : $NODE_ENV"
   echo " > MONGO_DB_USR        : $MONGO_DB_USR"
@@ -163,12 +149,24 @@ if [[ "$cmd" != "down" && "$cmd" != "clean" ]]; then
   echo " > AUTH_CLIENT_ID      : $AUTH_CLIENT_ID"
   echo " > AUTH_CLIENT_SECRET  : $AUTH_CLIENT_SECRET"
   echo ""
+}
+
+
+# MAIN     -----------------------------------------------------
+
+if [[ $# -eq 0 ]]; then
+  # no command given -> show help & exit
+  usage
+  exit 1
 fi
 
 # ---------- Run Command ----------
+cmd="${1}"
 case "$cmd" in
   build)
     check_docker
+    check_secrets
+    show_config
     run "Removing old container: $CONTAINER" docker rm -f "$CONTAINER"
     run "Removing old image: $IMAGE" docker rmi -f "$IMAGE"
     args=( -t "$IMAGE" -f "$DOCKERFILE" )
@@ -179,6 +177,8 @@ case "$cmd" in
 
   up)
     check_docker
+    check_secrets
+    show_config
     run "Starting stack (rebuild + detach)" docker compose -f "$COMPOSE_FILE" up --build -d
     run "Showing stack status" docker compose -f "$COMPOSE_FILE" ps
     ;;
@@ -201,18 +201,24 @@ case "$cmd" in
 
   debug)
     check_node
+    check_secrets
+    show_config
     log "Starting DEBUG mode / running node"
     node node/server.js
     ;;
 
   pm2)
     check_node
+    check_secrets
+    show_config
     run "Starting PM2 mode on host" pm2 start node/pm2.config.js
     run "Showing PM2 quantum process" pm2 show quantum
     ;;
 
   docker)
     check_docker
+    check_secrets
+    show_config
     run "Stopping container" docker stop "$CONTAINER"
     run "Removing container" docker rm "$CONTAINER"
     run "Starting DEVELOPER mode" docker run -d -t \
@@ -224,13 +230,18 @@ case "$cmd" in
     run "Listing containers" docker ps -a
     ;;
 
-    app)
+  app)
+    check_docker
+    check_secrets
+    show_config
     run "Starting only quantum (no deps)" \
       docker compose -f "$COMPOSE_FILE" up -d --build --no-deps quantum
     ;;
 
   deploy)
     check_docker
+    check_secrets
+    show_config
     run "Stopping container" docker stop "$CONTAINER"
     run "Removing container" docker rm "$CONTAINER"
     run "Starting DEPLOY mode" docker run -d -t \
