@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     // This pipeline will push repo changes on the local Outlyer server
-    // to GitHub at https://github.com/Outlyer-Space/quantum
+    // dev.outlyer.space to GitHub at https://github.com/Outlyer-Space/quantum
     // the post receive hook script on the server will only
     // trigger this pipeline for "main" or "master" branches.
 
@@ -23,16 +23,23 @@ pipeline {
         }
 
         stage('Test'){
-            // Validate changes
+            // Build & test latest code
             steps {
-                echo 'Validating new code'
+                echo 'Building docker image'
+                sh "docker build --pull -f docker/Dockerfile.azure -t quantum_azure:latest ."
+                sh "docker tag quantum_azure:latest outlyer.azurecr.io/quantum:latest"
+
+                echo 'Applying VERSION tag'
+                sh "TAG=$(<VERSION tr -d '[:space:]')"
+                sh "docker tag quantum_azure:latest outlyer.azurecr.io/quantum:${TAG}"
             }
         }
 
         stage('Deploy'){
-            // Deploy on Outlyer server
+            // Push to container registry & force server refresh
             steps {
-                echo 'Deploying on production server'
+                echo 'Pushing to ACR'
+                echo 'Forcing server refresh'
             }
         }
 
