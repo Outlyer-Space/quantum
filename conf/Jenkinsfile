@@ -26,12 +26,14 @@ pipeline {
             // Build & test latest code
             steps {
                 echo 'Building docker image'
-                sh "docker build --pull -f docker/Dockerfile.azure -t quantum_azure:latest ."
-                sh "docker tag quantum_azure:latest outlyer.azurecr.io/quantum:latest"
+                sh 'docker build --pull -f docker/Dockerfile.azure -t quantum_azure:latest .'
+                sh 'docker tag quantum_azure:latest outlyer.azurecr.io/quantum:latest'
 
                 echo 'Applying VERSION tag'
-                sh "TAG=$(<VERSION tr -d '[:space:]')"
-                sh "docker tag quantum_azure:latest outlyer.azurecr.io/quantum:${TAG}"
+                sh '''
+                    TAG=$(<VERSION tr -d '[:space:]')
+                    docker tag quantum_azure:latest outlyer.azurecr.io/quantum:${TAG}
+                '''
             }
         }
 
