@@ -11,7 +11,7 @@ pipeline {
         GITHUB_URL = 'github.com/Outlyer-Space/quantum.git'
         GITHUB_CRED = credentials('github-outlyercode')
         ACR_URL = 'outlyer.azurecr.io'
-        ACR_USER = credentials('ACR_creds')
+        ACR_CRED = credentials('ACR_creds')
     }
 
     stages {
@@ -46,7 +46,7 @@ pipeline {
             steps {
                 echo 'Pushing to ACR'
                 sh """
-                    docker login ${ACR_URL} -u ${ACR_USERNAME} -p ${ACR_PASSWORD}
+                    docker login ${ACR_URL} -u ${ACR_CRED_USERNAME} -p ${ACR_CRED_PASSWORD}
                     docker push ${ACR_URL}/quantum:latest
 
                     TAG=\$(<VERSION tr -d '[:space:]')
