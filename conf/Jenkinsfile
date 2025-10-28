@@ -17,7 +17,6 @@ pipeline {
 
         AZ_APP = 'server-quantum'
         AZ_RGROUP = 'outlyer-resources-usw'
-        AZ_TENANT = credentials('az_tenant')
     }
 
     stages {
@@ -62,28 +61,31 @@ pipeline {
                 """
 
                 echo 'Forcing server refresh'
-                sh """
-                    az login \
-                        --tenant ${AZ_TENANT} \
-                        --username ${ACR_CRED_USR} \
-                        --password ${ACR_CRED_PSW}
+                withCredentials([string(credentialsId: 'az_tenant',
+                    variable: 'AZ_TENANT')]) {
+                    sh """
+                        az login \
+                            --tenant ${AZ_TENANT} \
+                            --username ${ACR_CRED_USR} \
+                            --password ${ACR_CRED_PSW}
 
-                    az acr repository show-tags \
-                        --name ${ACR_NAME} \
-                        --repository quantum \
-                        --output table
+                        az acr repository show-tags \
+                            --name ${ACR_NAME} \
+                            --repository quantum \
+                            --output table
 
-                    az containerapp update \
-                        --resource-group ${AZ_RGROUP} \
-                        --name ${AZ_APP} \
-                        --image ${ACR_URL}/quantum:latest
+                        az containerapp update \
+                            --resource-group ${AZ_RGROUP} \
+                            --name ${AZ_APP} \
+                            --image ${ACR_URL}/quantum:latest
 
-                    az containerapp show \
-                        --resource-group ${AZ_RGROUP} \
-                        --name ${AZ_APP} \
-                        --query "{revision:properties.activeRevisionName, image:properties.template.containers[0].image}" \
-                        --output tsv
-                """
+                        az containerapp show \
+                            --resource-group ${AZ_RGROUP} \
+                            --name ${AZ_APP} \
+                            --query "{revision:properties.activeRevisionName, image:properties.template.containers[0].image}" \
+                            --output tsv
+                    """
+                }
             }
         }
 
