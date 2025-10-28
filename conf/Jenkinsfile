@@ -17,13 +17,10 @@ pipeline {
         stage('Setup'){
             steps {
                 echo "Starting build    ${env.BUILD_DISPLAY_NAME}"
-                sh '''
-                    USER=$(whoami)
-                    GROUPS=$(id -Gn)
-                    echo "Running as user '${USER}' with groups: ${GROUPS}"
-                '''
                 echo "cloning source to ${env.WORKSPACE}"
-                echo "Building branch:  ${env.GIT_LOCAL_BRANCH}"
+                echo "Building branch   ${env.GIT_LOCAL_BRANCH}"
+                echo "Running as user/groups: "
+                sh 'whoami;groups'
             }
         }
 
