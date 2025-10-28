@@ -16,7 +16,8 @@ pipeline {
         ACR_CRED = credentials('ACR_creds')
 
         AZ_APP = 'server-quantum'
-        AZ_RGROUP ='outlyer-resources-usw'
+        AZ_RGROUP = 'outlyer-resources-usw'
+        AZ_TENANT = credentials('az_tenant')
     }
 
     stages {
@@ -63,6 +64,7 @@ pipeline {
                 echo 'Forcing server refresh'
                 sh """
                     az login \
+                        --tenant ${AZ_TENANT} \
                         --username ${ACR_CRED_USR} \
                         --password ${ACR_CRED_PSW}
 
