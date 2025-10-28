@@ -62,10 +62,9 @@ pipeline {
 
                 echo 'Forcing server refresh'
                 sh """
-                    az acr login --name ${ACR_NAME} \
+                    az login \
                         --username ${ACR_CRED_USR} \
-                        --password ${ACR_CRED_PSW} \
-                        --expose-token
+                        --password ${ACR_CRED_PSW}
 
                     az acr repository show-tags \
                         --name ${ACR_NAME} \
