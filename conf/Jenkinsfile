@@ -62,7 +62,11 @@ pipeline {
 
                 echo 'Forcing server refresh'
                 sh """
-                    az acr login --name ${ACR_NAME}
+                    az acr login --name ${ACR_NAME} \
+                        --resource-group ${AZ_RGROUP} \
+                        --username ${ACR_CRED_USR} \
+                        --password ${ACR_CRED_PSW}
+
                     az acr repository show-tags \
                         --name ${ACR_NAME} \
                         --repository quantum \
