@@ -46,7 +46,7 @@ pipeline {
             steps {
                 echo 'Pushing to ACR'
                 sh """
-                    docker login ${ACR_URL} -u ${ACR_USER} -p ${ACR_PASS}
+                    docker login ${ACR_URL} -u ${ACR_USERNAME} -p ${ACR_PASSWORD}
                     docker push ${ACR_URL}/quantum:latest
 
                     TAG=\$(<VERSION tr -d '[:space:]')
