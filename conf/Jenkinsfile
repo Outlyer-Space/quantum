@@ -8,8 +8,10 @@ pipeline {
 
     // Access credentials
     environment {
-        GITHUB_CRED = credentials('github-outlyercode')
         GITHUB_URL = 'github.com/Outlyer-Space/quantum.git'
+        GITHUB_CRED = credentials('github-outlyercode')
+        ACR_URL = 'outlyer.azurecr.io'
+        ACR_USER = credentials('ACR_creds')
     }
 
     stages {
@@ -29,13 +31,13 @@ pipeline {
             steps {
                 echo 'Building docker image'
                 sh 'docker build --pull -f docker/Dockerfile.azure -t quantum_azure:latest .'
-                sh 'docker tag quantum_azure:latest outlyer.azurecr.io/quantum:latest'
+                sh "docker tag quantum_azure:latest ${ACR_URL}/quantum:latest"
 
                 echo 'Applying VERSION tag'
-                sh '''
-                    TAG=$(<VERSION tr -d '[:space:]')
-                    docker tag quantum_azure:latest outlyer.azurecr.io/quantum:${TAG}
-                '''
+                sh """
+                    TAG=\$(<VERSION tr -d '[:space:]')
+                    docker tag quantum_azure:latest ${ACR_URL}/quantum:\${TAG}
+                """
             }
         }
 
@@ -43,6 +45,14 @@ pipeline {
             // Push to container registry & force server refresh
             steps {
                 echo 'Pushing to ACR'
+                sh """
+                    docker login ${ACR_URL} -u ${ACR_USER} -p ${ACR_PASS}
+                    docker push ${ACR_URL}/quantum:latest
+
+                    TAG=\$(<VERSION tr -d '[:space:]')
+                    docker push ${ACR_URL}/quantum:\${TAG}
+                """
+
                 echo 'Forcing server refresh'
             }
         }
