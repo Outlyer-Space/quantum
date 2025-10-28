@@ -73,6 +73,9 @@ pipeline {
                     deleteDirs: true,
                     disableDeferredWipeout: true
                     )
+
+                echo 'Removing docker images'
+                sh 'docker images --filter=reference="quantum:*" -q | xargs -r docker rmi -f'
             }
         }
     }
