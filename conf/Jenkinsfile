@@ -75,7 +75,7 @@ pipeline {
                     )
 
                 echo 'Removing docker images'
-                sh 'docker images --filter=reference="quantum:*" -q | xargs -r docker rmi -f'
+                // FIXME sh 'docker images -q | xargs -r docker rmi -f'
             }
         }
     }
