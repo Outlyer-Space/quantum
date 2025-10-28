@@ -65,7 +65,7 @@ pipeline {
                     variable: 'AZ_TENANT')]) {
                     sh """
                         az login \
-                            --tenant ${AZ_TENANT} \
+                            --tenant \${AZ_TENANT} \
                             --username ${ACR_CRED_USR} \
                             --password ${ACR_CRED_PSW}
 
