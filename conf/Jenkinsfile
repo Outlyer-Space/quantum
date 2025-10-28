@@ -17,9 +17,11 @@ pipeline {
         stage('Setup'){
             steps {
                 echo "Starting build    ${env.BUILD_DISPLAY_NAME}"
-                def userName = env.USER ?: sh(script: 'whoami', returnStdout: true).trim()
-                def groupsList = sh(script: 'id -Gn', returnStdout: true).trim()
-                echo "Running as user '${userName}' with groups: ${groupsList}"
+                sh '''
+                    USER=$(whoami)
+                    GROUPS=$(id -Gn)
+                    echo "Running as user '${USER}' with groups: ${GROUPS}"
+                '''
                 echo "cloning source to ${env.WORKSPACE}"
                 echo "Building branch:  ${env.GIT_LOCAL_BRANCH}"
             }
