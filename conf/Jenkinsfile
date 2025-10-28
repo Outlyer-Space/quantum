@@ -61,13 +61,19 @@ pipeline {
                 """
 
                 echo 'Forcing server refresh'
-                withCredentials([string(credentialsId: 'az_tenant',
-                    variable: 'AZ_TENANT')]) {
+                withCredentials(
+                    [
+                        string(credentialsId: 'az_client_id', variable: 'ARM_CLIENT_ID'),
+                        string(credentialsId: 'az_client_secret', variable: 'ARM_CLIENT_SECRET'),
+                        string(credentialsId: 'az_tenant_id', variable: 'ARM_TENANT_ID'),
+                    ]){
                     sh """
                         az login \
-                            --tenant \${AZ_TENANT} \
-                            --username ${ACR_CRED_USR} \
-                            --password ${ACR_CRED_PSW}
+                            --service-principal \
+                            --username "\$ARM_CLIENT_ID" \
+                            --password "\$ARM_CLIENT_SECRET" \
+                            --tenant   "\$ARM_TENANT_ID" \
+                            --output none   # suppress JSON payload
 
                         az acr repository show-tags \
                             --name ${ACR_NAME} \
