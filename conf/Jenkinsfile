@@ -86,7 +86,8 @@ pipeline {
                         az containerapp update \
                             --resource-group ${AZ_RGROUP} \
                             --name ${AZ_APP} \
-                            --image ${ACR_URL}/quantum:latest
+                            --image ${ACR_URL}/quantum:latest \
+                            --output none   # suppress JSON payload
 
                         az containerapp show \
                             --resource-group ${AZ_RGROUP} \
@@ -125,8 +126,8 @@ pipeline {
                     disableDeferredWipeout: true
                     )
 
-                echo 'Removing docker images'
-                // FIXME sh 'docker images -q | xargs -r docker rmi -f'
+                echo 'Removing local docker images'
+                sh 'docker images -q | xargs -r docker rmi -f'
             }
         }
     }
