@@ -75,6 +75,9 @@ pipeline {
                             --tenant   "\$ARM_TENANT_ID" \
                             --output none   # suppress JSON payload
 
+                        az config \
+                            set extension.use_dynamic_install=yes_without_prompt
+
                         az acr repository show-tags \
                             --name ${ACR_NAME} \
                             --repository quantum \
