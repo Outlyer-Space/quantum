@@ -119,6 +119,13 @@ quantum
         return userList;
     }
 
+    function getVersionInfo() {
+        return $http({
+            url: "/api/version",
+            method: "GET"
+        })
+    }
+
 	return {
         userRole : userRole,
         getUserName : getUserName,
@@ -133,6 +140,7 @@ quantum
         setOnlineUsers : setOnlineUsers,
         getOnlineUsers  : getOnlineUsers,
         getUsersCurrentRole : getUsersCurrentRole,
-        setActiveUsers : setActiveUsers
+        setActiveUsers : setActiveUsers,
+        getVersionInfo : getVersionInfo
 	}
 }]);

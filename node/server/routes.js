@@ -106,8 +106,9 @@ module.exports = function(config, app, passport, user) {
     // models & controllers
     require('./models/user')
     require('./models/procedure')
-    var usr   =  require('./controllers/user.controller')
-    var procs =  require('./controllers/procedure.controller')
+    var usr = require('./controllers/user.controller')
+    var procs = require('./controllers/procedure.controller')
+    var system = require('./controllers/system.controller')
 
     // file upload (multer)
     var multer = require('multer')
@@ -175,5 +176,8 @@ module.exports = function(config, app, passport, user) {
 
     //update parents info
     app.post('/setParentsInfo',procs.setParentsInfo);
+
+    //get application version and git info
+    app.get('/api/version',system.getVersion);
 
 };

@@ -80,6 +80,21 @@ angular.module('quantum')
             });
         }
 
+        // Function to display about modal
+        $ctrl.showAboutMenu = function() {
+            $uibModal.open({
+                templateUrl: './js/components/homepage/aboutMenu.html',
+                controller: 'aboutCtrl',
+                controllerAs: '$ctrl'
+            }).result.then(
+            function(response){
+                //handle modal close with response
+            },
+            function () {
+                //handle modal dismiss
+            });
+        }
+
         //Function to logout from quantum and assign the user as offline
         $ctrl.logout = function () {
             var loc = $location.url();

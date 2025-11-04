@@ -5,6 +5,7 @@
 
 FROM redhat/ubi9
 
+# Git build arguments for version tracking
 ARG GIT_BRANCH=unknown
 ARG GIT_COMMIT=unknown
 ENV GIT_BRANCH=${GIT_BRANCH}

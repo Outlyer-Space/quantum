@@ -1,0 +1,32 @@
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close" ng-click="$ctrl.close()">
+        <span aria-hidden="true">×</span>
+    </button>
+    <h4 class="modal-title" id="myModalLabel">About Quantum</h4>
+</div>
+<div class="modal-body">
+    <form class="form-horizontal">
+        <div class="form-group">
+            <label class="control-label col-sm-3">Application Version</label>
+            <div class="col-sm-7">
+                <p class="form-control-static">{{$ctrl.versionInfo.version}}</p>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-3">Git Branch</label>
+            <div class="col-sm-7">
+                <p class="form-control-static">{{$ctrl.versionInfo.branch}}</p>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="control-label col-sm-3">Git Commit</label>
+            <div class="col-sm-7">
+                <p class="form-control-static">{{$ctrl.versionInfo.commit}}</p>
+            </div>
+        </div>
+    </form>
+    <div id="aboutsettingstoaster"></div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="$ctrl.close()">Close</button>
+</div>

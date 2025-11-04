@@ -53,6 +53,7 @@
     <script src="js/components/homepage/homepage.js"></script>
     <script src="js/components/homepage/userSettings.js"></script>
     <script src="js/components/homepage/adminMenu.js"></script>
+    <script src="js/components/homepage/aboutMenu.js"></script>
     <script src="js/components/procedures/procedure.js"></script>
     <script src="js/components/sections/section.js"></script>
     <script src="js/components/runIndex/running.js"></script>
@@ -73,6 +74,7 @@
     <!-- script to get user details from backend, and
          set relative URL base in case we're proxied on a sub directory -->
     <script>
+        /* EJS template syntax - renders user object from server */
         var user = <%- JSON.stringify(user) %>;
         angular.element(document.getElementsByTagName('head')).prepend(
             angular.element('<base href="' +

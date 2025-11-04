@@ -170,6 +170,7 @@ case "$cmd" in
     run "Removing old container: $CONTAINER" docker rm -f "$CONTAINER"
     run "Removing old image: $IMAGE" docker rmi -f "$IMAGE"
     
+    # Capture git info for build
     GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     log "Git Branch: $GIT_BRANCH | Commit: $GIT_COMMIT"
@@ -187,6 +188,7 @@ case "$cmd" in
     check_secrets
     show_config
     
+    # Capture git info for docker-compose
     export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     export GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     log "Git Branch: $GIT_BRANCH | Commit: $GIT_COMMIT"
