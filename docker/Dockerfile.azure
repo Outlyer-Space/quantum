@@ -2,6 +2,12 @@
 # 1️⃣  Base image – Red Hat Universal Base Image 9
 # --------------------------------------------------------------
 FROM registry.access.redhat.com/ubi9/ubi:latest
+
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT=unknown
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV GIT_COMMIT=${GIT_COMMIT}
+
 RUN dnf -y update --setopt=tsflags=nodocs && \
     dnf -y install \
         nodejs \

@@ -35,7 +35,21 @@ pipeline {
             // Build & test latest code
             steps {
                 echo 'Building docker image'
-                sh 'docker build --pull -f docker/Dockerfile.azure -t quantum_azure:latest .'
+                script {
+                    env.CLEAN_BRANCH = env.GIT_BRANCH.replaceAll('origin/', '')
+                    env.SHORT_COMMIT = env.GIT_COMMIT.take(7)
+                }
+                echo "Git Branch: ${env.CLEAN_BRANCH}"
+                echo "Git Commit: ${env.SHORT_COMMIT}"
+                
+                sh """
+                    docker build --pull \
+                        -f docker/Dockerfile.azure \
+                        --build-arg GIT_BRANCH="${env.CLEAN_BRANCH}" \
+                        --build-arg GIT_COMMIT="${env.SHORT_COMMIT}" \
+                        -t quantum_azure:latest \
+                        .
+                """
                 sh "docker tag quantum_azure:latest ${ACR_URL}/quantum:latest"
 
                 echo 'Applying VERSION tag'

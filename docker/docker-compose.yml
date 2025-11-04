@@ -20,6 +20,9 @@ services:
     build:
       context: ../node
       dockerfile: ../docker/Dockerfile
+      args:
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     image: outlyer/quantum
     container_name: quantum
     restart: unless-stopped

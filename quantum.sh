@@ -169,7 +169,14 @@ case "$cmd" in
     show_config
     run "Removing old container: $CONTAINER" docker rm -f "$CONTAINER"
     run "Removing old image: $IMAGE" docker rmi -f "$IMAGE"
+    
+    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    log "Git Branch: $GIT_BRANCH | Commit: $GIT_COMMIT"
+    
     args=( -t "$IMAGE" -f "$DOCKERFILE" )
+    args+=( --build-arg "GIT_BRANCH=$GIT_BRANCH" )
+    args+=( --build-arg "GIT_COMMIT=$GIT_COMMIT" )
     $PULL && args+=( --pull )
     run "Building image" docker build "${args[@]}" "$CONTEXT"
     run "Listing image" docker image ls "$IMAGE"
@@ -179,6 +186,11 @@ case "$cmd" in
     check_docker
     check_secrets
     show_config
+    
+    export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    export GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    log "Git Branch: $GIT_BRANCH | Commit: $GIT_COMMIT"
+    
     run "Starting stack (rebuild + detach)" docker compose -f "$COMPOSE_FILE" up --build -d
     run "Showing stack status" docker compose -f "$COMPOSE_FILE" ps
     ;;

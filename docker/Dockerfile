@@ -4,6 +4,12 @@
 ## base system & updates
 
 FROM redhat/ubi9
+
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT=unknown
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV GIT_COMMIT=${GIT_COMMIT}
+
 RUN  yum swap -y fakesystemd systemd && \
 	 yum -y update --setopt=tsflags=nodocs && \
 	 yum -y install git wget nano make dos2unix
