@@ -11,7 +11,7 @@ exports.getVersion = function(req, res) {
         const versionInfo = {
             branch: process.env.GIT_BRANCH || 'unknown',
             commit: process.env.GIT_COMMIT || 'unknown',
-            version: require('../../package.json').version
+            version: process.env.APP_VERSION || 'unknown'
         };
         
         res.json(versionInfo);

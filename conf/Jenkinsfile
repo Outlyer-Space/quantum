@@ -38,15 +38,18 @@ pipeline {
                 script {
                     env.CLEAN_BRANCH = env.GIT_BRANCH.replaceAll('origin/', '')
                     env.SHORT_COMMIT = env.GIT_COMMIT.take(7)
+                    env.APP_VERSION = readFile('VERSION').trim()
                 }
                 echo "Git Branch: ${env.CLEAN_BRANCH}"
                 echo "Git Commit: ${env.SHORT_COMMIT}"
+                echo "App Version: ${env.APP_VERSION}"
                 
                 sh """
                     docker build --pull \
                         -f docker/Dockerfile.azure \
                         --build-arg GIT_BRANCH="${env.CLEAN_BRANCH}" \
                         --build-arg GIT_COMMIT="${env.SHORT_COMMIT}" \
+                        --build-arg APP_VERSION="${env.APP_VERSION}" \
                         -t quantum_azure:latest \
                         .
                 """
@@ -54,8 +57,7 @@ pipeline {
 
                 echo 'Applying VERSION tag'
                 sh """
-                    TAG=\$(<VERSION tr -d '[:space:]')
-                    docker tag quantum_azure:latest ${ACR_URL}/quantum:\${TAG}
+                    docker tag quantum_azure:latest ${ACR_URL}/quantum:${env.APP_VERSION}
                 """
             }
         }

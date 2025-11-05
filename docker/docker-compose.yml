@@ -23,6 +23,7 @@ services:
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        APP_VERSION: ${APP_VERSION:-unknown}
     image: outlyer/quantum
     container_name: quantum
     restart: unless-stopped

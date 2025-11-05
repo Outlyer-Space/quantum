@@ -5,11 +5,12 @@
 
 FROM redhat/ubi9
 
-# Git build arguments for version tracking
 ARG GIT_BRANCH=unknown
 ARG GIT_COMMIT=unknown
+ARG APP_VERSION=unknown
 ENV GIT_BRANCH=${GIT_BRANCH}
 ENV GIT_COMMIT=${GIT_COMMIT}
+ENV APP_VERSION=${APP_VERSION}
 
 RUN  yum swap -y fakesystemd systemd && \
 	 yum -y update --setopt=tsflags=nodocs && \
