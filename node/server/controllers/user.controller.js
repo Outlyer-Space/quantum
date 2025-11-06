@@ -64,17 +64,24 @@ module.exports = {
             const users = await User.find(
                 { 'missions.name': mission },
                 { 'auth': 1, 'missions.$': 1 }
-            );
+            ).lean();
+            console.log(`Found ${users ? users.length : 0} users for mission: ${mission}`);
 
             if (!users || users.length === 0) {
+                console.log(`No users found for mission: ${mission}`);
                 return res.status(404).send([]);
             }
 
             const allUsers = users.map(user => {
                 if (!user.missions || !user.missions[0]) return null;
 
-                const aRoles = user.missions[0].allowedRoles.reduce((acc, role) => {
-                    acc[role.callsign] = 1;
+                // Safety check for allowedRoles array
+                const allowedRoles = user.missions[0].allowedRoles || [];
+                const aRoles = allowedRoles.reduce((acc, role) => {
+                    // Safety check for role structure
+                    if (role && role.callsign) {
+                        acc[role.callsign] = 1;
+                    }
                     return acc;
                 }, {});
 
@@ -89,7 +96,13 @@ module.exports = {
 
         } catch (error) {
             console.error('Error in getUsers:', error);
-            return res.status(500).send([]);
+            console.error('Error stack:', error.stack);
+            console.error('Query mission:', req.query.mission);
+            return res.status(500).json({ 
+                error: 'Internal server error', 
+                message: error.message,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     },
     getRoles: function(req,res){

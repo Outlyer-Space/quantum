@@ -3,6 +3,7 @@
 # --------------------------------------------------------------
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
+# Git build arguments for version tracking
 ARG GIT_BRANCH=unknown
 ARG GIT_COMMIT=unknown
 ARG APP_VERSION=unknown
