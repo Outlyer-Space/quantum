@@ -10,23 +10,34 @@ module.exports = {
             const { email, mission } = req.query;
             
             if (!email || !mission) {
-                return res.status(400).send([]);
+                console.warn('getCurrentRole called without required parameters');
+                return res.status(400).json({ error: 'Email and mission parameters are required' });
             }
 
             const user = await User.findOne(
                 { 'auth.email': email, 'missions.name': mission },
-                { 'missions.$': 1 }
-            );
+                { 'missions': 1 }
+            ).lean();
 
-            if (!user || !user.missions || !user.missions[0]) {
+            if (!user || !user.missions || user.missions.length === 0) {
+                console.warn(`User ${email} not found or has no missions`);
                 return res.status(404).send([]);
             }
 
-            return res.status(200).send(user.missions[0].currentRole);
+            const userMission = user.missions.find(m => m.name === mission);
+            if (!userMission) {
+                console.warn(`User ${email} doesn't have mission: ${mission}`);
+                return res.status(404).send([]);
+            }
+
+            return res.status(200).send(userMission.currentRole);
 
         } catch (error) {
             console.error('Error in getCurrentRole:', error);
-            return res.status(500).send([]);
+            return res.status(500).json({ 
+                error: 'Internal server error', 
+                message: error.message 
+            });
         }
     },
     getAllowedRoles: async function(req, res) {
@@ -34,23 +45,34 @@ module.exports = {
             const { email, mission } = req.query;
             
             if (!email || !mission) {
-                return res.status(400).send([]);
+                console.warn('getAllowedRoles called without required parameters');
+                return res.status(400).json({ error: 'Email and mission parameters are required' });
             }
 
             const user = await User.findOne(
                 { 'auth.email': email, 'missions.name': mission },
-                { 'missions.$': 1 }
-            );
+                { 'missions': 1 }
+            ).lean();
 
-            if (!user || !user.missions || !user.missions[0]) {
+            if (!user || !user.missions || user.missions.length === 0) {
+                console.warn(`User ${email} not found or has no missions`);
                 return res.status(404).send([]);
             }
 
-            return res.status(200).json(user.missions[0].allowedRoles);
+            const userMission = user.missions.find(m => m.name === mission);
+            if (!userMission) {
+                console.warn(`User ${email} doesn't have mission: ${mission}`);
+                return res.status(404).send([]);
+            }
+
+            return res.status(200).json(userMission.allowedRoles);
 
         } catch (error) {
             console.error('Error in getAllowedRoles:', error);
-            return res.status(500).send([]);
+            return res.status(500).json({ 
+                error: 'Internal server error', 
+                message: error.message 
+            });
         }
     },
     getUsers: async function(req, res) {
@@ -276,23 +298,51 @@ module.exports = {
             const { mission } = req.query;
             
             if (!mission) {
-                return res.status(400).send([]);
+                console.warn('getUsersCurrentRole called without mission parameter');
+                return res.status(400).json({ error: 'Mission parameter is required' });
             }
+
+            console.log(`Fetching users current roles for mission: ${mission}`);
 
             const users = await User.find(
                 { 'missions.name': mission },
-                { 'auth': 1, 'missions.$': 1 }
-            );
+                { 'auth': 1, 'missions': 1 }
+            ).lean();
 
             if (!users || users.length === 0) {
+                console.log(`No users found for mission: ${mission}`);
                 return res.status(404).send([]);
             }
 
-            return res.status(200).send(users);
+            // Process users to extract only the relevant mission data
+            const processedUsers = users.map(user => {
+                if (!user.missions || user.missions.length === 0) {
+                    console.warn(`User ${user.auth?.email} has no missions data`);
+                    return null;
+                }
+
+                // Find the specific mission
+                const userMission = user.missions.find(m => m.name === mission);
+                if (!userMission) {
+                    console.warn(`User ${user.auth?.email} doesn't have mission: ${mission}`);
+                    return null;
+                }
+
+                return {
+                    auth: user.auth,
+                    missions: [userMission] // Return only the relevant mission
+                };
+            }).filter(Boolean);
+
+            console.log(`Successfully processed ${processedUsers.length} users for mission: ${mission}`);
+            return res.status(200).send(processedUsers);
 
         } catch (error) {
             console.error('Error in getUsersCurrentRole:', error);
-                return res.status(500).send([]);
+            return res.status(500).json({ 
+                error: 'Internal server error', 
+                message: error.message 
+            });
         }
     }
 };
