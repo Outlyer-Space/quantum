@@ -58,61 +58,17 @@ module.exports = {
             const { mission } = req.query;
             
             if (!mission) {
-                return res.status(400).send([]);
+                console.warn('getUsers called without mission parameter');
+                return res.status(400).json({ error: 'Mission parameter is required' });
             }
 
+            // Query users with the specified mission, fetching all missions to filter in code
             const users = await User.find(
-                { 'missions.name': mission },
-                { 'auth': 1, 'missions.$': 1 }
-            ).lean();
-            
-            console.log(`Found ${users ? users.length : 0} users for mission: ${mission}`);
-            
-            // Debug: Log what we're actually getting from the database
-            if (users && users.length > 0) {
-                console.log('Raw database response for first user:');
-                console.log(JSON.stringify(users[0], null, 2));
-                
-                if (users[0].missions && users[0].missions[0]) {
-                    console.log('First user mission data:');
-                    console.log('- Mission name:', users[0].missions[0].name);
-                    console.log('- Current role:', JSON.stringify(users[0].missions[0].currentRole));
-                    console.log('- Allowed roles:', JSON.stringify(users[0].missions[0].allowedRoles));
-                    console.log('- Allowed roles length:', users[0].missions[0].allowedRoles ? users[0].missions[0].allowedRoles.length : 'undefined');
-                }
-            }
-
-            // Alternative query approach - fetch all missions and filter in code
-            console.log('Trying alternative query approach...');
-            const usersAlt = await User.find(
                 { 'missions.name': mission },
                 { 'auth': 1, 'missions': 1 }
             ).lean();
             
-            console.log(`Alternative query found ${usersAlt ? usersAlt.length : 0} users`);
-            
-            if (usersAlt && usersAlt.length > 0) {
-                console.log('Alternative query - First user all missions:');
-                const firstUserMissions = usersAlt[0].missions || [];
-                firstUserMissions.forEach((m, idx) => {
-                    console.log(`Mission ${idx}:`, {
-                        name: m.name,
-                        currentRole: m.currentRole,
-                        allowedRoles: m.allowedRoles,
-                        allowedRolesLength: m.allowedRoles ? m.allowedRoles.length : 'undefined'
-                    });
-                });
-                
-                // Find the specific mission
-                const targetMission = firstUserMissions.find(m => m.name === mission);
-                if (targetMission) {
-                    console.log('Target mission found:', {
-                        name: targetMission.name,
-                        currentRole: targetMission.currentRole,
-                        allowedRoles: targetMission.allowedRoles
-                    });
-                }
-            }
+            console.log(`Found ${users ? users.length : 0} users for mission: ${mission}`);
 
             if (!users || users.length === 0) {
                 console.log(`No users found for mission: ${mission}`);
@@ -120,57 +76,29 @@ module.exports = {
             }
 
             const allUsers = users.map(user => {
-                if (!user.missions || !user.missions[0]) {
-                    console.log(`User ${user.auth?.email} has no missions data in positional query result`);
-                    return null;
-                }
-
-                // Safety check for allowedRoles array
-                const allowedRoles = user.missions[0].allowedRoles || [];
-                console.log(`User ${user.auth?.email} - Positional query allowedRoles:`, allowedRoles);
-                
-                const aRoles = allowedRoles.reduce((acc, role) => {
-                    // Safety check for role structure
-                    if (role && role.callsign) {
-                        acc[role.callsign] = 1;
-                    }
-                    return acc;
-                }, {});
-
-                return {
-                    auth: user.auth,
-                    currentRole: user.missions[0].currentRole,
-                    allowedRoles: aRoles
-                };
-            }).filter(Boolean);
-            
-            // Alternative approach using the full missions array
-            console.log('Processing with alternative approach...');
-            const allUsersAlt = usersAlt.map(user => {
                 if (!user.missions || user.missions.length === 0) {
-                    console.log(`User ${user.auth?.email} has no missions data`);
+                    console.warn(`User ${user.auth?.email} has no missions data`);
                     return null;
                 }
-
-                // Find the specific mission instead of relying on positional operator
+                
                 const userMission = user.missions.find(m => m.name === mission);
                 if (!userMission) {
-                    console.log(`User ${user.auth?.email} doesn't have mission: ${mission}`);
+                    console.warn(`User ${user.auth?.email} doesn't have mission: ${mission}`);
                     return null;
                 }
-
-                console.log(`User ${user.auth?.email} - Alternative query mission:`, {
-                    name: userMission.name,
-                    currentRole: userMission.currentRole,
-                    allowedRoles: userMission.allowedRoles
-                });
 
                 // Safety check for allowedRoles array
                 const allowedRoles = userMission.allowedRoles || [];
+                if (allowedRoles.length === 0) {
+                    console.warn(`User ${user.auth?.email} has empty allowedRoles for mission: ${mission}`);
+                }
+
                 const aRoles = allowedRoles.reduce((acc, role) => {
                     // Safety check for role structure
                     if (role && role.callsign) {
                         acc[role.callsign] = 1;
+                    } else {
+                        console.warn(`Invalid role structure for user ${user.auth?.email}:`, role);
                     }
                     return acc;
                 }, {});
@@ -181,14 +109,9 @@ module.exports = {
                     allowedRoles: aRoles
                 };
             }).filter(Boolean);
-            
-            console.log('Comparison - Positional query results:', allUsers.length);
-            console.log('Comparison - Alternative query results:', allUsersAlt.length);
-            
-            // Use the alternative approach as it's more reliable
-            const finalUsers = allUsersAlt.length > 0 ? allUsersAlt : allUsers;
 
-            return res.status(200).send(finalUsers);
+            console.log(`Successfully processed ${allUsers.length} users for mission: ${mission}`);
+            return res.status(200).send(allUsers);
 
         } catch (error) {
             console.error('Error in getUsers:', error);
