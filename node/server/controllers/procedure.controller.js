@@ -7,57 +7,57 @@ var validTypes = Object.keys(configStep.types);
 // var validTypes = ['ACTION','CAUTION','DECISION','HEADING','INFO','RECORD','VERIFY','WARNING'];
 
 module.exports = {
-    getProcedureList: function(req, res){
-        ProcedureModel.find({}, {}, function(err, procdata) {
+    getProcedureList: function (req, res) {
+        ProcedureModel.find({}, {}, function (err, procdata) {
             if (err) {
                 console.log("Error finding procedures data in DB: " + err);
             }
-            if(procdata){
+            if (procdata) {
                 res.send(procdata);
             }
 
         });
     },
-    getProcedureData: function(req,res){
+    getProcedureData: function (req, res) {
         var id = req.query.id;
 
-        ProcedureModel.findOne( { 'procedureID' : id }, function(err, model) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+            if (err) {
                 console.log(err);
             }
-            if(model){
+            if (model) {
                 var sections = model.sections;
                 //convert json to worksheet
-                var ws = XLSX.utils.json_to_sheet(sections, {header:["Step","Role","Type","Content","Reference"]});
+                var ws = XLSX.utils.json_to_sheet(sections, { header: ["Step", "Role", "Type", "Content", "Reference"] });
                 //Give name to the worksheet
                 var ws_name = "Sheet1";
                 //Create a workbook object
-                var wb = { SheetNames:[], Sheets:{} };
+                var wb = { SheetNames: [], Sheets: {} };
 
                 // add worksheet to workbook
                 wb.SheetNames.push(ws_name);
                 wb.Sheets[ws_name] = ws;
                 // write workbook object into a xlsx file
-                var wbout = XLSX.write(wb, {bookType:'xlsx', bookSST:true, type: 'binary'});
+                var wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
                 res.send(wbout);
             }
         });
     },
-    getLiveInstanceData: function(req,res){
+    getLiveInstanceData: function (req, res) {
         var id = req.query.procedureID;
         var revision = req.query.currentRevision;
 
-        ProcedureModel.findOne( { 'procedureID' : id}, function(err, model) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+            if (err) {
                 console.log(err);
             }
 
-            if(model){
+            if (model) {
                 var instances = model.instances;
                 var liveinstance = [];
 
-                for(var i=0;i<instances.length;i++){
-                    if(instances[i].revision === parseInt(revision)){
+                for (var i = 0; i < instances.length; i++) {
+                    if (instances[i].revision === parseInt(revision)) {
                         liveinstance = instances[i];
                     }
                 }
@@ -67,20 +67,20 @@ module.exports = {
         });
 
     },
-    getAllInstances: function(req,res){
+    getAllInstances: function (req, res) {
         var id = req.query.procedureID;
 
-        ProcedureModel.findOne( { 'procedureID' : id }, function(err, model) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+            if (err) {
                 console.log(err);
             }
             var allinstances = {};
 
-            if(model){
+            if (model) {
                 var instances = model.instances;
                 var allinstances = {
-                    instances : instances,
-                    title : model.title
+                    instances: instances,
+                    title: model.title
                 }
                 res.send(allinstances);
             }
@@ -88,8 +88,8 @@ module.exports = {
         });
 
     },
-    uploadFile: function(req,res){
-        try{
+    uploadFile: function (req, res) {
+        try {
             var filename = req.file.originalname.split(" - ");
             var filepath = req.file.path;
             var workbook = XLSX.readFile(filepath);
@@ -104,50 +104,50 @@ module.exports = {
             // check if all steps have step,type,content
             // console.log(" - Number of lines: " + sheet1.length)
             // console.log(" - Checking for required columns [Step, Role, Type]")
-            for(var a=0;a<sheet1.length;a++){
+            for (var a = 0; a < sheet1.length; a++) {
                 //if(sheet1[a].Step && sheet1[a].Role && sheet1[a].Type && sheet1[a].Content){
-                if(sheet1[a].Step && sheet1[a].Role && sheet1[a].Type && sheet1[a].Content){
+                if (sheet1[a].Step && sheet1[a].Role && sheet1[a].Type && sheet1[a].Content) {
                     sheet1[a].Step = sheet1[a].Step.replace(/\s/g, '');
                     sheet1[a].Role = sheet1[a].Role.replace(/\s/g, '');
                     sheet1[a].Type = sheet1[a].Type.replace(/\s/g, '');
                     fileverify++;
                 }
                 else {
-                    errordetails = "Line " + (fileverify+2)
-                    console.log(" - ERROR: Missing field in " + errordetails )
+                    errordetails = "Line " + (fileverify + 2)
+                    console.log(" - ERROR: Missing field in " + errordetails)
                 }
             }
 
-            if(fileverify === sheet1.length){
+            if (fileverify === sheet1.length) {
                 //To check if Type is valid, check spellings and ignore case
                 //It Should be one of 'Action','Caution','Decision','Heading','Info','Record','Verify','Warning'.
                 var stepsValidity = 0;
                 var errorTypeSteps = [];
-                for(var b=0;b<sheet1.length;b++){
+                for (var b = 0; b < sheet1.length; b++) {
                     sheet1[b].Type = sheet1[b].Type.replace(/\s/g, '');
                     var isValid = checkTypeValidity(sheet1[b].Type);
-                    if(isValid === true){
+                    if (isValid === true) {
                         stepsValidity++;
-                    }else {
-                        errorTypeSteps.push({"Step":sheet1[b].Step,"Type":sheet1[b].Type});
+                    } else {
+                        errorTypeSteps.push({ "Step": sheet1[b].Step, "Type": sheet1[b].Type });
                     }
                 }
 
                 var roleValidity = 0;
                 var roleErrSteps = [];
-                for(var r=0;r<sheet1.length;r++){
-                    sheet1[r].Type =  sheet1[r].Type.replace(/\s/g, '');
-                    if(sheet1[r].Type.toUpperCase !== 'HEADING'){
-                        if(sheet1[r].Role){
+                for (var r = 0; r < sheet1.length; r++) {
+                    sheet1[r].Type = sheet1[r].Type.replace(/\s/g, '');
+                    if (sheet1[r].Type.toUpperCase !== 'HEADING') {
+                        if (sheet1[r].Role) {
                             sheet1[r].Role = sheet1[r].Role.replace(/\s/g, '');
                             var isRoleValid = checkRoleValidity(sheet1[r].Role);
-                            if(isRoleValid === true){
+                            if (isRoleValid === true) {
                                 roleValidity++;
-                            }else {
-                                roleErrSteps.push({"Step":sheet1[r].Step,"Role":sheet1[r].Role});
+                            } else {
+                                roleErrSteps.push({ "Step": sheet1[r].Step, "Role": sheet1[r].Role });
                             }
-                        }else {
-                            roleErrSteps.push({"Step":sheet1[r].Step,"Role":""});
+                        } else {
+                            roleErrSteps.push({ "Step": sheet1[r].Step, "Role": "" });
                         }
                     }
                 }
@@ -156,122 +156,123 @@ module.exports = {
                 var headingErr = [];
                 var nonheadingSteps = 0;
                 var nonHeadingErr = [];
-                if(errorTypeSteps.length === 0){
-                    if(roleErrSteps.length > 0){
-                        res.json({error_code:6,err_desc:"Invalid Role",err_data:roleErrSteps});
+                if (errorTypeSteps.length === 0) {
+                    if (roleErrSteps.length > 0) {
+                        res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
                     }
 
-                    if(sheet1[sheet1.length-1].Type.toUpperCase() === 'HEADING'){
-                        res.json({error_code:7,err_desc:"Last Step Invalid",err_data:[{"Step":sheet1[sheet1.length-1].Step,"Type":sheet1[sheet1.length-1].Type}]});
+                    if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
+                        res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                     }
 
-                    if(fileverify === sheet1.length){
-                        for(var c=0;c<sheet1.length;c++){
-                            sheet1[c].Type =  sheet1[c].Type.replace(/\s/g, '');
-                            if(sheet1[c].Type.toUpperCase() === 'HEADING'){
+                    if (fileverify === sheet1.length) {
+                        for (var c = 0; c < sheet1.length; c++) {
+                            sheet1[c].Type = sheet1[c].Type.replace(/\s/g, '');
+                            if (sheet1[c].Type.toUpperCase() === 'HEADING') {
                                 //Get Heading type steps
-                                var isHeading = getSteps(sheet1[c],true);
-                                if(isHeading === true){
+                                var isHeading = getSteps(sheet1[c], true);
+                                if (isHeading === true) {
                                     //headingSteps++;
-                                }else {
-                                    headingErr.push({"Step":sheet1[c].Step,"Type":sheet1[c].Type});
+                                } else {
+                                    headingErr.push({ "Step": sheet1[c].Step, "Type": sheet1[c].Type });
                                 }
-                            }else if(sheet1[c].Type.toUpperCase() !== 'HEADING'){
+                            } else if (sheet1[c].Type.toUpperCase() !== 'HEADING') {
                                 //Get Non Heading type steps
-                                var isNonHeading = getSteps(sheet1[c],false);
-                                if(isNonHeading === true){
-                                   // nonheadingSteps++;
-                                }else {
-                                    nonHeadingErr.push({"Step":sheet1[c].Step,"Type":sheet1[c].Type});
+                                var isNonHeading = getSteps(sheet1[c], false);
+                                if (isNonHeading === true) {
+                                    // nonheadingSteps++;
+                                } else {
+                                    nonHeadingErr.push({ "Step": sheet1[c].Step, "Type": sheet1[c].Type });
                                 }
                             }
                         }
 
-                        if(headingErr.length > 0 && nonHeadingErr.length > 0){
-                            res.json({error_code:3,err_desc:"Not a valid Step",err_dataHeading:headingErr,err_dataNonHeading:nonHeadingErr});
-                        }else if(headingErr.length > 0 && nonHeadingErr.length === 0){
-                            res.json({error_code:4,err_desc:"Invalid Heading",err_data:headingErr});
-                        }else if(nonHeadingErr.length > 0 && headingErr.length === 0){
-                            res.json({error_code:5,err_desc:"Invalid Other Type",err_data:nonHeadingErr});
+                        if (headingErr.length > 0 && nonHeadingErr.length > 0) {
+                            res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
+                        } else if (headingErr.length > 0 && nonHeadingErr.length === 0) {
+                            res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
+                        } else if (nonHeadingErr.length > 0 && headingErr.length === 0) {
+                            res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
                         }
-                    }else {
-                        res.json({error_code:0,err_desc:"Not a valid file"});
+                    } else {
+                        res.json({ error_code: 0, err_desc: "Not a valid file" });
                     }
-                }else if(errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length-1].Type.toUpperCase() === 'HEADING'){
-                    res.json({error_code:8,err_typedata:errorTypeSteps,err_roledata:roleErrSteps,err_data:[{"Step":sheet1[sheet1.length-1].Step,"Type":sheet1[sheet1.length-1].Type}]});
-                }else if(errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length-1].Type.toUpperCase() !== 'HEADING'){
-                    res.json({error_code:9,err_typedata:errorTypeSteps,err_roledata:roleErrSteps});
-                }else if(errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length-1].Type.toUpperCase() === 'HEADING'){
-                    res.json({error_code:10,err_typedata:errorTypeSteps,err_data:[{"Step":sheet1[sheet1.length-1].Step,"Type":sheet1[sheet1.length-1].Type}]});
-                }else if(errorTypeSteps.length === 0 && roleErrSteps.length > 0 && sheet1[sheet1.length-1].Type.toUpperCase() === 'HEADING'){
-                    res.json({error_code:11,err_roledata:roleErrSteps,err_data:[{"Step":sheet1[sheet1.length-1].Step,"Type":sheet1[sheet1.length-1].Type}]});
-                }else if(errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length-1].Type.toUpperCase() !== 'HEADING'){
-                    res.json({error_code:2,err_desc:"Step Type invalid",err_data:errorTypeSteps});
-                }else if(roleErrSteps.length > 0 && errorTypeSteps.length === 0 && sheet1[sheet1.length-1].Type.toUpperCase() !== 'HEADING'){
-                    res.json({error_code:6,err_desc:"Invalid Role",err_data:roleErrSteps});
-                }else if(sheet1[sheet1.length-1].Type.toUpperCase() === 'HEADING' && errorTypeSteps.length === 0 && roleErrSteps.length === 0){
-                    res.json({error_code:7,err_desc:"Last Step Invalid",err_data:[{"Step":sheet1[sheet1.length-1].Step,"Type":sheet1[sheet1.length-1].Type}]});
-                }else {
-                    res.json({error_code:0,err_desc:"Not a valid file"});
+                } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
+                    res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
+                    res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
+                } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
+                    res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                } else if (errorTypeSteps.length === 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
+                    res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
+                    res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
+                } else if (roleErrSteps.length > 0 && errorTypeSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
+                    res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                } else if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING' && errorTypeSteps.length === 0 && roleErrSteps.length === 0) {
+                    res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                } else {
+                    res.json({ error_code: 0, err_desc: "Not a valid file" });
                 }
-            }else {
-                res.json({error_code:0,err_desc:"Missing field",err_detail:errordetails});
+            } else {
+                res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
             }
             //End of Validations
 
 
             //If everything is valid
-            if(fileverify === sheet1.length && errorTypeSteps.length === 0 && headingErr.length === 0 && nonHeadingErr.length === 0 && roleErrSteps.length === 0 && sheet1[sheet1.length-1].Type.toUpperCase() !== 'HEADING'){
+            if (fileverify === sheet1.length && errorTypeSteps.length === 0 && headingErr.length === 0 && nonHeadingErr.length === 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
 
-                ProcedureModel.findOne({ 'procedureID' : filename[0] }, function(err, procs) {
-                    if(err){
+                ProcedureModel.findOne({ 'procedureID': filename[0] }, function (err, procs) {
+                    if (err) {
                         console.log(err);
                     }
 
-                    if(procs){ // Update a procedure
+                    if (procs) { // Update a procedure
                         var ptitle = filename[2].split(".");
                         procs.procedureID = filename[0];
-                        procs.title = filename[1]+" - "+ptitle[0];
+                        procs.title = filename[1] + " - " + ptitle[0];
 
-                        if(procs.versions && procs.versions.length > 0){
+                        if (procs.versions && procs.versions.length > 0) {
                             procs.versions.push(sheet1);
-                        }else if(procs.versions && procs.versions.length === 0){
+                        } else if (procs.versions && procs.versions.length === 0) {
                             procs.versions = [];
                             procs.versions.push(procs.sections);
                             procs.versions.push(sheet1);
-                        }else if(!procs.versions){
+                        } else if (!procs.versions) {
                             procs.versions = [];
                             procs.versions.push(procs.sections);
                             procs.versions.push(sheet1);
                         }
                         procs.sections = [];
-                        for(var i=0;i<sheet1.length;i++){
+                        for (var i = 0; i < sheet1.length; i++) {
                             procs.sections.push(sheet1[i]);
                         }
                         procs.updatedBy = userdetails;
-                        procs.save(function(err,result) {
-                            if (err){
+                        procs.save(function (err, result) {
+                            if (err) {
                                 // throw err;
                                 console.log(err);
                             }
-                            if(result){
+                            if (result) {
                                 console.log('procedure data updated successfully!');
-                                res.json({error_code:0,err_desc:"file updated"});
+                                res.json({ error_code: 0, err_desc: "file updated" });
                             }
                         });
 
-                    }else { //Save a new procedure
+                    } else { //Save a new procedure
 
                         var pfiles = new ProcedureModel();
                         var ptitle = filename[2].split(".");
 
                         pfiles.procedureID = filename[0];
-                        pfiles.title = filename[1]+" - "+ptitle[0];
+                        pfiles.title = filename[1] + " - " + ptitle[0];
                         pfiles.lastuse = "";
                         pfiles.instances = [];
                         pfiles.versions = [];
+                        pfiles.sections = []; // Explicitly initialize array
 
-                        for(var i=0;i<sheet1.length;i++){
+                        for (var i = 0; i < sheet1.length; i++) {
                             pfiles.sections.push(sheet1[i]);
                         }
 
@@ -279,25 +280,25 @@ module.exports = {
 
                         pfiles.eventname = filename[1];
                         pfiles.uploadedBy = userdetails;
-                        pfiles.save(function(err,result){
-                            if(err){
+                        pfiles.save(function (err, result) {
+                            if (err) {
                                 console.log(err);
                             }
-                            if(result){
+                            if (result) {
                                 console.log('procedure data saved successfully!');
-                                res.json({error_code:0,err_desc:null});
+                                res.json({ error_code: 0, err_desc: null });
                             }
                         });
                     }
                 });
-            }else if(fileverify !== sheet1.length){
-                res.json({error_code:0,err_desc:"Not a valid file"});
+            } else if (fileverify !== sheet1.length) {
+                res.json({ error_code: 0, err_desc: "Not a valid file" });
             }
-        }catch(e){
+        } catch (e) {
             console.log(e);
         }
     },
-    saveProcedureInstance: function(req,res){
+    saveProcedureInstance: function (req, res) {
         var procid = req.body.id;
         var usernamerole = req.body.usernamerole;
         var lastuse = req.body.lastuse;//start time
@@ -305,32 +306,34 @@ module.exports = {
         var useremail = req.body.email;
         var userstatus = req.body.status;
 
-        ProcedureModel.findOne({ 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
-            if(procs){
+            if (procs) {
                 var instancesteps = [];
-                for(var i=0;i<procs.sections.length;i++){
-                    instancesteps.push({"step":procs.sections[i].Step,"info":""})
+                for (var i = 0; i < procs.sections.length; i++) {
+                    instancesteps.push({ "step": procs.sections[i].Step, "info": "" })
                 }
-                var revision = procs.instances.length+1;
+                var revision = procs.instances.length + 1;
                 var versionNum = procs.versions.length;
 
-                procs.instances.push({"openedBy":usernamerole,"Steps":instancesteps,"closedBy":"","startedAt":lastuse,"completedAt":"","revision": procs.instances.length+1,"running":true,users:[{
-                    "name":username,
-                    "email":useremail,
-                    "status":userstatus
-                }],"version":versionNum});
+                procs.instances.push({
+                    "openedBy": usernamerole, "Steps": instancesteps, "closedBy": "", "startedAt": lastuse, "completedAt": "", "revision": procs.instances.length + 1, "running": true, users: [{
+                        "name": username,
+                        "email": useremail,
+                        "status": userstatus
+                    }], "version": versionNum
+                });
 
                 procs.lastuse = lastuse;
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         // throw err;
                         console.log(err);
                     }
-                    if(result){
-                        res.send({"revision":revision});
+                    if (result) {
+                        res.send({ "revision": revision });
                     }
                 });
             }
@@ -338,7 +341,7 @@ module.exports = {
         });
 
     },
-    setInfo: function(req,res){
+    setInfo: function (req, res) {
         var info = req.body.info;
         var procid = req.body.id;
         var step = req.body.step;
@@ -348,17 +351,17 @@ module.exports = {
         var recordedValue = req.body.recordedValue;
         var steptype = req.body.steptype;
 
-        ProcedureModel.findOne({ 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
                 var instance = [];
                 var instanceid;
                 //get procedure instance with the revision num
-                for(var i=0;i<procs.instances.length;i++){
-                    if(procs.instances[i].revision === procrevision){
+                for (var i = 0; i < procs.instances.length; i++) {
+                    if (procs.instances[i].revision === procrevision) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
                         break;
@@ -366,11 +369,11 @@ module.exports = {
                 }
 
                 //Set info for the step of that revision
-                for(var j=0;j<instance.length;j++){
-                    if(j === step){
+                for (var j = 0; j < instance.length; j++) {
+                    if (j === step) {
                         instance[j].info = info;
-                        if(steptype === 'Input'){
-                           instance[j].recordedValue = recordedValue;
+                        if (steptype === 'Input') {
+                            instance[j].recordedValue = recordedValue;
                         }
                         break;
                     }
@@ -381,11 +384,11 @@ module.exports = {
                 procs.markModified('procedure');
                 procs.markModified('instances');
 
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
+                    if (result) {
                         res.send(result);
                     }
 
@@ -394,7 +397,7 @@ module.exports = {
             }
         });
     },
-    setInstanceCompleted: function(req,res){
+    setInstanceCompleted: function (req, res) {
         var info = req.body.info;
         var procid = req.body.id;
         var step = req.body.step;
@@ -402,15 +405,15 @@ module.exports = {
         var procrevision = req.body.revision;
         var lastuse = req.body.lastuse; // time when the procedure instance is completed
 
-        ProcedureModel.findOne({ 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
                 //get procedure instance with the revision num
-                for(var i=0;i<procs.instances.length;i++){
-                    if(procs.instances[i].revision === procrevision){
+                for (var i = 0; i < procs.instances.length; i++) {
+                    if (procs.instances[i].revision === procrevision) {
                         procs.instances[i].closedBy = usernamerole;
                         procs.instances[i].completedAt = lastuse;
                         procs.instances[i].running = false;
@@ -420,11 +423,11 @@ module.exports = {
                 procs.lastuse = lastuse;
                 procs.markModified('procedure');
                 procs.markModified('instances');
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
+                    if (result) {
                         res.send(result);
                     }
 
@@ -433,25 +436,25 @@ module.exports = {
 
         });
     },
-    setComments: function(req,res){
+    setComments: function (req, res) {
         var procid = req.body.pid;
         var procrevision = req.body.prevision;
         var step = req.body.index;
         var comments = req.body.comments;
         var lastuse = req.body.lastuse; // time when the procedure instance is completed
 
-        ProcedureModel.findOne({ 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
                 //get procedure instance with the revision num
                 var instance = [];
                 var instanceid;
                 //get procedure instance with the revision num
-                for(var i=0;i<procs.instances.length;i++){
-                    if(parseInt(procs.instances[i].revision) === parseInt(procrevision)){
+                for (var i = 0; i < procs.instances.length; i++) {
+                    if (parseInt(procs.instances[i].revision) === parseInt(procrevision)) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
                         break;
@@ -459,8 +462,8 @@ module.exports = {
                 }
 
                 //Set info for the step of that revision
-                for(var j=0;j<instance.length;j++){
-                    if(j === step){
+                for (var j = 0; j < instance.length; j++) {
+                    if (j === step) {
                         instance[j].comments = comments;
                         break;
                     }
@@ -470,12 +473,12 @@ module.exports = {
                 procs.lastuse = lastuse;
                 procs.markModified('procedure');
                 procs.markModified('instances');
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
-                       res.send(result);
+                    if (result) {
+                        res.send(result);
                     }
 
                 });
@@ -483,7 +486,7 @@ module.exports = {
 
         });
     },
-    setUserStatus: function(req,res){
+    setUserStatus: function (req, res) {
         var email = req.body.email;
         var status = req.body.status;
         var procid = req.body.pid;
@@ -491,52 +494,52 @@ module.exports = {
         var revision = req.body.revision;
         var liveinstanceID;
 
-        ProcedureModel.findOne( { 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
 
-                for(var i=0;i<procs.instances.length;i++){
-                    if(parseInt(procs.instances[i].revision) === parseInt(revision) && revision !== ""){
+                for (var i = 0; i < procs.instances.length; i++) {
+                    if (parseInt(procs.instances[i].revision) === parseInt(revision) && revision !== "") {
                         liveinstanceID = i;
                         break;
-                    }else if(revision === ""){
+                    } else if (revision === "") {
                         liveinstanceID = "";
                     }
                 }
 
-                if(liveinstanceID !== ""){
-                    if(procs.instances[liveinstanceID].users && procs.instances[liveinstanceID].users.length > 0){
+                if (liveinstanceID !== "") {
+                    if (procs.instances[liveinstanceID].users && procs.instances[liveinstanceID].users.length > 0) {
                         var len = procs.instances[liveinstanceID].users.length;
-                        for(var i=0;i<len;i++){
-                            if(procs.instances[liveinstanceID].users[i].email === email){
+                        for (var i = 0; i < len; i++) {
+                            if (procs.instances[liveinstanceID].users[i].email === email) {
                                 // when the user object exits already
                                 procs.instances[liveinstanceID].users[i].status = status;
                                 break;
-                            }else if(i === len-1){
+                            } else if (i === len - 1) {
                                 procs.instances[liveinstanceID].users.push({
-                                    'name':username,
-                                    'email':email,
-                                    'status':status
+                                    'name': username,
+                                    'email': email,
+                                    'status': status
                                 });
                             }
                         }
-                    }else {
+                    } else {
                         procs.instances[liveinstanceID].users = [];
                         procs.instances[liveinstanceID].users.push({
-                            'name':username,
-                            'email':email,
-                            'status':status
+                            'name': username,
+                            'email': email,
+                            'status': status
                         });
                     }
-                }else {
+                } else {
                     //when in dashboard page or any other index page;there exists no revision num
                     //then set the status of user as false for all the revisions available in the procedure.
-                    for(var i=0;i<procs.instances.length;i++){
-                        for(var j=0;j<procs.instances[i].users.length;j++){
-                            if(procs.instances[i].users[j].email === email){
+                    for (var i = 0; i < procs.instances.length; i++) {
+                        for (var j = 0; j < procs.instances[i].users.length; j++) {
+                            if (procs.instances[i].users[j].email === email) {
                                 // when the user object exits already
                                 procs.instances[i].users[j].status = status;
                             }
@@ -546,38 +549,38 @@ module.exports = {
 
 
                 procs.markModified('instances');
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
-                       res.send({status:status});
+                    if (result) {
+                        res.send({ status: status });
                     }
 
                 });
             }
         });
     },
-    updateProcedureName: function(req,res){
+    updateProcedureName: function (req, res) {
         var newprocedurename = req.body.newprocedurename;
         var prevProcId = req.body.procId
 
-        ProcedureModel.findOne( { 'procedureID' : prevProcId }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': prevProcId }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
                 procs.procedureID = newprocedurename.id;
                 procs.eventname = newprocedurename.gname;
-                procs.title = newprocedurename.gname+" - "+newprocedurename.title;
+                procs.title = newprocedurename.gname + " - " + newprocedurename.title;
 
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
-                       res.send(result);
+                    if (result) {
+                        res.send(result);
                     }
 
                 });
@@ -585,11 +588,11 @@ module.exports = {
         });
 
     },
-    getQuantumRoles: function(req,res){
+    getQuantumRoles: function (req, res) {
         var callSigns = getAllCallSigns();
         res.send(callSigns);
     },
-    setParentsInfo: function(req,res){
+    setParentsInfo: function (req, res) {
         var info = req.body.info;
         var parentsArray = req.body.parentsArray;
         var procid = req.body.id;
@@ -598,17 +601,17 @@ module.exports = {
         var lastuse = req.body.lastuse; //time when the step was completed
         var inputStepValues = req.body.inputStepValues;
 
-        ProcedureModel.findOne({ 'procedureID' : procid }, function(err, procs) {
-            if(err){
+        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+            if (err) {
                 console.log(err);
             }
 
-            if(procs){
+            if (procs) {
                 var instance = [];
                 var instanceid;
                 //get procedure instance with the revision num
-                for(var i=0;i<procs.instances.length;i++){
-                    if(procs.instances[i].revision === procrevision){
+                for (var i = 0; i < procs.instances.length; i++) {
+                    if (procs.instances[i].revision === procrevision) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
                         break;
@@ -616,9 +619,9 @@ module.exports = {
                 }
 
                 //Set info for the step of that revision
-                for(var a=0;a<parentsArray.length;a++){
+                for (var a = 0; a < parentsArray.length; a++) {
                     instance[parentsArray[a].index].info = info;
-                    if(parentsArray[a].parent.contenttype === 'Input'){
+                    if (parentsArray[a].parent.contenttype === 'Input') {
                         instance[parentsArray[a].index].recordedValue = inputStepValues[parentsArray[a].index].ivalue;
                     }
                 }
@@ -629,11 +632,11 @@ module.exports = {
                 procs.markModified('procedure');
                 procs.markModified('instances');
 
-                procs.save(function(err,result) {
-                    if (err){
+                procs.save(function (err, result) {
+                    if (err) {
                         console.log(err);
                     }
-                    if(result){
+                    if (result) {
                         res.send(result);
                     }
 
@@ -644,69 +647,69 @@ module.exports = {
     }
 };
 
-function checkTypeValidity(stepType){
+function checkTypeValidity(stepType) {
     var typeOfStep = stepType.replace(/\s/g, '');
-    if(validTypes.includes(typeOfStep.toUpperCase())){
+    if (validTypes.includes(typeOfStep.toUpperCase())) {
         return true
-    }else {
+    } else {
         return false;
     }
 }
 
-function getSteps(stepNum,isHeading){
+function getSteps(stepNum, isHeading) {
     var step = stepNum.Step.replace(/\s/g, '');
-    if(isHeading === true){
-       // psteps[j].Step.includes(".0") === true && psteps[j].Step.indexOf(".") === psteps[j].Step.lastIndexOf(".")
-        if(step.includes(".0") === true && step.lastIndexOf("0") === step.length-1 && step.lastIndexOf(".") === step.length-2 ){
+    if (isHeading === true) {
+        // psteps[j].Step.includes(".0") === true && psteps[j].Step.indexOf(".") === psteps[j].Step.lastIndexOf(".")
+        if (step.includes(".0") === true && step.lastIndexOf("0") === step.length - 1 && step.lastIndexOf(".") === step.length - 2) {
             return true;
-        }else {
+        } else {
             return false;
         }
-    }else if(isHeading === false){
-        if(step.includes(".0") === false){
+    } else if (isHeading === false) {
+        if (step.includes(".0") === false) {
             return true;
-        }else {
+        } else {
             return false;
         }
     }
 }
 
-function getAllCallSigns(){
+function getAllCallSigns() {
     var callSigns = [];
     var roleKeys = Object.keys(configRole.roles);
-    for(var i=0;i<roleKeys.length;i++){
+    for (var i = 0; i < roleKeys.length; i++) {
         callSigns.push(configRole.roles[roleKeys[i]].callsign);
     }
     return callSigns;
 }
 
-function checkRoleValidity(stepRole){
+function checkRoleValidity(stepRole) {
     var callSigns = getAllCallSigns();
     var tempRoles = [];
     var str = stepRole.replace(/\s/g, '');
-    if(stepRole.includes(",")){
+    if (stepRole.includes(",")) {
         tempRoles = str.split(',');
 
-    }else {
+    } else {
         tempRoles.push(str);
     }
-    if(tempRoles.length === 1){
-        if(callSigns.includes(str)){
+    if (tempRoles.length === 1) {
+        if (callSigns.includes(str)) {
             return true;
-        }else {
+        } else {
             return false;
         }
-    }else if(tempRoles.length > 1){
+    } else if (tempRoles.length > 1) {
         var roleCount = 0;
-        for(var a=0;a<tempRoles.length;a++){
-            if(callSigns.includes(tempRoles[a].toUpperCase())){
+        for (var a = 0; a < tempRoles.length; a++) {
+            if (callSigns.includes(tempRoles[a].toUpperCase())) {
                 roleCount++;
-            }else {
+            } else {
                 return false;
             }
         }
 
-        if(roleCount === tempRoles.length){
+        if (roleCount === tempRoles.length) {
             return true;
         }
     }

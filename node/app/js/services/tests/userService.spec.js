@@ -1,44 +1,46 @@
 // Be descriptive with titles here. The describe and it titles combined read like a sentence.
-describe('Test Suite for User Service', function() {
+describe('Test Suite for User Service', function () {
 
-	var userService, httpBackend;
+    var userService, httpBackend;
 
-    var windowMock = { user :
-    	{_id: "594417df3d2dd966dcb43afd",
+    var windowMock = {
+        user:
+        {
+            _id: "594417df3d2dd966dcb43afd",
             auth: {
                 email: "john.smith@gmail.com",
                 name: "John Smith",
                 id: "112313425445562239891"
             },
-            missions : [
-            {
-                name: "Quantum",
-                currentRole : {
-                    name: "Mission Director",
-                    callsign: "MD"
-                },
-                allowedRoles : [
+            missions: [
                 {
-                    name: "Mission Director",
-                    callsign: "MD"
-                },
-                {
-                    name: "Observer",
-                    callsign: "VIP"
-                },
-                {
-                    name : 'Proxy Director',
-                    callsign : 'PRX'
-                }
-                ]
-            }]
+                    name: "Quantum",
+                    currentRole: {
+                        name: "Mission Director",
+                        callsign: "MD"
+                    },
+                    allowedRoles: [
+                        {
+                            name: "Mission Director",
+                            callsign: "MD"
+                        },
+                        {
+                            name: "Observer",
+                            callsign: "VIP"
+                        },
+                        {
+                            name: 'Proxy Director',
+                            callsign: 'PRX'
+                        }
+                    ]
+                }]
         }
     };
 
     beforeEach(function () {
         // load the module with a mock window object
         module('quantum', function ($provide) {
-        	$provide.value('$window', windowMock);
+            $provide.value('$window', windowMock);
         });
 
         // get your service, also get $httpBackend
@@ -56,8 +58,8 @@ describe('Test Suite for User Service', function() {
     });
 
     //userService should exist in the application
-    it('userService should exist', function() {
-    	expect(userService).toBeDefined();
+    it('userService should exist', function () {
+        expect(userService).toBeDefined();
     });
 
     it('userService should get the user name', function () {
@@ -73,10 +75,10 @@ describe('Test Suite for User Service', function() {
     it('userService should be able to set the mission name for the user', function () {
         var mission = "Quantum";
 
-        httpBackend.expectPOST("/setMissionForUser")
+        httpBackend.expectPOST("./setMissionForUser")
             .respond(200, {});
 
-        userService.setMissionForUser(windowMock.user.auth.email, mission).then( function(response){
+        userService.setMissionForUser(windowMock.user.auth.email, mission).then(function (response) {
             expect(response.status).toBe(200);
         });
 
@@ -91,10 +93,10 @@ describe('Test Suite for User Service', function() {
         };
         var mission = "Quantum";
 
-        httpBackend.expectGET("/getCurrentRole?email=john.smith@gmail.com&mission=Quantum")
+        httpBackend.expectGET("./getCurrentRole?email=john.smith@gmail.com&mission=Quantum")
             .respond(200, role);
 
-        userService.getCurrentRole(mission).then( function(response){
+        userService.getCurrentRole(mission).then(function (response) {
             actualRole = response.data;
             expect(response.status).toBe(200);
             expect(actualRole).toBeDefined();
@@ -118,10 +120,10 @@ describe('Test Suite for User Service', function() {
         ];
         var mission = "Quantum";
 
-        httpBackend.expectGET("/getAllowedRoles?email=john.smith@gmail.com&mission=Quantum")
+        httpBackend.expectGET("./getAllowedRoles?email=john.smith@gmail.com&mission=Quantum")
             .respond(200, allowedRoles);
 
-        userService.getAllowedRoles(mission).then( function(response){
+        userService.getAllowedRoles(mission).then(function (response) {
             roles = response.data;
             expect(response.status).toBe(200);
             expect(roles).toBeDefined();
@@ -135,15 +137,15 @@ describe('Test Suite for User Service', function() {
     it('userService should be able to post the current role of the user', function () {
         var email = "john.smith@gmail.com";
         var role = {
-            name : 'Proxy Director',
-            callsign : 'PRX'
+            name: 'Proxy Director',
+            callsign: 'PRX'
         }
         var mission = "Quantum";
 
-        httpBackend.expectPOST("/setUserRole")
+        httpBackend.expectPOST("./setUserRole")
             .respond(200, {});
 
-        userService.setCurrentRole(email, role, mission).then( function(response){
+        userService.setCurrentRole(email, role, mission).then(function (response) {
             expect(response.status).toBe(200);
         });
 
@@ -167,16 +169,16 @@ describe('Test Suite for User Service', function() {
                     callsign: "VIP"
                 },
                 allowedRoles: [
-                {
-                    name: "Observer",
-                    callsign: "VIP"
-                }]
+                    {
+                        name: "Observer",
+                        callsign: "VIP"
+                    }]
             }]
         }];
 
-        httpBackend.expectGET('/getUsers?mission=Quantum').respond(200, result);
+        httpBackend.expectGET('./getUsers?mission=Quantum').respond(200, result);
 
-        userService.getUsers(mission).then( function(response){
+        userService.getUsers(mission).then(function (response) {
             users = response.data;
             expect(response.status).toBe(200);
             expect(users).toBeDefined();
@@ -200,10 +202,10 @@ describe('Test Suite for User Service', function() {
         ];
         var mission = "Quantum";
 
-        httpBackend.expectPOST("/setAllowedRoles")
+        httpBackend.expectPOST("./setAllowedRoles")
             .respond(200, {});
 
-        userService.setAllowedRoles(windowMock.user, roles, mission).then( function(response){
+        userService.setAllowedRoles(windowMock.user, roles, mission).then(function (response) {
             expect(response.status).toBe(200);
         });
 

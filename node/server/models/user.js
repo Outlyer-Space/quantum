@@ -1,7 +1,7 @@
 
 const passportLocalMongoose = require('passport-local-mongoose')
 const passportAzureADoauth2 = require('passport-azure-ad-oauth2')
-const jwt                   = require('jsonwebtoken')
+const jwt = require('jsonwebtoken')
 const configRole = require('../../config/role')
 
 /** Defines the user model, exports to mongoose
@@ -39,7 +39,7 @@ module.exports = function (config, mongoose) {
 
   // Plugin authentication for passport
   const msg = `ERROR Unrecognized auth provider: ${config.auth.provider}`
-  const errorMessage =  { code: 403, message: msg }
+  const errorMessage = { code: 403, message: msg }
 
   switch (config.auth.provider.toLowerCase()) {
     case 'mongo':
@@ -94,7 +94,7 @@ module.exports = function (config, mongoose) {
            */
           function (req, res, param, profile, next) {
             // decode token and add to profile object
-            profile  = { ...profile, ...jwt.decode(res) }
+            profile = { ...profile, ...jwt.decode(res) }
 
             // assemble user mongo document (in case of new user)
             let userInfo = {
@@ -148,7 +148,7 @@ module.exports = function (config, mongoose) {
 
   // static function to find or create a user from email (called at login)
   // https://tomanagle.medium.com/adding-findoneorcreate-to-a-mongoose-model-efc7c2e11294
-  userSchema.statics.findOneOrCreate = function findOneOrCreate (condition, doc) {
+  userSchema.statics.findOneOrCreate = function findOneOrCreate(condition, doc) {
     const self = this
     const newDoc = doc
 
@@ -197,12 +197,12 @@ module.exports = function (config, mongoose) {
   if (config.auth.provider.toLowerCase() === 'mongo') {
     User.findOne({}, function (err, obj) {
       if (obj == null) {
-        const emailAdmin  = config.auth.clientID
-        const emailDomain = emailAdmin.slice(emailAdmin.indexOf('@'))
-        const emailUser   = 'sys.user' + emailDomain
-        const password    = config.auth.clientSecret
-        const sysAdmin    = { email: emailAdmin, name: 'Sys Admin' }
-        
+        const emailAdmin = config.auth.clientID
+        const emailDomain = (emailAdmin && emailAdmin.indexOf('@') > -1) ? emailAdmin.slice(emailAdmin.indexOf('@')) : '@example.com'
+        const emailUser = 'sys.user' + emailDomain
+        const password = config.auth.clientSecret
+        const sysAdmin = { email: emailAdmin, name: 'Sys Admin' }
+
         // Admin gets MD (Mission Director) role
         const adminRole = {
           name: configRole.roles['MD'].name,
@@ -213,7 +213,7 @@ module.exports = function (config, mongoose) {
           currentRole: adminRole,
           allowedRoles: [adminRole]
         }
-        
+
         // Default role for regular users remains VIP
         const defaultRole = {
           name: configRole.roles['VIP'].name,
@@ -225,7 +225,7 @@ module.exports = function (config, mongoose) {
           allowedRoles: [defaultRole]
         }
 
-        const sysUser     = { email: emailUser,  name: 'Sys User', missions: [defaultMission]  }
+        const sysUser = { email: emailUser, name: 'Sys User', missions: [defaultMission] }
         // Local dev startup user creation
         // Register sys admin with MD role
         User.register({ auth: sysAdmin, missions: [adminMission] }, password)
