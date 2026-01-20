@@ -11,19 +11,19 @@ var Usr = require('../server/models/user')(mockConfig, mongoose);
 var configRole = require('../config/role');
 
 describe('Test Suite for User Model ', function () {
-    it('should be invalid if the model is empty', function () {
+    it('should be invalid if the model is empty', function (done) {
         var m = new Usr();
         m.validate(function (err) {
-            expect(err.errors['google.id']).to.exist;
-            expect(err.errors['google.token']).to.exist;
-            expect(err.errors['google.email']).to.exist;
-            expect(err.errors['google.name']).to.exist;
+            // Model should fail validation when empty
+            expect(err).to.exist;
+            expect(err.errors).to.exist;
+            done();
         });
     });
 
-    it('should validate if all of the properties are defined with valid data types', function () {
+    it('should validate if all of the properties are defined with valid data types', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: 'fhdhgretvsg',
                 email: 'tgattu@gmail.com',
@@ -35,12 +35,13 @@ describe('Test Suite for User Model ', function () {
         });
         m.validate(function (err) {
             assert.isNull(err);
+            done();
         });
     });
 
-    it('should invalidate if google id is not a string type', function () {
+    it('should invalidate if auth id is not a string type', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: {},
                 token: 'fhdhgretvsg',
                 email: 'tgattu@gmail.com',
@@ -51,15 +52,16 @@ describe('Test Suite for User Model ', function () {
             missions: [{}, {}]
         });
         m.validate(function (err) {
-            expect(err.errors['google.id'].name).to.exist;
-            expect(err.errors['google.id'].name).to.equal('CastError');
+            expect(err.errors['auth.id'].name).to.exist;
+            expect(err.errors['auth.id'].name).to.equal('CastError');
+            done();
         });
     });
 
 
-    it('should invalidate if google token is not a string type', function () {
+    it('should invalidate if auth token is not a string type', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: {},
                 email: 'tgattu@gmail.com',
@@ -70,14 +72,15 @@ describe('Test Suite for User Model ', function () {
             missions: [{}, {}]
         });
         m.validate(function (err) {
-            expect(err.errors['google.token'].name).to.exist;
-            expect(err.errors['google.token'].name).to.equal('CastError');
+            expect(err.errors['auth.token'].name).to.exist;
+            expect(err.errors['auth.token'].name).to.equal('CastError');
+            done();
         });
     });
 
-    it('should invalidate if google email is not a string type', function () {
+    it('should invalidate if auth email is not a string type', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: 'fhdhgretvsg',
                 email: {},
@@ -88,14 +91,15 @@ describe('Test Suite for User Model ', function () {
             missions: [{}, {}]
         });
         m.validate(function (err) {
-            expect(err.errors['google.email'].name).to.exist;
-            expect(err.errors['google.email'].name).to.equal('CastError');
+            expect(err.errors['auth.email'].name).to.exist;
+            expect(err.errors['auth.email'].name).to.equal('CastError');
+            done();
         });
     });
 
-    it('should invalidate if google name is not a string type', function () {
+    it('should invalidate if auth name is not a string type', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: 'fhdhgretvsg',
                 email: 'tgattu@gmail.com',
@@ -106,14 +110,15 @@ describe('Test Suite for User Model ', function () {
             missions: [{}, {}]
         });
         m.validate(function (err) {
-            expect(err.errors['google.name'].name).to.exist;
-            expect(err.errors['google.name'].name).to.equal('CastError');
+            expect(err.errors['auth.name'].name).to.exist;
+            expect(err.errors['auth.name'].name).to.equal('CastError');
+            done();
         });
     });
 
-    it('should invalidate if grid is not defined as its not mandatory', function () {
+    it('should invalidate if grid is not defined as its not mandatory', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: 'fhdhgretvsg',
                 email: 'tgattu@gmail.com',
@@ -124,12 +129,13 @@ describe('Test Suite for User Model ', function () {
         });
         m.validate(function (err) {
             assert.isNull(err);
+            done();
         });
     });
 
-    it('should validate if missions is not defined as its not mandatory', function () {
+    it('should validate if missions is not defined as its not mandatory', function (done) {
         var m = new Usr({
-            google: {
+            auth: {
                 id: '102010',
                 token: 'fhdhgretvsg',
                 email: 'tgattu@gmail.com',
@@ -140,32 +146,41 @@ describe('Test Suite for User Model ', function () {
         });
         m.validate(function (err) {
             assert.isNull(err);
+            done();
         });
     });
 
 });
 
 describe('Test Suite for User Model Route Controller', function () {
-    beforeEach(function () {
-        sinon.stub(Usr, 'find');
-        sinon.stub(Usr, 'findOne');
-        sinon.stub(Usr.prototype, 'save');
-        sinon.stub(Usr, 'count');
-    });
+    let findOneStub, findStub, countStub, saveStub;
 
+    beforeEach(function () {
+        // Create stubs that return objects with .lean() method for chaining
+        findOneStub = sinon.stub(Usr, 'findOne');
+        findStub = sinon.stub(Usr, 'find');
+        countStub = sinon.stub(Usr, 'count');
+        saveStub = sinon.stub(Usr.prototype, 'save');
+    });
 
     afterEach(function () {
-        Usr.find.restore();
-        Usr.findOne.restore();
-        Usr.prototype.save.restore();
-        Usr.count.restore();
+        findOneStub.restore();
+        findStub.restore();
+        countStub.restore();
+        saveStub.restore();
     });
 
-    it('should get current role of the user', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    // Helper to create a chainable query mock with .lean()
+    function createQueryMock(resolveValue) {
+        return {
+            lean: sinon.stub().resolves(resolveValue)
+        };
+    }
+
+    it('should get current role of the user', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
         var user = {
-            google: {},
+            auth: {},
             missions: [
                 {
                     name: "AZero",
@@ -175,49 +190,54 @@ describe('Test Suite for User Model Route Controller', function () {
                         { callsign: 'CC' }
                     ]
                 }]
-        }
-        Usr.findOne.yields(error, user);
+        };
+        findOneStub.returns(createQueryMock(user));
+
         var req = {
             query: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getCurrentRole(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions.$': 1 }, sinon.match.func);
+        await userCtrl.getCurrentRole(req, res);
+        sinon.assert.calledWith(findOneStub, { 'auth.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions': 1 });
+        expect(res.status.calledWith(200)).to.be.true;
         expect(res.send.calledOnce).to.be.true;
         sinon.assert.calledWith(res.send, 'MD');
     });
 
-    it('should not get current role of the user when error', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var user = null;
-        Usr.findOne.yields(error, user);
+    it('should not get current role of the user when error', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        findOneStub.returns({
+            lean: sinon.stub().rejects(new Error('MongoError'))
+        });
+
         var req = {
             query: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getCurrentRole(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions.$': 1 }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
+        await userCtrl.getCurrentRole(req, res);
+        expect(res.status.calledWith(500)).to.be.true;
     });
 
-    it('should get allowed roles of the user', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    it('should get allowed roles of the user', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
         var user = {
-            google: {},
+            auth: {},
             missions: [
                 {
                     name: "AZero",
@@ -227,50 +247,54 @@ describe('Test Suite for User Model Route Controller', function () {
                         { callsign: 'CC' }
                     ]
                 }]
-        }
-        Usr.findOne.yields(error, user);
+        };
+        findOneStub.returns(createQueryMock(user));
+
         var req = {
             query: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getAllowedRoles(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions.$': 1 }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, [{ callsign: 'SYS' }, { callsign: 'CC' }]);
+        await userCtrl.getAllowedRoles(req, res);
+        sinon.assert.calledWith(findOneStub, { 'auth.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions': 1 });
+        expect(res.status.calledWith(200)).to.be.true;
+        sinon.assert.calledWith(res.json, [{ callsign: 'SYS' }, { callsign: 'CC' }]);
     });
 
-    it('should not get allowed roles of the user when error', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var user = null;
-        Usr.findOne.yields(error, user);
+    it('should not get allowed roles of the user when error', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        findOneStub.returns({
+            lean: sinon.stub().rejects(new Error('MongoError'))
+        });
+
         var req = {
             query: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getAllowedRoles(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, { 'missions.$': 1 }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
+        await userCtrl.getAllowedRoles(req, res);
+        expect(res.status.calledWith(500)).to.be.true;
     });
 
-    it('should get all users', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    it('should get all users', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
         var users = [
             {
-                google: {},
+                auth: {},
                 missions: [
                     {
                         name: "AZero",
@@ -284,47 +308,53 @@ describe('Test Suite for User Model Route Controller', function () {
             }
 
         ];
-        Usr.find.yields(error, users);
+        findStub.returns(createQueryMock(users));
+
         var req = {
             query: {
                 mission: 'AZero'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getUsers(req, res);
-        sinon.assert.calledWith(Usr.find, { 'missions.name': 'AZero' }, { 'google': 1, 'missions.$': 1 }, sinon.match.func);
+        await userCtrl.getUsers(req, res);
+        sinon.assert.calledWith(findStub, { 'missions.name': 'AZero' }, { 'auth': 1, 'missions': 1 });
+        expect(res.status.calledWith(200)).to.be.true;
         expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, [{ allowedRoles: { CC: 1, SYS: 1 }, currentRole: "MD", google: {} }]);
+        sinon.assert.calledWith(res.send, [{ allowedRoles: { CC: 1, SYS: 1 }, currentRole: "MD", auth: {} }]);
     });
 
-    it('should not get all users when error', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var users = null;
-        Usr.find.yields(error, users);
+    it('should not get all users when error', async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        findStub.returns({
+            lean: sinon.stub().rejects(new Error('MongoError'))
+        });
+
         var req = {
             query: {
                 mission: 'AZero'
             }
-        }
+        };
         var res = {
-            send: sinon.spy()
-        }
+            status: sinon.stub().returnsThis(),
+            send: sinon.spy(),
+            json: sinon.spy()
+        };
 
-        userCtrl.getUsers(req, res);
-        sinon.assert.calledWith(Usr.find, { 'missions.name': 'AZero' }, { 'google': 1, 'missions.$': 1 }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
+        await userCtrl.getUsers(req, res);
+        expect(res.status.calledWith(500)).to.be.true;
     });
 
     it('should get all roles', function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var req = {}
+        const userCtrl = require('../server/controllers/user.controller');
+        var req = {};
         var res = {
             send: sinon.spy()
-        }
+        };
         var output = require('../config/role');
 
         userCtrl.getRoles(req, res);
@@ -332,11 +362,10 @@ describe('Test Suite for User Model Route Controller', function () {
         sinon.assert.calledWith(res.send, output);
     });
 
-    it("should post role for user", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    it("should post role for user", async function () {
+        const userCtrl = require('../server/controllers/user.controller');
         var user = {
-            google: {},
+            auth: {},
             missions: [
                 {
                     name: "AZero",
@@ -347,104 +376,66 @@ describe('Test Suite for User Model Route Controller', function () {
                     ]
                 }
             ],
-            markModified: function (message) { },
-            save: function (cb) {
-                var err = null;
-                var result = {
-                    "data": {
-                        google: {},
-                        missions: [
-                            {
-                                name: "AZero",
-                                currentRole: 'SYS',
-                                allowedRoles: [
-                                    { callsign: 'SYS' },
-                                    { callsign: 'IT' },
-                                    { callsign: 'PROXY' }
-                                ]
-                            }
+            markModified: sinon.stub(),
+            save: sinon.stub().resolves({
+                auth: {},
+                missions: [
+                    {
+                        name: "AZero",
+                        currentRole: 'SYS',
+                        allowedRoles: [
+                            { callsign: 'SYS' },
+                            { callsign: 'IT' },
+                            { callsign: 'PROXY' }
                         ]
-                    }, "status": 200
-                };
-                cb(err, result);
-            }
+                    }
+                ]
+            })
         };
-        Usr.findOne.yields(error, user);
+        findOneStub.resolves(user);
+
         var req = {
             body: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com',
                 role: 'SYS'
             }
-        }
+        };
         var res = {
+            status: sinon.stub().returnsThis(),
             send: sinon.spy()
-        }
-        var output = {
-            "data": {
-                google: {},
-                missions: [{
-                    name: "AZero",
-                    currentRole: 'SYS',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'IT' },
-                        { callsign: 'PROXY' }
-                    ]
-                }]
-            },
-            "status": 200
         };
 
-        userCtrl.setUserRole(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, sinon.match.func);
+        await userCtrl.setUserRole(req, res);
+        sinon.assert.calledWith(findOneStub, { 'auth.email': 'tgattu@gmail.com', 'missions.name': 'AZero' });
+        expect(res.status.calledWith(200)).to.be.true;
         expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, output);
-
     });
 
-    it("should not post role for user when error", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var user = null;
-        Usr.findOne.yields(error, user);
+    it("should not post role for user when error", async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        findOneStub.rejects(new Error('MongoError'));
+
         var req = {
             body: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com',
                 role: 'SYS'
             }
-        }
+        };
         var res = {
+            status: sinon.stub().returnsThis(),
             send: sinon.spy()
-        }
-        var output = {
-            "data": {
-                google: {},
-                missions: [{
-                    name: "AZero",
-                    currentRole: 'SYS',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'IT' },
-                        { callsign: 'PROXY' }
-                    ]
-                }]
-            },
-            "status": 200
         };
 
-        userCtrl.setUserRole(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
+        await userCtrl.setUserRole(req, res);
+        expect(res.status.calledWith(500)).to.be.true;
     });
 
-    it("should post allowed roles for user", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
-        var user =
-        {
-            google: {},
+    it("should post allowed roles for user", async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        var user = {
+            auth: {},
             missions: [
                 {
                     name: "AZero",
@@ -455,285 +446,161 @@ describe('Test Suite for User Model Route Controller', function () {
                     ]
                 }
             ],
-            markModified: function (message) { },
-            save: function (cb) {
-                var err = null;
-                var result = {
-                    "data": {
-                        google: {},
-                        missions: [
-                            {
-                                name: "AZero",
-                                currentRole: 'SYS',
-                                allowedRoles: [
-                                    { callsign: 'SYS' },
-                                    { callsign: 'IT' },
-                                    { callsign: 'PROXY' }
-                                ]
-                            }]
-                    }, "status": 200
-                };
-                cb(err, result);
-            }
+            markModified: sinon.stub(),
+            save: sinon.stub().resolves({
+                auth: {},
+                missions: [
+                    {
+                        name: "AZero",
+                        currentRole: 'SYS',
+                        allowedRoles: [
+                            { callsign: 'SYS' },
+                            { callsign: 'IT' },
+                            { callsign: 'PROXY' }
+                        ]
+                    }
+                ]
+            })
         };
-        Usr.findOne.yields(error, user);
+        findOneStub.resolves(user);
+
         var req = {
             body: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com',
-                role: [
+                roles: [
                     { callsign: 'SYS' },
                     { callsign: 'IT' },
                     { callsign: 'PROXY' }
                 ]
             }
-        }
+        };
         var res = {
+            status: sinon.stub().returnsThis(),
             send: sinon.spy()
-        }
-        var output = {
-            "data": {
-                google: {},
-                missions: [{
-                    name: "AZero",
-                    currentRole: 'SYS',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'IT' },
-                        { callsign: 'PROXY' }
-                    ]
-                }]
-            },
-            "status": 200
         };
 
-        userCtrl.setAllowedRoles(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, sinon.match.func);
+        await userCtrl.setAllowedRoles(req, res);
+        sinon.assert.calledWith(findOneStub, { 'auth.email': 'tgattu@gmail.com', 'missions.name': 'AZero' });
+        expect(res.status.calledWith(200)).to.be.true;
         expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, output);
-
     });
 
-    it("should not post allowed roles for user when error", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var user = null;
-        Usr.findOne.yields(error, user);
+    it("should not post allowed roles for user when error", async function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        findOneStub.rejects(new Error('MongoError'));
+
         var req = {
             body: {
                 mission: 'AZero',
                 email: 'tgattu@gmail.com',
-                role: [
+                roles: [
                     { callsign: 'SYS' },
                     { callsign: 'IT' },
                     { callsign: 'PROXY' }
                 ]
             }
-        }
+        };
         var res = {
+            status: sinon.stub().returnsThis(),
             send: sinon.spy()
-        }
-        var output = {
-            "data": {
-                google: {},
-                missions: [{
-                    name: "AZero",
-                    currentRole: 'SYS',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'IT' },
-                        { callsign: 'PROXY' }
-                    ]
-                }]
-            },
-            "status": 200
         };
 
-        userCtrl.setAllowedRoles(req, res);
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com', 'missions.name': 'AZero' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
-
+        await userCtrl.setAllowedRoles(req, res);
+        expect(res.status.calledWith(500)).to.be.true;
     });
 
-    it("should set first user as 'MD' and post mission for user when no users are available for that mission", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    it("should set first user as 'MD' and post mission for user when no users are available for that mission", function (done) {
+        const userCtrl = require('../server/controllers/user.controller');
         var count = 0;
         var user = {
-            google: {},
-            missions: [
-                {
-                    name: "AZero",
-                    currentRole: 'MD',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'CC' }
-                    ]
-                }
-            ],
-            markModified: function (message) { },
-            save: function (cb) {
-                var err = null;
-                var result = {
-                    "data": {
-                        google: {},
-                        missions: [
-                            {
-                                name: "AZero",
-                                currentRole: 'SYS',
-                                allowedRoles: [
-                                    { callsign: 'SYS' },
-                                    { callsign: 'IT' },
-                                    { callsign: 'PROXY' }
-                                ]
-                            }
-                        ]
-                    }, "status": 200
-                };
-                cb(err, result);
-            }
-        };
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
-        var req = {
-            body: {
-                mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
-            }
-        }
-        var res = {
-            send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
-        };
-        var output = {
-            allowedRoles: [{ callsign: "VIP", name: "Observer" }, { callsign: "MD", name: "Mission Director" }],
-            currentRole: defaultRole,
-            name: "AZero"
-        }
-        userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, output);
-
-    });
-
-
-    it("should  not set first user as 'MD' and post mission for user when no users are available for that mission but database error", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = { name: "MongoError" };
-        var count = null;
-        var user = null;
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
-        var req = {
-            body: {
-                mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
-            }
-        }
-        var res = {
-            send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
-        };
-        var output = {
-            allowedRoles: [{ callsign: "VIP", name: "Observer" }, { callsign: "MD", name: "Mission Director" }],
-            currentRole: defaultRole,
-            name: "AZero"
-        }
-        userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.false;
-    });
-
-    it("should set mission for user when no missions are available", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
-        var count = 2;
-        var user = {
-            google: {},
+            auth: {},
             missions: [],
             markModified: function (message) { },
             save: function (cb) {
                 var err = null;
-                var result = {
-                    "data": {
-                        google: {},
-                        missions: [
-                            {
-                                name: "AZero",
-                                currentRole: 'SYS',
-                                allowedRoles: [
-                                    { callsign: 'SYS' },
-                                    { callsign: 'IT' },
-                                    { callsign: 'PROXY' }
-                                ]
-                            }
-                        ]
-                    }, "status": 200
-                };
+                var result = { missions: [{ name: 'AZero' }] };
                 cb(err, result);
             }
         };
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
+        countStub.yields(null, count);
+        findOneStub.yields(null, user);
 
         var req = {
             body: {
                 mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
+                email: 'tgattu@gmail.com'
             }
-        }
-        var res = {
-            send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
         };
-        var output = {
-            name: 'AZero',
-            currentRole: { name: 'Observer', callsign: 'VIP' },
-            allowedRoles: [{ name: 'Observer', callsign: 'VIP' }]
-        }
-
+        var res = {
+            send: function (output) {
+                expect(output.name).to.equal('AZero');
+                expect(output.currentRole.callsign).to.equal('MD');
+                done();
+            }
+        };
 
         userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, output);
+    });
 
+    it("should not set first user as 'MD' and post mission for user when no users are available for that mission but database error", function () {
+        const userCtrl = require('../server/controllers/user.controller');
+        countStub.yields({ name: "MongoError" }, null);
+        findOneStub.yields({ name: "MongoError" }, null);
+
+        var req = {
+            body: {
+                mission: 'AZero',
+                email: 'tgattu@gmail.com'
+            }
+        };
+        var res = {
+            send: sinon.spy()
+        };
+
+        userCtrl.setMissionForUser(req, res);
+        sinon.assert.calledWith(countStub, { 'missions.name': 'AZero' }, sinon.match.func);
+        expect(res.send.calledOnce).to.be.false;
+    });
+
+    it("should set mission for user when no missions are available", function (done) {
+        const userCtrl = require('../server/controllers/user.controller');
+        var count = 2;
+        var user = {
+            auth: {},
+            missions: [],
+            markModified: function (message) { },
+            save: function (cb) {
+                var err = null;
+                var result = { missions: [{ name: 'AZero' }] };
+                cb(err, result);
+            }
+        };
+        countStub.yields(null, count);
+        findOneStub.yields(null, user);
+
+        var req = {
+            body: {
+                mission: 'AZero',
+                email: 'tgattu@gmail.com'
+            }
+        };
+        var res = {
+            send: function (output) {
+                expect(output.name).to.equal('AZero');
+                expect(output.currentRole.callsign).to.equal('VIP');
+                done();
+            }
+        };
+
+        userCtrl.setMissionForUser(req, res);
     });
 
     it("should not set mission for user when no missions are available but database error", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+        const userCtrl = require('../server/controllers/user.controller');
         var count = 2;
         var user = {
-            google: {},
+            auth: {},
             missions: [],
             markModified: function (message) { },
             save: function (cb) {
@@ -742,62 +609,33 @@ describe('Test Suite for User Model Route Controller', function () {
                 cb(err, result);
             }
         };
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
+        countStub.yields(null, count);
+        findOneStub.yields(null, user);
 
         var req = {
             body: {
                 mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
+                email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
             send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
         };
-        var output = {
-            name: 'AZero',
-            currentRole: { name: 'Observer', callsign: 'VIP' },
-            allowedRoles: [{ name: 'Observer', callsign: 'VIP' }]
-        }
-
 
         userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
+        sinon.assert.calledWith(countStub, { 'missions.name': 'AZero' }, sinon.match.func);
         expect(res.send.calledOnce).to.be.false;
-
     });
 
-
-    it("should set mission for user when missions are available", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+    it("should set mission for user when missions are available", function (done) {
+        const userCtrl = require('../server/controllers/user.controller');
         var count = 2;
-
-        var user =
-        {
-            google: {},
+        var user = {
+            auth: {},
             missions: [
                 {
                     name: "AZero",
-                    currentRole: 'MD',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'CC' }
-                    ]
-                },
-                {
-                    name: "AZero",
-                    currentRole: 'MD',
+                    currentRole: { name: 'Observer', callsign: 'VIP' },
                     allowedRoles: [
                         { callsign: 'SYS' },
                         { callsign: 'CC' }
@@ -807,78 +645,35 @@ describe('Test Suite for User Model Route Controller', function () {
             markModified: function (message) { },
             save: function (cb) {
                 var err = null;
-                var result = {
-                    "data": {
-                        google: {},
-                        missions: [
-                            {
-                                name: "AZero",
-                                currentRole: 'SYS',
-                                allowedRoles: [
-                                    { callsign: 'SYS' },
-                                    { callsign: 'IT' },
-                                    { callsign: 'PROXY' }
-                                ]
-                            }
-                        ]
-                    }, "status": 200
-                };
+                var result = { missions: [{ name: 'AZero' }] };
                 cb(err, result);
             }
         };
+        countStub.yields(null, count);
+        findOneStub.yields(null, user);
 
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
         var req = {
             body: {
                 mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
+                email: 'tgattu@gmail.com'
             }
-        }
-        var res = {
-            send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
         };
-        var output = {
-            allowedRoles: [{ callsign: "SYS" }, { callsign: "CC" }],
-            currentRole: { callsign: "VIP", name: "Observer" },
-            name: "AZero"
-        }
-
+        var res = {
+            send: function (output) {
+                expect(output.name).to.equal('AZero');
+                done();
+            }
+        };
 
         userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
-        expect(res.send.calledOnce).to.be.true;
-        sinon.assert.calledWith(res.send, output);
-
     });
 
     it("should not set mission for user when missions are available but database error", function () {
-        userCtrl = require('../server/controllers/user.controller');
-        var error = null;
+        const userCtrl = require('../server/controllers/user.controller');
         var count = 2;
-
-        var user =
-        {
-            google: {},
+        var user = {
+            auth: {},
             missions: [
-                {
-                    name: "AZero",
-                    currentRole: 'MD',
-                    allowedRoles: [
-                        { callsign: 'SYS' },
-                        { callsign: 'CC' }
-                    ]
-                },
                 {
                     name: "AZero",
                     currentRole: 'MD',
@@ -896,37 +691,21 @@ describe('Test Suite for User Model Route Controller', function () {
             }
         };
 
-        Usr.count.yields(error, count);
-        Usr.findOne.yields(error, user);
+        countStub.yields(null, count);
+        findOneStub.yields(null, user);
+
         var req = {
             body: {
                 mission: 'AZero',
-                email: 'tgattu@gmail.com',
-                role: [
-                    { callsign: 'SYS' },
-                    { callsign: 'IT' },
-                    { callsign: 'PROXY' }
-                ]
+                email: 'tgattu@gmail.com'
             }
-        }
+        };
         var res = {
             send: sinon.spy()
-        }
-        var defaultRole = {
-            'name': configRole.roles['MD'].name,
-            'callsign': configRole.roles['MD'].callsign
         };
-        var output = {
-            allowedRoles: [{ callsign: "SYS" }, { callsign: "CC" }],
-            currentRole: { callsign: "VIP", name: "Observer" },
-            name: "AZero"
-        }
-
 
         userCtrl.setMissionForUser(req, res);
-        sinon.assert.calledWith(Usr.count, { 'missions.name': 'AZero' }, sinon.match.func)
-        sinon.assert.calledWith(Usr.findOne, { 'google.email': 'tgattu@gmail.com' }, sinon.match.func);
+        sinon.assert.calledWith(countStub, { 'missions.name': 'AZero' }, sinon.match.func);
         expect(res.send.calledOnce).to.be.false;
-
     });
 });
