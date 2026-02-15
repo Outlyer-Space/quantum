@@ -1,0 +1,27 @@
+{
+  "name": "quantum-workspace",
+  "description": "Quantum",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"backend,frontend\" --prefix-colors \"cyan,magenta\"",
+    "dev:backend": "cross-env MONGO_DB_URL=mongodb://localhost:27018/quantum NODE_ENV=development AUTH_PROVIDER=Mongo AUTH_CLIENT_ID=sys.admin@localhost AUTH_CLIENT_SECRET=2infinity AUTH_TENANT_ID= AUTH_CALLBACK_URL= node node/server.js",
+    "dev:frontend": "cd frontend && npm start",
+    "start": "npm run dev",
+    "install:all": "npm install && cd node && npm install && cd ../frontend && npm install",
+    "build:frontend": "cd frontend && npm run build",
+    "test:backend": "cd node && npm test",
+    "test:frontend": "cd frontend && npm test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Xenon130/quantum"
+  },
+  "license": "MIT"
+}
