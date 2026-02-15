@@ -1,0 +1,34 @@
+@if (isOpen()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="about-title">About Quantum</h2>
+        <button class="close-btn" (click)="close()" aria-label="Close about dialog">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        <div class="info-row">
+            <span class="info-label">Application Version</span>
+            <span class="info-value">{{ versionInfo().version }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Git Branch</span>
+            <span class="info-value">{{ versionInfo().branch }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Git Commit</span>
+            <span class="info-value">{{ versionInfo().commit }}</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        <button class="btn btn-close" (click)="close()">Close</button>
+    </div>
+</div>
+}

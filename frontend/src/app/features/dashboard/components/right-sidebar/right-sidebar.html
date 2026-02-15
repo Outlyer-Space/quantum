@@ -1,0 +1,59 @@
+<aside class="sidebar-panel" [class.is-open]="isOpen()" role="complementary" aria-label="Configuration menu">
+    <!-- Header -->
+    <div class="sidebar-header">
+        <h2>Configuration Menu</h2>
+    </div>
+
+    <!-- Menu items -->
+    <nav aria-label="Configuration options">
+        <ul class="sidebar-menu" role="list">
+            @for (item of menuItems; track item.label) {
+            <li class="sidebar-item">
+                @if (item.href) {
+                <a [href]="item.href" target="_blank" rel="noopener noreferrer" class="sidebar-link">
+                    <span class="item-icon" aria-hidden="true">
+                        @switch (item.icon) {
+                        @case ('upload') {
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16"
+                            height="16">
+                            <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
+                        </svg>
+                        }
+                        @case ('document') {
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16"
+                            height="16">
+                            <path
+                                d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+                        </svg>
+                        }
+                        }
+                    </span>
+                    {{ item.label }}
+                </a>
+                } @else {
+                <button class="sidebar-link" type="button" (click)="onItemClick(item)">
+                    <span class="item-icon" aria-hidden="true">
+                        @switch (item.icon) {
+                        @case ('upload') {
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16"
+                            height="16">
+                            <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
+                        </svg>
+                        }
+                        @case ('document') {
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16"
+                            height="16">
+                            <path
+                                d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
+                        </svg>
+                        }
+                        }
+                    </span>
+                    {{ item.label }}
+                </button>
+                }
+            </li>
+            }
+        </ul>
+    </nav>
+</aside>

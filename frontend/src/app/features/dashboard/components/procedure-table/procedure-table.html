@@ -1,0 +1,109 @@
+<section aria-label="Procedures list">
+    <!-- Search bar -->
+    <div class="search-bar">
+        <div class="search-input-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                width="18" height="18" aria-hidden="true">
+                <path
+                    d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input id="procedure-search" type="search" placeholder="Search by title…"
+                aria-label="Search procedures by title" [value]="searchQuery()"
+                (input)="onSearchInput($any($event.target).value)" />
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="tbl-header">
+            <table aria-label="Procedures" role="grid">
+                <thead>
+                    <tr role="row">
+                        <th scope="col" style="width: 8%">
+                            <button class="sort-btn" (click)="toggleSort('id')"
+                                [attr.aria-sort]="sortField() === 'id' ? (sortReverse() ? 'descending' : 'ascending') : 'none'">
+                                No.
+                                @if (sortField() === 'id') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 32%">
+                            <button class="sort-btn" (click)="toggleSort('title')">
+                                Title
+                                @if (sortField() === 'title') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 20%">
+                            <button class="sort-btn" (click)="toggleSort('lastUse')">
+                                Last Use
+                                @if (sortField() === 'lastUse') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" class="center-col" style="width: 12%">
+                            <button class="sort-btn" (click)="toggleSort('running')">
+                                Running
+                                @if (sortField() === 'running') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" class="center-col" style="width: 12%">
+                            <button class="sort-btn" (click)="toggleSort('archived')">
+                                Archived
+                                @if (sortField() === 'archived') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 16%">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <!-- Table body -->
+        <div class="tbl-content">
+            <table>
+                @if (filteredProcedures().length > 0) {
+                <tbody>
+                    @for (proc of filteredProcedures(); track proc.id) {
+                    <tr>
+                        <td style="width: 8%">{{ proc.id }}</td>
+                        <td style="width: 32%">{{ proc.title }}</td>
+                        <td style="width: 20%">{{ proc.lastUse }}</td>
+                        <td class="center-col" style="width: 12%">
+                            <a href="#">{{ proc.running }}</a>
+                        </td>
+                        <td class="center-col" style="width: 12%">
+                            <a href="#">{{ proc.archived }}</a>
+                        </td>
+                        <td style="width: 16%">
+                            <!-- Action buttons placeholder -->
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+                } @else {
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            @if (searchQuery()) {
+                            No procedures matching "{{ searchQuery() }}".
+                            } @else {
+                            No procedures available.
+                            }
+                        </td>
+                    </tr>
+                </tbody>
+                }
+            </table>
+        </div>
+    </div>
+</section>
