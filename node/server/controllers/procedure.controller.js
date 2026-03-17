@@ -1,4 +1,5 @@
 var mongoose = require('mongoose');
+var fs = require('fs');
 var ProcedureModel = mongoose.model('procedure');
 var XLSX = require("xlsx");
 var configRole = require('../../config/role')
@@ -8,7 +9,20 @@ var validTypes = Object.keys(configStep.types);
 
 module.exports = {
     getProcedureList: function (req, res) {
-        ProcedureModel.find({}, {}, function (err, procdata) {
+        // Build mission filter from middleware (null = no filter for lead roles)
+        var query = {};
+
+        // If the frontend sends ?mission=<name>, filter to that single mission
+        if (req.query.mission) {
+            query.eventname = { $regex: new RegExp('^' + req.query.mission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') };
+        } else if (req.userMissionNames) {
+            // Case-insensitive match against all of the user's missions
+            query.eventname = {
+                $regex: new RegExp('^(' + req.userMissionNames.map(function (n) { return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')$', 'i')
+            };
+        }
+
+        ProcedureModel.find(query, {}, function (err, procdata) {
             if (err) {
                 console.log("Error finding procedures data in DB: " + err);
             }
@@ -16,6 +30,22 @@ module.exports = {
                 res.send(procdata);
             }
 
+        });
+    },
+    getSingleProcedure: function (req, res) {
+        var id = req.query.id;
+        if (!id) {
+            return res.status(400).json({ error: 'Bad Request', message: 'Procedure ID is required' });
+        }
+        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
+            }
+            res.json(model);
         });
     },
     getProcedureData: function (req, res) {
@@ -93,8 +123,24 @@ module.exports = {
             var filename = req.file.originalname.split(" - ");
             var filepath = req.file.path;
             var workbook = XLSX.readFile(filepath);
+            // Clean up temp file now that it's been read into memory
+            fs.unlink(filepath, function (unlinkErr) {
+                if (unlinkErr) console.error('Failed to delete temp upload:', unlinkErr.message);
+            });
             var sheet1 = XLSX.utils.sheet_to_json(workbook.Sheets.Sheet1);
             var userdetails = req.body.userdetails;
+            // Mission sent explicitly from the frontend; fall back to filename[1] for
+            // legacy files that still use the old 3-part 'index - mission - title.xlsx' format.
+            var missionName = (req.body.mission && req.body.mission.trim())
+                ? req.body.mission.trim().toLowerCase()
+                : (filename.length >= 3 ? filename[1].trim().toLowerCase() : null);
+            if (!missionName) {
+                return res.status(400).json({ error_code: 0, err_desc: 'Mission name is required for upload.' });
+            }
+            // Validate the user is authorized for this mission
+            if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === missionName; })) {
+                return res.status(403).json({ error_code: 0, err_desc: 'You do not have access to upload to this mission.' });
+            }
             var errordetails = ""
 
             // File Upload Validations
@@ -229,9 +275,12 @@ module.exports = {
                     }
 
                     if (procs) { // Update a procedure
-                        var ptitle = filename[2].split(".");
-                        procs.procedureID = filename[0];
-                        procs.title = filename[1] + " - " + ptitle[0];
+                        // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
+                        var titlePart = filename.length >= 3 ? filename[2] : filename[1];
+                        var ptitle = titlePart.split(".");
+                        procs.procedureID = filename[0].trim();
+                        procs.title = ptitle[0].trim();
+                        procs.eventname = missionName;
 
                         if (procs.versions && procs.versions.length > 0) {
                             procs.versions.push(sheet1);
@@ -263,10 +312,12 @@ module.exports = {
                     } else { //Save a new procedure
 
                         var pfiles = new ProcedureModel();
-                        var ptitle = filename[2].split(".");
+                        // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
+                        var titlePart = filename.length >= 3 ? filename[2] : filename[1];
+                        var ptitle = titlePart.split(".");
 
-                        pfiles.procedureID = filename[0];
-                        pfiles.title = filename[1] + " - " + ptitle[0];
+                        pfiles.procedureID = filename[0].trim();
+                        pfiles.title = ptitle[0].trim();
                         pfiles.lastuse = "";
                         pfiles.instances = [];
                         pfiles.versions = [];
@@ -278,7 +329,7 @@ module.exports = {
 
                         pfiles.versions.push(pfiles.sections);
 
-                        pfiles.eventname = filename[1];
+                        pfiles.eventname = missionName;
                         pfiles.uploadedBy = userdetails;
                         pfiles.save(function (err, result) {
                             if (err) {
@@ -571,9 +622,14 @@ module.exports = {
             }
 
             if (procs) {
+                var newMission = (newprocedurename.gname || procs.eventname || '').toLowerCase();
+                // Validate the user has access to the target mission
+                if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === newMission; })) {
+                    return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to the target mission' });
+                }
                 procs.procedureID = newprocedurename.id;
-                procs.eventname = newprocedurename.gname;
-                procs.title = newprocedurename.gname + " - " + newprocedurename.title;
+                procs.eventname = newMission;
+                procs.title = newprocedurename.title;
 
                 procs.save(function (err, result) {
                     if (err) {
