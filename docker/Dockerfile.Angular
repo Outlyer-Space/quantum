@@ -1,0 +1,44 @@
+# --- Stage 1: Build Angular Frontend ---
+FROM node:22-alpine as builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+
+# Copy the rest of the frontend code and build
+COPY frontend/ ./
+# We run the production build
+RUN npx ng build --configuration production
+
+# --- Stage 2: Setup Node Backend & Serve ---
+FROM redhat/ubi9
+
+ARG GIT_BRANCH=unknown
+ARG GIT_COMMIT=unknown
+ARG APP_VERSION=unknown
+ENV GIT_BRANCH=${GIT_BRANCH} \
+    GIT_COMMIT=${GIT_COMMIT} \
+    APP_VERSION=${APP_VERSION} \
+    NODE_ENV=production \
+    SERVE_ANGULAR=true
+
+RUN yum -y install nodejs git make && \
+    yum -y update --setopt=tsflags=nodocs && \
+    yum clean all && \
+    npm install -g pm2
+
+WORKDIR /node
+
+# Install backend dependencies
+COPY node/package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy the backend code
+COPY node/ .
+
+# Copy the compiled Angular app from Stage 1 into the backend's public directory
+COPY --from=builder /app/frontend/dist/frontend/browser ./public
+
+EXPOSE 3000
+
+CMD ["pm2-runtime", "start", "pm2.config.js"]

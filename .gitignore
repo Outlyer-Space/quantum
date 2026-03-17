@@ -9,3 +9,7 @@ NOTES.md
 
 # pm2 logs/dumps
 */.pm2/*
+
+#Development notes
+.agent
+./frontend/.vscode

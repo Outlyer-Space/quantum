@@ -1,8 +1,8 @@
-name: outlyer
+name: outlyer-angular
 services:
   mongo:
     image: mongo:6
-    container_name: mongo
+    container_name: mongo-angular
     command: [ "--quiet" ]
     restart: unless-stopped
     healthcheck:
@@ -11,41 +11,39 @@ services:
       timeout: 3s
       retries: 10
     volumes:
-      - mongo-data:/data/db
+      - mongo-angular-data:/data/db
     ports:
-      - "27018:27017"
+      - "27018:27017" # Keep the same published port or change it if you want side-by-side
     networks:
-      - quantum-net
+      - quantum-angular-net
 
-  quantum:
+  quantum-angular:
     build:
-      context: ../node
-      dockerfile: ../docker/Dockerfile
+      context: ../ # Context needs to be the root so Docker can access both /node and /frontend
+      dockerfile: docker/Dockerfile.Angular
       args:
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         APP_VERSION: ${APP_VERSION:-unknown}
-    image: outlyer/quantum
-    container_name: quantum
+    image: outlyer/quantum-angular
+    container_name: quantum-angular
     restart: unless-stopped
     depends_on:
       mongo:
         condition: service_healthy
     env_file:
       - ../secrets.env
-    volumes:
-      - ../node:/node #This parameter needs to be adjusted in a Production setting 
-      - node_modules:/node/node_modules
+    environment:
+      - SERVE_ANGULAR=true
     ports:
       - "3000:3000"
     networks:
-      - quantum-net
+      - quantum-angular-net
 
 volumes:
-  mongo-data:
-  node_modules:
+  mongo-angular-data:
 
 
 networks:
-  quantum-net:
+  quantum-angular-net:
     driver: bridge
