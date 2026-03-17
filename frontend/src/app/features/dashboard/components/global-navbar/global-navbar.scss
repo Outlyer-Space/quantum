@@ -1,0 +1,106 @@
+:host {
+    display: block;
+    box-shadow: 0 3px 5px rgba(57, 63, 72, 0.3);
+    z-index: 100;
+}
+
+.top-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 50px;
+    background-color: #fff;
+    padding: 0 8px;
+
+    // CSS Variables driving child themes
+    --user-menu-name-color: #1a1a1a;
+    --user-menu-callsign-color: #555;
+
+    .navbar-left {
+        display: flex;
+        align-items: center;
+    }
+
+    .logo-link {
+        display: flex;
+        align-items: center;
+        padding: 5px;
+        text-decoration: none;
+    }
+
+    .nav-logo {
+        height: 20px;
+        width: auto;
+        margin: 15px;
+    }
+
+    .proc-header-title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .navbar-right {
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-return {
+        padding: 6px 16px;
+        background-color: transparent;
+        color: #d9534f;
+        border: 2px solid #d9534f;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        margin-right: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+
+        &:hover {
+            background-color: #d9534f;
+            color: #fff;
+        }
+    }
+}
+
+/* Modifier: Dark/Archive Theme */
+:host(.archive-navbar) {
+    .top-navbar {
+        background-color: #000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+
+        // Overridden CSS Variables for child components
+        --user-menu-name-color: #fff;
+        --user-menu-callsign-color: #ccc;
+
+        .logo-link {
+            filter: invert(1) brightness(2);
+        }
+
+        .proc-header-title {
+            color: #fff;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .btn-return {
+            background-color: transparent;
+            color: #ff6b6b;
+            border-color: #ff6b6b;
+
+            &:hover {
+                background-color: #ff6b6b;
+                color: #000;
+                border-color: #ff6b6b;
+            }
+        }
+    }
+}

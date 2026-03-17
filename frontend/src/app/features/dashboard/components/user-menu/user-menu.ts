@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal, inject } from '@angular/core';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
     selector: 'app-user-menu',
@@ -7,14 +8,20 @@ import { ChangeDetectionStrategy, Component, input, output, signal } from '@angu
     styleUrl: './user-menu.scss',
 })
 export class UserMenuComponent {
+    private auth = inject(AuthService);
+
     userName = input.required<string>();
     callsign = input.required<string>();
+    showAdminBtn = input<boolean>(false);
 
     /** Emitted when the user clicks Settings */
     settingsRequested = output<void>();
 
     /** Emitted when the user clicks About */
     aboutRequested = output<void>();
+
+    /** Emitted when the user clicks User Administration */
+    userAdminRequested = output<void>();
 
     protected menuOpen = signal(false);
 
@@ -27,8 +34,7 @@ export class UserMenuComponent {
     }
 
     protected logout(): void {
-        // Will wire to backend later
-        console.log('Logout clicked');
+        this.auth.logout();
     }
 
     protected openSettings(): void {
@@ -37,5 +43,9 @@ export class UserMenuComponent {
 
     protected openAbout(): void {
         this.aboutRequested.emit();
+    }
+
+    protected openUserAdmin(): void {
+        this.userAdminRequested.emit();
     }
 }

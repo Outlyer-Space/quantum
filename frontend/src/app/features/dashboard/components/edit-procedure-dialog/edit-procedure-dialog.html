@@ -1,0 +1,34 @@
+@if (isOpen()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="edit-procedure-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="edit-procedure-title">Edit Procedure Name</h2>
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        <div class="form-group">
+            <label for="procedure-index">Index</label>
+            <input id="procedure-index" type="text" [(ngModel)]="id" />
+        </div>
+        <div class="form-group">
+            <label for="procedure-group">Mission Name</label>
+            <input id="procedure-group" type="text" [(ngModel)]="groupName" />
+        </div>
+        <div class="form-group">
+            <label for="procedure-title">Title</label>
+            <input id="procedure-title" type="text" [(ngModel)]="title" />
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        <button class="btn btn-close" (click)="close()">Cancel</button>
+        <button class="btn btn-primary" (click)="save()">Save</button>
+    </div>
+</div>
+}

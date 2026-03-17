@@ -1,10 +1,5 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-
-export interface VersionInfo {
-    version: string;
-    branch: string;
-    commit: string;
-}
+import { ChangeDetectionStrategy, Component, signal, inject } from '@angular/core';
+import { VersionInfo, SystemService } from '../../../../core/services/system.service';
 
 @Component({
     selector: 'app-about-dialog',
@@ -13,17 +8,22 @@ export interface VersionInfo {
     styleUrl: './about-dialog.scss',
 })
 export class AboutDialogComponent {
-    /** Mock version info — will be replaced by a service call */
+    private systemService = inject(SystemService);
+
+    /** The version info to display */
     protected versionInfo = signal<VersionInfo>({
-        version: 'unknown',
-        branch: 'unknown',
-        commit: 'unknown',
+        version: 'Loading...',
+        branch: 'Loading...',
+        commit: 'Loading...',
     });
 
     isOpen = signal(false);
 
     open(): void {
         this.isOpen.set(true);
+        this.systemService.getVersionInfo().subscribe(info => {
+            this.versionInfo.set(info);
+        });
     }
 
     close(): void {

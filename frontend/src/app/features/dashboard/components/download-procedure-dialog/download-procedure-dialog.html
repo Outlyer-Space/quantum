@@ -1,0 +1,23 @@
+@if (isOpen()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="download-procedure-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="download-procedure-title">Confirm</h2>
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        <p>Do you want to download {{ procedureTitle() }} excel file.</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        <button class="btn btn-close" (click)="close()">Cancel</button>
+        <button class="btn btn-primary" (click)="confirm()">OK</button>
+    </div>
+</div>
+}

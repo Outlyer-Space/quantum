@@ -22,55 +22,11 @@ $cyan-primary: #07d1ea;
     overflow: hidden;
 }
 
-/* ── Top Navbar ── */
-.top-navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: $navbar-height;
-    padding: 0 8px;
-    background: $navbar-bg;
-    box-shadow: $navbar-shadow;
-}
 
-.navbar-left {
-    display: flex;
-    align-items: center;
-}
-
-.logo-link {
-    display: flex;
-    align-items: center;
-    padding: 5px;
-    text-decoration: none;
-
-    &:focus-visible {
-        outline: 2px solid $cyan-primary;
-        outline-offset: 2px;
-    }
-}
-
-.nav-logo {
-    height: 20px;
-    width: auto;
-    margin: 0 15px;
-}
-
-.navbar-right {
-    display: flex;
-    align-items: center;
-    height: 100%;
-}
 
 /* ── Main Content ── */
 .main-content {
     flex: 1;
-    margin-top: $navbar-height;
     padding: 40px 0 0;
     overflow-y: auto;
     position: relative;

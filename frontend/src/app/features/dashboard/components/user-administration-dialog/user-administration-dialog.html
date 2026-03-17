@@ -1,0 +1,123 @@
+<div class="dialog-overlay" (click)="onBackdropClick($event)">
+    <div class="dialog-content" role="dialog" aria-labelledby="dialog-title" aria-modal="true">
+        <header class="dialog-header">
+            <h2 id="dialog-title">User Administration</h2>
+            <button class="btn-close-header" (click)="close.emit()" aria-label="Close dialog">&times;</button>
+        </header>
+
+        <!-- Tab bar -->
+        <nav class="dialog-tabs" role="tablist">
+            <button class="tab-btn" role="tab" [class.active]="activeTab() === 'roles'"
+                [attr.aria-selected]="activeTab() === 'roles'" (click)="switchTab('roles')">
+                Roles
+            </button>
+            <button class="tab-btn" role="tab" [class.active]="activeTab() === 'missions'"
+                [attr.aria-selected]="activeTab() === 'missions'" (click)="switchTab('missions')">
+                Missions
+            </button>
+        </nav>
+
+        <div class="dialog-body">
+            <!-- ═══ ROLES TAB ═══ -->
+            @if (activeTab() === 'roles') {
+                @if (loading()) {
+                <p>Loading users...</p>
+                } @else if (error()) {
+                <p class="error-msg text-danger">{{ error() }}</p>
+                } @else {
+                <div class="form-group border-separator">
+                    <div class="form-label">Name of the User</div>
+                    <div class="form-control">
+                        <select [formControl]="selectedUserControl">
+                            <option [ngValue]="null">Select User</option>
+                            @for (user of users(); track user.auth.email) {
+                            <option [ngValue]="user">{{ user.auth.name || user.auth.email }}</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group mt-2">
+                    <div class="form-label">Allowed Roles</div>
+                    <div class="form-control">
+                        <div class="roles-list">
+                            @for (role of availableRoles(); track role.callsign) {
+                            <label>
+                                <input type="checkbox" [checked]="isRoleChecked(role.callsign)"
+                                    [disabled]="!selectedUserControl.value"
+                                    (change)="toggleRole(role.callsign, $event)">
+                                {{ role.name }} ({{ role.callsign }})
+                            </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+            }
+
+            <!-- ═══ MISSIONS TAB ═══ -->
+            @if (activeTab() === 'missions') {
+                @if (missionsLoading()) {
+                <p>Loading missions...</p>
+                } @else if (missionsError()) {
+                <p class="error-msg text-danger">{{ missionsError() }}</p>
+                } @else {
+                <div class="form-group border-separator">
+                    <div class="form-label">Name of the User</div>
+                    <div class="form-control">
+                        <select [formControl]="selectedMissionUserControl">
+                            <option [ngValue]="null">Select User</option>
+                            @for (user of allUsers(); track user.auth.email) {
+                            <option [ngValue]="user">{{ user.auth.name || user.auth.email }}</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                @if (selectedMissionUserControl.value) {
+                <div class="form-group mt-2">
+                    <div class="form-label">Missions</div>
+                    <div class="form-control">
+                        <div class="roles-list">
+                            @if (allMissions().length === 0) {
+                            <p class="no-data-msg">No missions available.</p>
+                            }
+                            @for (m of allMissions(); track m) {
+                            <label>
+                                <input type="checkbox"
+                                    [checked]="isMissionAssigned(m)"
+                                    [disabled]="missionsSaving()"
+                                    (change)="toggleMission(m)">
+                                {{ m }}
+                            </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-2">
+                    <div class="form-label">New Mission</div>
+                    <div class="form-control add-mission-row">
+                        <input type="text" class="mission-input" placeholder="Enter new mission name"
+                            [ngModel]="newMission()" (ngModelChange)="newMission.set($event)" />
+                        <button class="btn-add" (click)="addMission()"
+                            [disabled]="!newMission().trim() || missionsSaving()">
+                            {{ missionsSaving() ? '...' : 'Add' }}
+                        </button>
+                    </div>
+                </div>
+                }
+                }
+            }
+        </div>
+
+        <footer class="dialog-footer">
+            <button class="btn-cancel" (click)="close.emit()">Close</button>
+            @if (activeTab() === 'roles') {
+            <button class="btn-save" (click)="saveRoles()" [disabled]="!selectedUserControl.value || saving()">
+                {{ saving() ? 'Saving...' : 'Save' }}
+            </button>
+            }
+        </footer>
+    </div>
+</div>

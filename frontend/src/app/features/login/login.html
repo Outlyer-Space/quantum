@@ -37,8 +37,8 @@
                 </div>
                 }
 
-                <button id="login-submit" type="submit" class="sign-in-btn">
-                    Sign In with Email
+                <button id="login-submit" type="submit" class="sign-in-btn" [disabled]="isLoading()">
+                    {{ isLoading() ? 'Signing In...' : 'Sign In with Email' }}
                 </button>
             </form>
         </div>

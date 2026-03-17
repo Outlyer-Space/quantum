@@ -1,21 +1,16 @@
 import { ChangeDetectionStrategy, Component, signal, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { ProcedureTableComponent } from './components/procedure-table/procedure-table';
 import { RightSidebarComponent } from './components/right-sidebar/right-sidebar';
-import { UserMenuComponent } from './components/user-menu/user-menu';
-import { SettingsDialogComponent } from './components/settings-dialog/settings-dialog';
-import { AboutDialogComponent } from './components/about-dialog/about-dialog';
+import { UploadProcedureDialogComponent } from './components/upload-procedure-dialog/upload-procedure-dialog';
+import { NavbarService } from './services/navbar.service';
 
 @Component({
     selector: 'app-dashboard',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
-        RouterLink,
         ProcedureTableComponent,
         RightSidebarComponent,
-        UserMenuComponent,
-        SettingsDialogComponent,
-        AboutDialogComponent,
+        UploadProcedureDialogComponent,
     ],
     templateUrl: './dashboard.html',
     styleUrl: './dashboard.scss',
@@ -24,23 +19,20 @@ export class Dashboard {
     /** Whether the right sidebar is open */
     protected sidebarOpen = signal(false);
 
-    /** Mock user data — will be replaced by UserService later */
-    protected userName = signal('Sys Admin');
-    protected userCallsign = signal('CC');
+    constructor(private nav: NavbarService) {
+        this.nav.title.set('');
+        this.nav.showReturnBtn.set(false);
+        this.nav.isArchived.set(false);
+    }
 
     /** Dialog references */
-    private settingsDialog = viewChild.required(SettingsDialogComponent);
-    private aboutDialog = viewChild.required(AboutDialogComponent);
+    private uploadProcedureDialog = viewChild.required(UploadProcedureDialogComponent);
 
     protected toggleSidebar(): void {
         this.sidebarOpen.update(open => !open);
     }
 
-    protected openSettings(): void {
-        this.settingsDialog().open();
-    }
-
-    protected openAbout(): void {
-        this.aboutDialog().open();
+    protected openUploadProcedure(): void {
+        this.uploadProcedureDialog().open();
     }
 }

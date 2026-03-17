@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
 
 interface BackgroundImage {
     src: string;
@@ -35,6 +36,7 @@ const TECH_LOGOS = [
 })
 export class Login {
     private fb = inject(FormBuilder);
+    private authService = inject(AuthService);
 
     /** Random background chosen once on init */
     protected background = signal(BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]);
@@ -52,14 +54,28 @@ export class Login {
 
     /** Flash message signal (e.g. for errors) */
     protected flashMessage = signal('');
+    protected isLoading = signal(false);
 
     protected onSubmit(): void {
+        this.flashMessage.set(''); // Clear previous messages
+
         if (this.loginForm.invalid) {
             this.loginForm.markAllAsTouched();
             return;
         }
-        // Backend integration will go here
+
+        this.isLoading.set(true);
         const { email, password } = this.loginForm.getRawValue();
-        console.log('Login submitted', { email, password });
+
+        this.authService.login(email, password).subscribe({
+            next: () => {
+                this.isLoading.set(false);
+                // login handles navigation to /dashboard internally on success
+            },
+            error: (err: Error) => {
+                this.isLoading.set(false);
+                this.flashMessage.set(err.message);
+            }
+        });
     }
 }

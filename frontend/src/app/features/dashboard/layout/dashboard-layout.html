@@ -1,0 +1,6 @@
+<app-global-navbar (userAdminRequested)="openUserAdmin()" />
+<router-outlet></router-outlet>
+
+@if (isUserAdminOpen()) {
+<app-user-administration-dialog (close)="closeUserAdmin()" />
+}

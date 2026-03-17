@@ -11,7 +11,9 @@ html,
 body {
   height: 100%;
   width: 100%;
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
 }

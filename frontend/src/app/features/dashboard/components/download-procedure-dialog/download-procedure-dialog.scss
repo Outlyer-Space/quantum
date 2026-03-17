@@ -1,0 +1,115 @@
+@use 'sass:color';
+
+$border-color: #e5e5e5;
+$primary: #337ab7;
+$radius: 4px;
+
+:host {
+    display: contents;
+}
+
+/* ── Backdrop ── */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* ── Panel ── */
+.dialog-panel {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    width: 520px;
+    max-width: 92vw;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    font-family: 'Inter', sans-serif;
+}
+
+/* ── Header ── */
+.dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    border-bottom: 1px solid $border-color;
+
+    h2 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 500;
+        color: #555;
+    }
+}
+
+/* ── Body ── */
+.dialog-body {
+    padding: 24px 20px;
+
+    p {
+        margin: 0;
+        font-size: 14px;
+        color: #555;
+    }
+}
+
+/* ── Footer ── */
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid $border-color;
+    background: #fff;
+    border-radius: 0 0 6px 6px;
+    gap: 10px;
+}
+
+.btn {
+    padding: 6px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    border-radius: $radius;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    border: 1px solid transparent;
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 2px;
+    }
+}
+
+.btn-close {
+    background: #fff;
+    border-color: #ccc;
+    color: #333;
+
+    &:hover {
+        background: #e6e6e6;
+        border-color: #adadad;
+    }
+}
+
+.btn-primary {
+    background: $primary;
+    color: #fff;
+    border-color: color.adjust($primary, $lightness: -5%);
+
+    &:hover {
+        background: color.adjust($primary, $lightness: -10%);
+    }
+}
+
+@media only screen and (max-width: 500px) {
+    .dialog-panel {
+        width: 95vw;
+        top: 40px;
+    }
+}

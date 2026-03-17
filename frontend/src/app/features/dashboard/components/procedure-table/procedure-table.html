@@ -1,5 +1,5 @@
 <section aria-label="Procedures list">
-    <!-- Search bar -->
+    <!-- Search bar + Mission filter -->
     <div class="search-bar">
         <div class="search-input-wrapper">
             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
@@ -10,6 +10,19 @@
             <input id="procedure-search" type="search" placeholder="Search by title…"
                 aria-label="Search procedures by title" [value]="searchQuery()"
                 (input)="onSearchInput($any($event.target).value)" />
+        </div>
+
+        <div class="mission-filter">
+            <label class="mission-filter-label" for="mission-select">Mission</label>
+            <select id="mission-select" class="mission-select"
+                [value]="selectedMission()" (change)="onMissionChange($any($event.target).value)">
+                @if (availableMissions().length > 1) {
+                <option value="">All Missions</option>
+                }
+                @for (m of availableMissions(); track m) {
+                <option [value]="m">{{ m }}</option>
+                }
+            </select>
         </div>
     </div>
 
@@ -79,13 +92,54 @@
                         <td style="width: 32%">{{ proc.title }}</td>
                         <td style="width: 20%">{{ proc.lastUse }}</td>
                         <td class="center-col" style="width: 12%">
-                            <a href="#">{{ proc.running }}</a>
+                            <a [routerLink]="['/dashboard/instances', proc.id]" class="instance-link"
+                                aria-label="View running instances" data-tooltip="View active instances"
+                                style="text-decoration: none; font-weight: bold; color: #337ab7;">
+                                {{ proc.running }}
+                            </a>
                         </td>
                         <td class="center-col" style="width: 12%">
-                            <a href="#">{{ proc.archived }}</a>
+                            <a [routerLink]="['/dashboard/archived', proc.id]" class="instance-link"
+                                aria-label="View archived instances" data-tooltip="View archived instances"
+                                style="text-decoration: none; font-weight: bold; color: #337ab7;">
+                                {{ proc.archived }}
+                            </a>
                         </td>
                         <td style="width: 16%">
-                            <!-- Action buttons placeholder -->
+                            <div class="actions-wrapper">
+                                <button type="button" class="actions-trigger" aria-label="More actions">
+                                    <span class="fa fa-bars" style="vertical-align:middle"></span>
+                                </button>
+                                <div class="btn-group" role="group" aria-label="Procedure actions">
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'preview')"
+                                        [routerLink]="['/dashboard/preview', proc.id]" data-tooltip="View procedure"
+                                        aria-label="View procedure">
+                                        <span class="fa-stack fa-stack-15" style="vertical-align:middle">
+                                            <i class="fa fa-search fa-stack-1x fa-lower-right"></i>
+                                            <i class="fa fa-file-o fa-stack-2x fa-stack-15x fa-upper-left"></i>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'rename')"
+                                        (click)="openEditDialog(proc)" data-tooltip="Rename"
+                                        aria-label="Rename procedure">
+                                        <span class="fa fa-edit" style="vertical-align:middle"></span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'download')"
+                                        (click)="openDownloadDialog(proc)" data-tooltip="Download"
+                                        aria-label="Download procedure">
+                                        <span class="fa fa-download" style="vertical-align:middle"></span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'start')"
+                                        (click)="runProcedure(proc)" data-tooltip="Run" aria-label="Run procedure">
+                                        <span class="fa fa-caret-right iconDisplay"
+                                            style="vertical-align:middle"></span>
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     }
@@ -107,3 +161,9 @@
         </div>
     </div>
 </section>
+
+<!-- Edit Dialog -->
+<app-edit-procedure-dialog (saved)="saveProcedure($event)" />
+
+<!-- Download Dialog -->
+<app-download-procedure-dialog (confirmed)="performDownload()" />

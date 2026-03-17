@@ -17,12 +17,52 @@ $radius: 8px;
 
 /* ── Search bar ── */
 .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
 }
 
 .search-input-wrapper {
     position: relative;
     max-width: 360px;
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ── Mission filter ── */
+.mission-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mission-filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+
+.mission-select {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid $border-color;
+    border-radius: $radius;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #333;
+    background: $card-bg;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    min-width: 140px;
+
+    &:focus {
+        outline: none;
+        border-color: $cyan-primary;
+        box-shadow: 0 0 0 3px rgba($cyan-primary, 0.15);
+    }
 }
 
 .search-icon {
@@ -39,7 +79,7 @@ $radius: 8px;
     padding: 10px 14px 10px 40px;
     border: 1px solid $border-color;
     border-radius: $radius;
-    font-family: 'Open Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     color: #333;
     background: $card-bg;
@@ -61,7 +101,6 @@ $radius: 8px;
     background: $card-bg;
     border-radius: $radius;
     box-shadow: $card-shadow;
-    overflow: hidden;
     border: 1px solid $border-color;
 }
 
@@ -69,6 +108,8 @@ $radius: 8px;
 .tbl-header {
     background-color: $header-bg;
     border-bottom: 2px solid $border-color;
+    border-top-left-radius: calc(#{$radius} - 1px);
+    border-top-right-radius: calc(#{$radius} - 1px);
 }
 
 table {
@@ -81,7 +122,7 @@ thead th {
     padding: 12px 16px;
     text-align: left;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 14px;
     color: $link-color;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -122,9 +163,6 @@ thead th {
 }
 
 /* ── Table body ── */
-.tbl-content {
-    overflow-x: auto;
-}
 
 tbody {
     background: $card-bg;
@@ -143,8 +181,6 @@ td {
     text-align: left;
     vertical-align: middle;
     font-size: 14px;
-    color: #333;
-    border-bottom: 1px solid $border-color;
 
     &.center-col {
         text-align: center;
@@ -154,11 +190,256 @@ td {
         color: $link-color;
         text-decoration: none;
         font-weight: 500;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
 
-        &:hover {
+        &:hover,
+        &:focus {
+            color: rebeccapurple;
             text-decoration: underline;
+            outline: none;
         }
     }
+
+    .actions-wrapper {
+        position: relative;
+        display: inline-block;
+
+        .actions-trigger {
+            display: none;
+            background: $card-bg;
+            border: 1px solid $border-color;
+            border-radius: $radius;
+            color: $link-color;
+            padding: 8px 12px;
+            cursor: pointer;
+            box-shadow: $card-shadow;
+            transition: color 0.2s ease, box-shadow 0.2s ease;
+
+            &:hover,
+            &:focus {
+                color: rebeccapurple;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+                outline: none;
+            }
+        }
+
+        @media only screen and (max-width: 1199px) {
+            .actions-trigger {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            &:focus-within {
+                .btn-group {
+                    visibility: visible;
+                    opacity: 1;
+                    transition: opacity 0.15s ease, visibility 0s;
+                }
+            }
+        }
+    }
+
+    .btn-group {
+        border-radius: $radius;
+        display: inline-flex;
+        box-shadow: -2px -2px 3px rgba(255, 255, 255, 0.2),
+            -5px -5px 10px rgba(255, 255, 255, 0.3),
+            2px 2px 3px rgba(0, 0, 0, 0.024),
+            5px 5px 10px rgba(0, 0, 0, 0.035);
+
+        @media only screen and (max-width: 1199px) {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 8px;
+            flex-direction: column;
+            z-index: 1000;
+            background: $card-bg;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.05s ease, visibility 0s 0.05s;
+
+            &::before {
+                content: '';
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                border: 6px solid transparent;
+                border-bottom-color: $card-bg;
+            }
+        }
+
+        &__item {
+            position: relative;
+            border: none;
+            min-width: 2.5rem;
+            padding: 0.5rem 0.75rem;
+            background-color: $card-bg;
+            cursor: pointer;
+            margin: 0;
+            color: $link-color;
+            box-shadow: inset 0px 0px 0px -15px rebeccapurple;
+            transition: all 150ms ease-out;
+
+            @media only screen and (max-width: 1199px) {
+                border-radius: 0;
+                box-shadow: none !important;
+                border-bottom: 1px solid $border-color;
+                width: 100%;
+            }
+
+            &:last-child {
+                border-top-right-radius: $radius;
+                border-bottom-right-radius: $radius;
+
+                @media only screen and (max-width: 1199px) {
+                    border-radius: 0 0 $radius $radius;
+                    border-bottom: none;
+                }
+            }
+
+            &:first-child {
+                border-top-left-radius: $radius;
+                border-bottom-left-radius: $radius;
+
+                @media only screen and (max-width: 1199px) {
+                    border-radius: $radius $radius 0 0;
+                }
+            }
+
+            &::before {
+                content: attr(data-tooltip);
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%) translateY(4px);
+                background-color: rgba(33, 33, 33, 0.9);
+                color: #fff;
+                font-size: 11px;
+                font-family: inherit;
+                padding: 4px 8px;
+                border-radius: 4px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.15s ease 0.15s, transform 0.15s ease 0.15s;
+                z-index: 10;
+
+                @media only screen and (max-width: 1199px) {
+                    top: 50%;
+                    left: 0;
+                    transform: translateX(calc(-100% - 8px)) translateY(-50%);
+                }
+            }
+
+            &::after {
+                content: '';
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%) translateY(-4px);
+                border: 4px solid transparent;
+                border-bottom-color: rgba(33, 33, 33, 0.9);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.15s ease 0.15s, transform 0.15s ease 0.15s;
+                z-index: 10;
+
+                @media only screen and (max-width: 1199px) {
+                    top: 50%;
+                    left: 0;
+                    transform: translateX(-100%) translateY(-50%);
+                    border-color: transparent transparent transparent rgba(33, 33, 33, 0.9);
+                }
+            }
+
+            &:hover,
+            &:focus {
+                color: rebeccapurple;
+                box-shadow: inset 0px -20px 0px -15px rebeccapurple;
+                outline: none;
+
+                &::before {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(8px);
+
+                    @media only screen and (max-width: 1199px) {
+                        transform: translateX(calc(-100% - 12px)) translateY(-50%);
+                    }
+                }
+
+                &::after {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0px);
+
+                    @media only screen and (max-width: 1199px) {
+                        transform: translateX(-4px) translateY(-50%);
+                    }
+                }
+
+                @media only screen and (max-width: 1199px) {
+                    box-shadow: none;
+                    background-color: $row-hover;
+                }
+            }
+
+            &--active {
+                color: rebeccapurple;
+            }
+        }
+    }
+}
+
+/* ── Ported Font Awesome Action Icons ── */
+.fa-stack {
+    width: 1em;
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    height: 1.5em;
+    line-height: inherit;
+}
+
+.fa-stack-1x,
+.fa-stack-2x {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+}
+
+.fa-stack-1x {
+    line-height: inherit;
+}
+
+.fa-stack-2x {
+    font-size: 2em;
+}
+
+.fa-stack-15x {
+    font-size: 1.0em;
+}
+
+.fa-stack-15 {
+    height: inherit;
+}
+
+.fa-lower-right {
+    left: 3px !important;
+    top: -12px !important;
+    font-size: 0.75em;
+}
+
+.fa-upper-left {
+    left: 0px !important;
+    top: -8px !important;
+}
+
+.iconDisplay {
+    font-size: 20px;
 }
 
 .empty-state {
@@ -181,23 +462,53 @@ td {
 
     thead th {
         padding: 8px 8px;
-        font-size: 10px;
+        font-size: 12px;
     }
 
     td {
         padding: 8px 8px;
         font-size: 12px;
     }
+
+    .iconDisplay {
+        font-size: 10px;
+    }
+
+    .fa-lower-right {
+        left: 1px !important;
+        top: -6px !important;
+        font-size: 0.75em;
+    }
+
+    .fa-upper-left {
+        left: 0px !important;
+        top: -4px !important;
+    }
 }
 
 @media only screen and (min-width: 737px) and (max-width: 1024px) {
     thead th {
         padding: 10px 12px;
-        font-size: 11px;
+        font-size: 13px;
     }
 
     td {
         padding: 10px 12px;
         font-size: 13px;
+    }
+
+    .fa-lower-right {
+        left: 3px !important;
+        top: -8px !important;
+        font-size: 0.75em;
+    }
+
+    .fa-upper-left {
+        left: 0px !important;
+        top: -6px !important;
+    }
+
+    .iconDisplay {
+        font-size: 16px;
     }
 }

@@ -7,11 +7,7 @@
             <span class="status-dot" aria-label="Online"></span>
             {{ callsign() }}
         </span>
-        <!-- Dropdown caret -->
-        <svg class="caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="12"
-            height="12" aria-hidden="true" [class.is-open]="menuOpen()">
-            <path d="M7 10l5 5 5-5z" />
-        </svg>
+
     </button>
 
     <!-- Backdrop (click to close) -->
@@ -35,6 +31,14 @@
                 <span class="item-label">Settings</span>
             </button>
         </li>
+        @if (showAdminBtn()) {
+        <li role="none">
+            <button role="menuitem" class="menu-item item-admin" (click)="openUserAdmin(); closeMenu()">
+                <span class="fa fa-users" aria-hidden="true"></span>
+                <span class="item-label">User Administration</span>
+            </button>
+        </li>
+        }
         <li role="none">
             <button role="menuitem" class="menu-item item-about" (click)="openAbout(); closeMenu()">
                 <img src="media/icons/about.svg" width="16" height="16" alt="" aria-hidden="true">

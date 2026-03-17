@@ -12,6 +12,12 @@
 
     <!-- Body -->
     <div class="dialog-body">
+        @if (loading()) {
+        <div class="loading-spinner">Loading roles...</div>
+        } @else {
+        @if (roles().length === 0) {
+        <p class="no-roles-msg">No available roles assigned to this account.</p>
+        }
         @for (pair of rolePairs; track $index) {
         <div class="role-row">
             @for (role of pair; track role.callsign) {
@@ -23,12 +29,13 @@
             }
         </div>
         }
+        }
     </div>
 
     <!-- Footer -->
     <div class="dialog-footer">
-        <button class="btn btn-close" (click)="close()">Close</button>
-        <button class="btn btn-save" (click)="save()">Save</button>
+        <button class="btn btn-close" (click)="close()" [disabled]="loading()">Close</button>
+        <button class="btn btn-save" (click)="save()" [disabled]="loading() || roles().length === 0">Save</button>
     </div>
 </div>
 }

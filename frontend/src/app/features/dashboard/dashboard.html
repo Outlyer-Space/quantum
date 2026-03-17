@@ -1,22 +1,5 @@
 <div class="dashboard-layout">
-    <!-- Top navigation bar -->
-    <nav class="top-navbar" role="navigation" aria-label="Main navigation">
-        <div class="navbar-left">
-            <a routerLink="/dashboard" class="logo-link" aria-label="Quantum home">
-                <img src="media/logos/Quantum_Logo_Regular.png" alt="Quantum" class="nav-logo" width="120"
-                    height="24" />
-            </a>
-        </div>
-
-        <div class="navbar-right">
-            <app-user-menu [userName]="userName()" [callsign]="userCallsign()" (settingsRequested)="openSettings()"
-                (aboutRequested)="openAbout()" />
-        </div>
-    </nav>
-
-    <!-- Dialogs -->
-    <app-settings-dialog />
-    <app-about-dialog />
+    <app-upload-procedure-dialog />
 
     <!-- Main content area -->
     <main class="main-content">
@@ -36,5 +19,5 @@
     </main>
 
     <!-- Right sidebar -->
-    <app-right-sidebar id="right-sidebar" [isOpen]="sidebarOpen()" />
+    <app-right-sidebar id="right-sidebar" [isOpen]="sidebarOpen()" (uploadRequested)="openUploadProcedure()" />
 </div>

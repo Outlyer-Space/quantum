@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 interface SidebarItem {
     label: string;
@@ -16,6 +16,9 @@ interface SidebarItem {
 export class RightSidebarComponent {
     isOpen = input.required<boolean>();
 
+    /** Emitted when the user clicks "Upload Procedure" */
+    uploadRequested = output();
+
     protected menuItems: SidebarItem[] = [
         { label: 'Upload Procedure', icon: 'upload', action: 'upload' },
         { label: 'Documentation', icon: 'document', href: 'https://github.com/Xenon130/quantum/wiki' },
@@ -23,8 +26,7 @@ export class RightSidebarComponent {
 
     protected onItemClick(item: SidebarItem): void {
         if (item.action === 'upload') {
-            // Upload modal will be wired later
-            console.log('Upload Procedure clicked');
+            this.uploadRequested.emit();
         }
     }
 }
