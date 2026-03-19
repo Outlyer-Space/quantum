@@ -10,7 +10,7 @@ Quantum is intended as a minimalist turn-key solution for test and flight operat
 
 ## Demo Server
 
-You can explore a demo at <https://qdemo.outlyer.network>; please report any issues / feature requests by submitting a [GitHub ticket](https://github.com/Outlyer-Space/quantum/issues).
+You can explore a demo at <https://qdemo.outlyer.network>. The server will take about 60 seconds to spool up on first load; after that you can login with the credentials below. Please report any issues or feature requests by submitting a [GitHub ticket](https://github.com/Outlyer-Space/quantum/issues).
 
 Login Credentials:
 
