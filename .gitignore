@@ -2,7 +2,8 @@ node_modules
 .DS_Store
 
 # secrets
-secrets.env
+secrets.*
+!secrets.env.example
 
 #commit notes
 NOTES.md
