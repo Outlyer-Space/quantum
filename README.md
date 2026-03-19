@@ -8,9 +8,23 @@ Quantum consists of a modular front-end (UI), and a REST API backend. The applic
 
 Quantum is intended as a minimalist turn-key solution for test and flight operations procedure management. While originally developed for spaceflight operations, it should be equally suitable to any other activity where multiple & geographically distributed people need to execute a real-time activity in a structured, repeatable, and auditable manner.
 
+## Demo Server
+
+You can explore a demo at <https://qdemo.outlyer.network>; please report any issues / feature requests by submitting a [GitHub ticket](https://github.com/Outlyer-Space/quantum/issues).
+
+Login Credentials:
+
+````text
+USR: sys.admin@localhost
+PWD: 2infinity
+
+USR: sys.user@localhost
+PWD: 2infinity
+````
+
 ---
 
-## 🚀 Quick Start — Docker Development Setup (NEW)
+## 🚀 Quick Start — Docker Development Setup
 
 ### Requirements
 
