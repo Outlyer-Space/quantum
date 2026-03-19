@@ -1,10 +1,15 @@
 pipeline {
     agent any
 
-    // This pipeline will push repo changes on the local Outlyer server
-    // dev.outlyer.space to GitHub at https://github.com/Outlyer-Space/quantum
-    // the post receive hook script on the server will only
-    // trigger this pipeline for "main" or "master" branches.
+    // The post receive hook script on the git server for this project will
+    // trigger this pipeline for "main" or "master" branches only. It
+    // performs the following actions:
+
+    // (1) build a new docker image
+    // (2) save it on the Azure Container Registry
+    // (3) refredsh app: https://quantum.outlyer.network
+    // (4) refresh  app: https://qdemo.outlyer.network
+    // (5) publish source on GitHub: https://github.com/Outlyer-Space/quantum
 
     // Access credentials
     environment {
@@ -16,6 +21,7 @@ pipeline {
         ACR_CRED = credentials('ACR_creds')
 
         AZ_APP = 'server-quantum'
+        AZ_DEMO = 'qdemo'
         AZ_RGROUP = 'outlyer-resources-usw'
     }
 
@@ -43,7 +49,7 @@ pipeline {
                 echo "Git Branch: ${env.CLEAN_BRANCH}"
                 echo "Git Commit: ${env.SHORT_COMMIT}"
                 echo "App Version: ${env.APP_VERSION}"
-                
+
                 sh """
                     docker build --pull \
                         -f docker/Dockerfile.azure \
@@ -76,7 +82,7 @@ pipeline {
                     docker push ${ACR_URL}/quantum:\${TAG}
                 """
 
-                echo 'Forcing server refresh'
+                echo 'Forcing server refresh: quantum'
                 withCredentials(
                     [
                         string(credentialsId: 'az_client_id', variable: 'ARM_CLIENT_ID'),
@@ -112,6 +118,43 @@ pipeline {
                             --output tsv
                     """
                 }
+
+                echo 'Forcing server refresh: qdemo'
+                withCredentials(
+                    [
+                        string(credentialsId: 'az_client_id', variable: 'ARM_CLIENT_ID'),
+                        string(credentialsId: 'az_client_secret', variable: 'ARM_CLIENT_SECRET'),
+                        string(credentialsId: 'az_tenant_id', variable: 'ARM_TENANT_ID'),
+                    ]){
+                    sh """
+                        az login \
+                            --service-principal \
+                            --username "\$ARM_CLIENT_ID" \
+                            --password "\$ARM_CLIENT_SECRET" \
+                            --tenant   "\$ARM_TENANT_ID" \
+                            --output none   # suppress JSON payload
+
+                        az config \
+                            set extension.use_dynamic_install=yes_without_prompt
+
+                        az acr repository show-tags \
+                            --name ${ACR_NAME} \
+                            --repository quantum \
+                            --output table
+
+                        az containerapp update \
+                            --resource-group ${AZ_RGROUP} \
+                            --name ${AZ_DEMO} \
+                            --image ${ACR_URL}/quantum:latest \
+                            --output none   # suppress JSON payload
+
+                        az containerapp show \
+                            --resource-group ${AZ_RGROUP} \
+                            --name ${AZ_DEMO} \
+                            --query "{revision:properties.activeRevisionName, image:properties.template.containers[0].image}" \
+                            --output tsv
+                    """
+                }
             }
         }
 
@@ -119,7 +162,12 @@ pipeline {
             steps {
                 echo 'Publishing changes to GitHub'
 
-                // Add GitHub as second git remote
+                // Remove git remote if it exists
+                sh """
+                    git remote remove github 2>/dev/null || true
+                """
+
+                // Add github as second remote
                 sh """
                     git remote add github https://${GITHUB_CRED}@${GITHUB_URL}
                 """
