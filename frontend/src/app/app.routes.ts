@@ -21,11 +21,13 @@ export const routes: Routes = [
             },
             {
                 path: 'instances/:id',
-                loadComponent: () => import('./features/dashboard/components/running-instances/running-instances').then(m => m.RunningInstancesComponent),
+                loadComponent: () => import('./features/dashboard/components/procedure-instance-list/procedure-instance-list').then(m => m.ProcedureInstanceListComponent),
+                data: { mode: 'running' }
             },
             {
                 path: 'archived/:id',
-                loadComponent: () => import('./features/dashboard/components/archived-instances/archived-instances').then(m => m.ArchivedInstancesComponent),
+                loadComponent: () => import('./features/dashboard/components/procedure-instance-list/procedure-instance-list').then(m => m.ProcedureInstanceListComponent),
+                data: { mode: 'archived' }
             },
             {
                 path: 'procedure/run/:id',

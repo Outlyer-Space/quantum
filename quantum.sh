@@ -11,12 +11,12 @@ IFS=$'\n\t'
 
 # DEFAULTs -----------------------------------------------------
 
-IMAGE="${IMAGE:-outlyer/quantum}"
-CONTAINER="${CONTAINER:-quantum}"
-DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
-CONTEXT="${CONTEXT:-node}"
+IMAGE="${IMAGE:-outlyer/quantum-angular}"
+CONTAINER="${CONTAINER:-quantum-angular}"
+DOCKERFILE="${DOCKERFILE:-docker/Dockerfile.Angular}"
+CONTEXT="${CONTEXT:-.}"
 PULL="${PULL:-false}"
-COMPOSE_FILE="docker/docker-compose.yml"
+COMPOSE_FILE="docker/docker-compose.angular.yml"
 
 
 # FUNCTIONS  -----------------------------------------------------
@@ -37,10 +37,8 @@ usage() {
   docker       Run built image, mounting ./node (dev hot-reload style)
   deploy       Run built image without mounting source (prod-like)
   build        docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
-  up           docker compose up --build -d  (node-only stack)
-  down         docker compose down           (node-only stack)
-  angular-up   docker compose up --build -d  (Angular full-stack, production build)
-  angular-down docker compose down           (Angular full-stack)
+  up           docker compose up --build -d  (Angular full-stack, production build)
+  down         docker compose down           (Angular full-stack)
   clean        Remove container and image
   rebuild      Clean + build
   help         Show this message (default when no command specified)
@@ -204,22 +202,6 @@ case "$cmd" in
   down)
     check_docker
     run "Stopping stack" docker compose -f "$COMPOSE_FILE" down
-    ;;
-
-  angular-up)
-    check_docker
-    check_secrets
-    show_config
-
-    capture_git_info
-
-    run "Starting Angular stack (rebuild + detach)" docker compose -f "docker/docker-compose.angular.yml" up --build -d
-    run "Showing stack status" docker compose -f "docker/docker-compose.angular.yml" ps
-    ;;
-
-  angular-down)
-    check_docker
-    run "Stopping Angular stack" docker compose -f "docker/docker-compose.angular.yml" down
     ;;
 
   clean)

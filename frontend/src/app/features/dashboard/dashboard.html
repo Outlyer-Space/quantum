@@ -1,23 +1,6 @@
 <div class="dashboard-layout">
-    <app-upload-procedure-dialog />
-
     <!-- Main content area -->
     <main class="main-content">
         <app-procedure-table />
-
-        <!-- Sidebar toggle button -->
-        <button id="sidebar-toggle" class="sidebar-toggle-btn" [class.is-open]="sidebarOpen()" (click)="toggleSidebar()"
-            [attr.aria-expanded]="sidebarOpen()" aria-controls="right-sidebar" aria-label="Toggle configuration menu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                @if (sidebarOpen()) {
-                <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" />
-                } @else {
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-                }
-            </svg>
-        </button>
     </main>
-
-    <!-- Right sidebar -->
-    <app-right-sidebar id="right-sidebar" [isOpen]="sidebarOpen()" (uploadRequested)="openUploadProcedure()" />
 </div>

@@ -1,0 +1,94 @@
+<table class="preview-table" [class.table-readonly]="readonly()">
+    <tbody>
+        @for (step of steps(); track step.id) {
+        <tr class="level-{{ step.level }}"
+            [class.is-expandable]="step.children && step.children.length > 0"
+            [class.step-completed]="!!step.recordedValue && (!step.children || step.children.length === 0)">
+
+            <!-- Toggle / Icon Column -->
+            <td class="col-icon">
+                @if (step.children && step.children.length > 0) {
+                <button class="toggle-btn" (click)="onToggle(step)" aria-label="Toggle children">
+                    <span class="fa fa-chevron-right toggle-icon" [class.open]="step.isOpen"></span>
+                </button>
+                }
+            </td>
+
+            <!-- ID / Step Column -->
+            <td class="col-id">{{ step.id }}</td>
+
+            <!-- Role Column -->
+            <td class="col-role">{{ step.role }}</td>
+
+            <!-- Content Type Icon Column -->
+            <td class="col-type">
+                @if (step.type === 'alert') {
+                <span class="fa fa-exclamation-triangle text-danger"></span>
+                } @else if (step.type === 'decision') {
+                <span class="fa fa-dot-circle-o"></span>
+                } @else if (step.type === 'input') {
+                <span class="fa fa-edit"></span>
+                } @else if (step.type === 'command') {
+                <span class="fa fa-cog"></span>
+                } @else if (step.type === 'verify') {
+                <span class="fa fa-check-circle-o"></span>
+                }
+            </td>
+
+            <!-- Main Content Column -->
+            <td class="col-content">
+                @if (step.type === 'input') {
+                <p>{{ step.content }}</p>
+                <div class="input-block" [class.input-block-disabled]="readonly()">
+                    <div class="recorded-value">
+                        <label>TLM Recorded Value:</label>
+                        <strong>{{ step.recordedValue || 'N/A' }}</strong>
+                    </div>
+                    @if (!readonly()) {
+                    <div class="enter-value">
+                        <label>Enter Value:</label>
+                        <input type="text" [formControl]="getControl(step.id)"
+                            [attr.disabled]="!canEdit()(step) ? true : null"
+                            (focus)="onFocus(step.id)" (blur)="onBlur()" />
+                        <button class="btn-set" [disabled]="!canEdit()(step)"
+                            (click)="onInputSet(step)">Set</button>
+                        @if (step.recordedValue) {
+                        <button class="btn-remove" [disabled]="!canEdit()(step)"
+                            (click)="onInputCleared(step)">Remove</button>
+                        }
+                    </div>
+                    }
+                </div>
+                } @else {
+                <p [class.pre-wrap]="step.content.includes('\n')">{{ step.content }}</p>
+                }
+
+                @if (step.referenceUrl) {
+                <p><a [href]="step.referenceUrl" class="reference-link">Reference Link</a></p>
+                }
+            </td>
+
+            <!-- Completion Checkbox Column (hidden in readonly mode) -->
+            @if (!readonly()) {
+            <td class="col-check">
+                @if ((!step.children || step.children.length === 0) && step.type !== 'input') {
+                <label class="custom-checkbox" [for]="'check-' + step.id">
+                    <input type="checkbox" [id]="'check-' + step.id" [checked]="!!step.recordedValue"
+                        [disabled]="!canEdit()(step)"
+                        (change)="onStepChecked(step, $event)" />
+                    <span class="checkmark"></span>
+                </label>
+                }
+            </td>
+            }
+
+            <!-- Timestamp Column -->
+            <td class="col-timestamp">
+                @if ((!step.children || step.children.length === 0) && step.recordedValue) {
+                <span class="timestamp-value">{{ step.recordedValue }}</span>
+                }
+            </td>
+        </tr>
+        }
+    </tbody>
+</table>

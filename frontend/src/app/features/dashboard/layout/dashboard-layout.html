@@ -1,4 +1,13 @@
+<app-upload-procedure-dialog />
 <app-global-navbar (userAdminRequested)="openUserAdmin()" />
+<app-right-sidebar
+    [isOpen]="nav.sidebarOpen()"
+    [viewState]="nav.sidebarViewState()"
+    [procedureId]="nav.sidebarProcedureId()"
+    [activeUsers]="nav.sidebarActiveUsers()"
+    (toggle)="toggleSidebar()"
+    (uploadRequested)="openUploadProcedure()"
+/>
 <router-outlet></router-outlet>
 
 @if (isUserAdminOpen()) {

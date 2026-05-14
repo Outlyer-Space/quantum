@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -37,6 +38,11 @@ const TECH_LOGOS = [
 export class Login {
     private fb = inject(FormBuilder);
     private authService = inject(AuthService);
+    private titleService = inject(Title);
+
+    constructor() {
+        this.titleService.setTitle('Login | Quantum');
+    }
 
     /** Random background chosen once on init */
     protected background = signal(BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)]);

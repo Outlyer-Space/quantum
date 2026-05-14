@@ -11,5 +11,4 @@ NOTES.md
 */.pm2/*
 
 #Development notes
-.agent
-./frontend/.vscode
+.agent

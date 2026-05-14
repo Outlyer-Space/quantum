@@ -1,68 +1,11 @@
 <div class="dashboard-layout">
     <main class="main-content">
         <div class="preview-container">
-            <table class="preview-table">
-                <tbody>
-                    @for (step of flattenedSteps(); track step.id) {
-                    <tr class="level-{{ step.level }}"
-                        [class.is-expandable]="step.children && step.children.length > 0">
-                        <!-- Toggle / Icon Column -->
-                        <td class="col-icon">
-                            @if (step.children && step.children.length > 0) {
-                            <button class="toggle-btn" (click)="toggleStep(step)" aria-label="Toggle children">
-                                <span class="fa fa-chevron-right toggle-icon" [class.open]="step.isOpen"></span>
-                            </button>
-                            }
-                        </td>
-
-                        <!-- ID / Step Column -->
-                        <td class="col-id">{{ step.id }}</td>
-
-                        <!-- Role Column -->
-                        <td class="col-role">{{ step.role }}</td>
-
-                        <!-- Content Type Icon Column -->
-                        <td class="col-type">
-                            @if (step.type === 'alert') {
-                            <span class="fa fa-exclamation-triangle text-danger"></span>
-                            } @else if (step.type === 'decision') {
-                            <span class="fa fa-dot-circle-o"></span>
-                            } @else if (step.type === 'input') {
-                            <span class="fa fa-edit"></span>
-                            } @else if (step.type === 'command') {
-                            <span class="fa fa-cog"></span>
-                            } @else if (step.type === 'verify') {
-                            <span class="fa fa-check-circle-o"></span>
-                            }
-                        </td>
-
-                        <!-- Main Content Column -->
-                        <td class="col-content">
-                            @if (step.type === 'input') {
-                            <p>{{ step.content }}</p>
-                            <div class="input-block">
-                                <div class="recorded-value">
-                                    <label>TLM Recorded Value:</label>
-                                    <strong>{{ step.recordedValue }}</strong>
-                                </div>
-                                <div class="enter-value">
-                                    <label>Enter Value:</label>
-                                    <input type="text" [formControl]="getControl(step.id)" />
-                                    <button class="btn-set" (click)="setInputValue(step)">Set</button>
-                                </div>
-                            </div>
-                            } @else {
-                            <p [class.pre-wrap]="step.content.includes('\n')">{{ step.content }}</p>
-                            }
-
-                            @if (step.referenceUrl) {
-                            <p><a [href]="step.referenceUrl" class="reference-link">Reference Link</a></p>
-                            }
-                        </td>
-                    </tr>
-                    }
-                </tbody>
-            </table>
+            <app-procedure-step-table
+                [steps]="flattenedSteps()"
+                [readonly]="true"
+                [inputForm]="inputForm"
+                (stepToggled)="onStepToggled($event)" />
         </div>
     </main>
 </div>

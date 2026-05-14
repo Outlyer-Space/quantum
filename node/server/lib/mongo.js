@@ -55,6 +55,9 @@ module.exports = function (myconfig) {
     console.log('Mongoose connection disconnected')
   })
 
+  // suppresses Mongoose 7 strictQuery deprecation warning
+  mongoose.set('strictQuery', true)
+
   // connect to db
   mongoose.connect(url.href, options)
     .catch(function (err) {

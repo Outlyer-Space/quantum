@@ -43,12 +43,6 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
   cd /path/to/Quantum
   ```
 
-Prefer PowerShell? You can still invoke Git Bash:
->
-> ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
-> ```
-
 ---
 
 ### 3) Bring the stack up (recommended)
@@ -56,14 +50,8 @@ Prefer PowerShell? You can still invoke Git Bash:
 After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on Linux:
 
 ```bash
-./quantum.sh angular-up
+./quantum.sh up
 ```
-
-> Prefer PowerShell? You can still invoke Git Bash:
->
-> ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./quantum.sh angular-up"
-> ```
 
 - Runs `docker compose up --build -d` using the Angular full-stack compose file.
 - Builds and starts **MongoDB**, the **Node.js API**, and the **Angular 21 frontend** with a production build served via Nginx.
@@ -100,9 +88,6 @@ AUTH_CLIENT_SECRET = 2infinity
 
 ```text
 Usage: ./quantum.sh [command]
-
-  angular-up    docker compose up --build -d  (Angular full-stack — PRIMARY)
-  angular-down  docker compose down           (Angular full-stack)
   up            docker compose up --build -d  (Node-only stack — DEPRECATED)
   down          docker compose down           (Node-only stack — DEPRECATED)
   docker        Run built image, mounting ./node (API dev hot-reload)
@@ -118,12 +103,10 @@ Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 
 **Which should I use?**
 
-- **First time / most users:** `./quantum.sh angular-up` ✅
+- **First time / most users:** `./quantum.sh up`
 - **API-only development:** `./quantum.sh docker`
 - **Rebuild only:** `./quantum.sh build`
-- **Stop everything:** `./quantum.sh angular-down`
-
-> ⚠️ **Deprecated:** `./quantum.sh up` and `./quantum.sh down` target the Node-only stack (Old Angular frontend). Use `angular-up` / `angular-down` instead.
+- **Stop everything:** `./quantum.sh down`
 
 ---
 

@@ -87,4 +87,12 @@ export interface ProcedureData {
     title: string;
     steps: ProcedureStep[];
     eventname?: string;
+    activeUsers?: ActiveUser[];
+}
+
+export interface ActiveUser {
+    name: string;
+    email: string;
+    status: string | boolean;
+    callsign?: string;
 }

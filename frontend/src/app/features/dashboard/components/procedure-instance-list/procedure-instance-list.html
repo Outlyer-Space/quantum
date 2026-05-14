@@ -4,12 +4,20 @@
             <table class="instances-table">
                 <thead>
                     <tr>
-                        <th class="col-instance">INSTANCE</th>
+                        <th class="col-instance">INSTANCE
+                            <span class="fa fa-caret-down sort-icon"></span>
+                        </th>
                         <th class="col-version">VERSION</th>
                         <th class="col-opened">OPENED BY</th>
+                        @if (mode() === 'archived') {
                         <th class="col-closed">CLOSED BY</th>
+                        }
                         <th class="col-started">STARTED</th>
-                        <th class="col-completed">COMPLETED <span class="fa fa-caret-up sort-icon"></span></th>
+                        @if (mode() === 'archived') {
+                        <th class="col-completed">COMPLETED
+                            <span class="fa fa-caret-up sort-icon"></span>
+                        </th>
+                        }
                         <th class="col-view">VIEW</th>
                     </tr>
                 </thead>
@@ -19,23 +27,29 @@
                         <td class="col-instance">{{ instance.revision }}</td>
                         <td class="col-version">{{ instance.version }}</td>
                         <td class="col-opened">{{ instance.openedBy }}</td>
+                        @if (isArchived(instance)) {
                         <td class="col-closed">{{ instance.closedBy }}</td>
+                        }
                         <td class="col-started">{{ instance.startedAt }}</td>
+                        @if (isArchived(instance)) {
                         <td class="col-completed">{{ instance.completedAt }}</td>
+                        }
                         <td class="col-view">
                             <a [routerLink]="[
-                    '/dashboard/procedure/archivedinstance',
-                    procedureId(),
-                    instance.version,
-                    instance.revision,
-                  ]" class="view-link" aria-label="View archived instance">
+                                    '/dashboard/procedure/' + (mode() === 'archived' ? 'archivedinstance' : 'runninginstance'),
+                                    procedureId(),
+                                    instance.version,
+                                    instance.revision
+                                ]" class="view-link" [attr.aria-label]="'View ' + mode() + ' instance'">
                                 <span class="fa fa-chevron-right view-icon"></span>
                             </a>
                         </td>
                     </tr>
                     } @empty {
                     <tr>
-                        <td colspan="7" class="empty-state">No archived procedure instances available.</td>
+                        <td [attr.colspan]="mode() === 'archived' ? 7 : 5" class="empty-state">
+                            No {{ mode() === 'archived' ? 'archived' : 'active' }} procedure instances available.
+                        </td>
                     </tr>
                     }
                 </tbody>

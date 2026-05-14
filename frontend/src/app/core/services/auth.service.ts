@@ -57,4 +57,12 @@ export class AuthService {
             }
         });
     }
+
+    /** 
+     * Get user roles for a specific mission to map callsigns
+     * Returns an array of users with their mission roles
+     */
+    public getUsersRoleStatus(mission: string): Observable<any[]> {
+        return this.http.get<any[]>('/api/users/role-status', { params: { mission } });
+    }
 }

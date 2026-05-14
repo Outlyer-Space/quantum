@@ -1,13 +1,14 @@
+// Single shared stylesheet for the unified procedure instance list.
+// Replaces running-instances.scss (243 lines) and archived-instances.scss (251 lines).
 @use 'sass:color';
 
 $primary: #337ab7;
 $bg-color: #F2F3F4;
 $table-header-bg: #f8f9fa;
 $border-color: #e9ecef;
-$archive-bg: #000;
-$archive-text: #fff;
+$sidebar-width: 320px;
+$cyan-primary: #07d1ea;
 
-/* ── Typography & Global ── */
 :host {
     display: block;
     min-height: 100vh;
@@ -21,14 +22,11 @@ $archive-text: #fff;
     min-height: 100vh;
 }
 
-
-/* ── Layout ── */
 .main-content {
     flex: 1;
     padding: 25px 30px;
 }
 
-/* Modern Card Enhancements */
 .instances-container {
     width: 100%;
     background: #fff;
@@ -40,14 +38,12 @@ $archive-text: #fff;
     overflow-y: auto;
 }
 
-/* ── Table Styling ── */
 .instances-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
     color: #333;
 
-    /* Sticky, Modern Header Styling */
     thead {
         position: sticky;
         top: 0;
@@ -61,34 +57,19 @@ $archive-text: #fff;
             font-size: 12px;
             font-weight: 700;
             color: $primary;
-            /* Header names are colored blue */
             text-transform: uppercase;
             letter-spacing: 0.8px;
             border-bottom: 2px solid $border-color;
             white-space: nowrap;
 
-            .sort-icon {
-                margin-left: 4px;
-                color: $primary;
-            }
-
-            &.col-view {
-                text-align: center;
-            }
+            .sort-icon { margin-left: 4px; color: $primary; }
+            &.col-view { text-align: center; }
         }
     }
 
-    /* Staggered Row Animation */
     @keyframes slideInUp {
-        0% {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        100% {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        0%   { opacity: 0; transform: translateY(10px); }
+        100% { opacity: 1; transform: translateY(0); }
     }
 
     tbody {
@@ -99,21 +80,10 @@ $archive-text: #fff;
             animation: slideInUp 0.4s ease-out forwards;
             opacity: 0;
 
-            &:nth-child(1) {
-                animation-delay: 0.05s;
-            }
-
-            &:nth-child(2) {
-                animation-delay: 0.1s;
-            }
-
-            &:nth-child(3) {
-                animation-delay: 0.15s;
-            }
-
-            &:nth-child(4) {
-                animation-delay: 0.2s;
-            }
+            &:nth-child(1) { animation-delay: 0.05s; }
+            &:nth-child(2) { animation-delay: 0.10s; }
+            &:nth-child(3) { animation-delay: 0.15s; }
+            &:nth-child(4) { animation-delay: 0.20s; }
 
             &:hover {
                 background-color: #f8fbff;
@@ -123,9 +93,7 @@ $archive-text: #fff;
                 position: relative;
             }
 
-            &:last-child {
-                border-bottom: none;
-            }
+            &:last-child { border-bottom: none; }
         }
 
         td {
@@ -143,33 +111,13 @@ $archive-text: #fff;
     }
 }
 
-/* ── Columns (Updated logic) ── */
-.col-instance {
-    width: 10%;
-    font-weight: 600;
-    color: #222;
-}
-
-.col-version {
-    width: 10%;
-}
-
-.col-opened {
-    width: 15%;
-}
-
-.col-closed {
-    width: 15%;
-}
-
-.col-started {
-    width: 20%;
-}
-
-.col-completed {
-    width: 20%;
-}
-
+/* ── Columns ── */
+.col-instance { width: 10%; font-weight: 600; color: #222; }
+.col-version  { width: 10%; }
+.col-opened   { width: 15%; }
+.col-closed   { width: 15%; }
+.col-started  { width: 20%; }
+.col-completed{ width: 20%; }
 .col-view {
     width: 10%;
     text-align: center;
@@ -186,24 +134,42 @@ $archive-text: #fff;
         transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         background-color: transparent;
 
-        .view-icon {
-            font-size: 14px;
-            transition: transform 0.2s ease;
-        }
+        .view-icon { font-size: 14px; transition: transform 0.2s ease; }
 
         &:hover {
             background-color: rgba($primary, 0.1);
             transform: scale(1.15);
-
-            .view-icon {
-                /* Push the arrow slightly to the right on hover */
-                transform: translateX(2px);
-            }
+            .view-icon { transform: translateX(2px); }
         }
 
-        &:active {
-            transform: scale(0.95);
-            background-color: rgba($primary, 0.2);
-        }
+        &:active { transform: scale(0.95); background-color: rgba($primary, 0.2); }
     }
+}
+
+/* ── Sidebar Toggle Button ── */
+.sidebar-toggle-btn {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    width: 24px;
+    height: 40px;
+    background: $cyan-primary;
+    color: #fff;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: right 0.3s ease-in-out;
+
+    &:hover { background: color.adjust($cyan-primary, $lightness: -8%); }
+    &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    &.is-open { right: $sidebar-width; }
+}
+
+@media only screen and (max-width: 736px) {
+    .sidebar-toggle-btn.is-open { right: 260px; }
 }

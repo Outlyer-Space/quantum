@@ -1,7 +1,11 @@
+// Layout-only styles for ViewProcedureComponent.
+// All step-table styles now live in procedure-step-table.scss.
 @use 'sass:color';
 
 $primary: #337ab7;
 $bg-color: #F2F3F4;
+$sidebar-width: 320px;
+$cyan-primary: #07d1ea;
 
 /* ── Global ── */
 :host {
@@ -17,7 +21,6 @@ $bg-color: #F2F3F4;
     min-height: 100vh;
 }
 
-/* ── Layout ── */
 .main-content {
     flex: 1;
     padding: 20px 15px;
@@ -32,367 +35,6 @@ $bg-color: #F2F3F4;
     border: 1px solid #ddd;
     border-radius: 4px;
     overflow: hidden;
-}
-
-/* ── Table ── */
-.preview-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    color: #333;
-
-    tbody {
-        tr {
-            border-bottom: 1px solid #eee;
-            transition: background-color 0.15s ease;
-
-            &.level-1 {
-                background-color: #BBE1EF;
-            }
-
-            &.level-2 {
-                background-color: #E2F2F9;
-            }
-
-            &.level-3 {
-                background-color: #F8FBFD;
-            }
-
-            &.step-completed {
-                &.level-1 {
-                    background-color: #c6ecc6;
-                }
-
-                &.level-2 {
-                    background-color: #d9f2d9;
-                }
-
-                &.level-3 {
-                    background-color: #ebf7eb;
-                }
-            }
-
-            &:hover {
-                &.level-1 {
-                    background-color: color.adjust(#BBE1EF, $lightness: -3%);
-                }
-
-                &.level-2 {
-                    background-color: color.adjust(#E2F2F9, $lightness: -3%);
-                }
-
-                &.level-3 {
-                    background-color: color.adjust(#F8FBFD, $lightness: -3%);
-                }
-            }
-        }
-
-        td {
-            padding: 10px 8px;
-            vertical-align: top;
-            line-height: 1.4;
-        }
-    }
-
-    &.table-readonly td {
-        color: #444;
-    }
-}
-
-/* ── columns ── */
-.col-icon {
-    width: 30px;
-    text-align: center;
-}
-
-.col-id {
-    width: 70px;
-}
-
-.col-role {
-    width: 70px;
-}
-
-.col-type {
-    width: 40px;
-    text-align: center;
-    font-size: 15px;
-}
-
-.col-content {
-    p {
-        margin: 0 0 8px 0;
-
-        &:last-child {
-            margin-bottom: 0;
-        }
-    }
-
-    .pre-wrap {
-        white-space: pre-wrap;
-    }
-
-    .reference-link {
-        display: inline-block;
-        margin-top: 4px;
-        color: $primary;
-        text-decoration: none;
-        font-size: 13px;
-
-        &:hover {
-            text-decoration: underline;
-        }
-    }
-}
-
-.col-check {
-    width: 40px;
-    text-align: center;
-    vertical-align: middle !important;
-}
-
-.col-timestamp {
-    width: 200px;
-    vertical-align: middle !important;
-    font-size: 12px;
-    color: #555;
-    white-space: nowrap;
-}
-
-.timestamp-value {
-    display: inline-block;
-    padding: 2px 6px;
-    font-size: 11px;
-    color: #333;
-    background: #f0f0f0;
-    border-radius: 3px;
-}
-
-/* ── Custom checkbox ── */
-.custom-checkbox {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
-    width: 24px;
-    height: 24px;
-
-    input[type="checkbox"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-
-        &:checked+.checkmark {
-            background: $primary;
-            border-color: $primary;
-
-            &::after {
-                display: block;
-            }
-        }
-
-        &:disabled+.checkmark {
-            cursor: default;
-        }
-
-        &:disabled:checked+.checkmark {
-            background: $primary;
-            border-color: $primary;
-            opacity: 0.7;
-        }
-
-        &:disabled:not(:checked)+.checkmark {
-            background: #e9ecef;
-            border-color: #ced4da;
-        }
-    }
-
-    .checkmark {
-        width: 22px;
-        height: 22px;
-        border: 2px solid #adb5bd;
-        border-radius: 4px;
-        background: #fff;
-        transition: background-color 0.15s ease, border-color 0.15s ease;
-        position: relative;
-
-        &::after {
-            content: '';
-            display: none;
-            position: absolute;
-            left: 6px;
-            top: 2px;
-            width: 6px;
-            height: 12px;
-            border: solid white;
-            border-width: 0 2.5px 2.5px 0;
-            transform: rotate(45deg);
-        }
-
-        &:hover {
-            border-color: $primary;
-        }
-    }
-}
-
-/* ── Helpers ── */
-.text-danger {
-    color: #d9534f;
-    font-weight: bold;
-}
-
-.toggle-btn {
-    background: none;
-    border: none;
-    padding: 4px;
-    color: #555;
-    font-size: 16px;
-    border-radius: 50%;
-    margin-top: 2px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-
-    &:active {
-        transform: scale(1.2);
-    }
-
-    .toggle-icon {
-        transition: transform 0.2s ease;
-        display: inline-block;
-
-        &.open {
-            transform: rotate(90deg);
-        }
-    }
-
-    &:focus {
-        outline: none;
-    }
-}
-
-/* ── Input block ── */
-.input-block {
-    margin-top: 10px;
-    background: rgba(255, 255, 255, 0.4);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 4px;
-    padding: 12px 16px;
-
-    .recorded-value,
-    .enter-value {
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-
-        label {
-            font-weight: 600;
-            font-size: 13px;
-            margin-right: 8px;
-            color: #555;
-        }
-
-        strong {
-            font-weight: 700;
-            font-size: 13px;
-            color: #222;
-        }
-    }
-
-    .enter-value {
-        margin-bottom: 0;
-    }
-
-    input[type="text"] {
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 13px;
-        width: 190px;
-        margin-right: 12px;
-        font-family: 'Inter', sans-serif;
-        transition: border-color 0.15s ease;
-
-        &:focus {
-            outline: none;
-            border-color: $primary;
-        }
-
-        &:disabled {
-            background-color: #f5f5f5;
-            color: #888;
-        }
-    }
-
-    .btn-set {
-        background: $primary;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        padding: 8px 20px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: background-color 0.15s ease;
-
-        &:hover {
-            background: color.adjust($primary, $lightness: -8%);
-        }
-
-        &:active {
-            background: color.adjust($primary, $lightness: -12%);
-        }
-
-        &:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            color: #888;
-        }
-    }
-
-    .btn-remove {
-        background: #d9534f;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        padding: 8px 16px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-left: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: background-color 0.15s ease;
-
-        &:hover {
-            background: color.adjust(#d9534f, $lightness: -8%);
-        }
-
-        &:active {
-            background: color.adjust(#d9534f, $lightness: -12%);
-        }
-
-        &:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            color: #888;
-        }
-    }
-}
-
-.input-block-disabled {
-    background: rgba(240, 240, 240, 0.6);
-
-    .recorded-value label {
-        color: #777;
-    }
-
-    .recorded-value strong {
-        color: #555;
-    }
 }
 
 /* ── Complete button ── */
@@ -416,11 +58,34 @@ $bg-color: #F2F3F4;
     letter-spacing: 0.5px;
     transition: background-color 0.15s ease;
 
-    &:hover {
-        background: color.adjust($primary, $lightness: -8%);
-    }
+    &:hover { background: color.adjust($primary, $lightness: -8%); }
+    &:active { background: color.adjust($primary, $lightness: -12%); }
+}
 
-    &:active {
-        background: color.adjust($primary, $lightness: -12%);
-    }
+/* ── Sidebar Toggle Button ── */
+.sidebar-toggle-btn {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    width: 24px;
+    height: 40px;
+    background: $cyan-primary;
+    color: #fff;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: right 0.3s ease-in-out;
+
+    &:hover { background: color.adjust($cyan-primary, $lightness: -8%); }
+    &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    &.is-open { right: $sidebar-width; }
+}
+
+@media only screen and (max-width: 736px) {
+    .sidebar-toggle-btn.is-open { right: 260px; }
 }

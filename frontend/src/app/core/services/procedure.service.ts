@@ -9,7 +9,8 @@ import {
     ProcedureSummary,
     RawProcedure,
     RawSection,
-    StepType
+    StepType,
+    ActiveUser
 } from '../models/procedure.model';
 
 /**
@@ -90,9 +91,29 @@ export class ProcedureService {
                     id: proc.procedureID,
                     title: proc.title,
                     steps: this.transformSections(proc.sections, instance?.Steps),
-                    eventname: proc.eventname || ''
+                    eventname: proc.eventname || '',
+                    activeUsers: instance?.users || []
                 };
             })
+        );
+    }
+
+    /** Send user presence heartbeat for an instance */
+    setUserStatus(id: string, revision: string, username: string, email: string, status: boolean): Observable<any> {
+        const payload = {
+            pid: id,
+            revision,
+            username,
+            email,
+            status
+        };
+        return this.http.post('/api/procedures/instances/user-status', payload);
+    }
+
+    /** Lightweight fetch of only the active users array for a running instance */
+    getActiveUsers(id: string, revision: string): Observable<ActiveUser[]> {
+        return this.getLiveInstanceData(id, revision).pipe(
+            map(data => data.activeUsers ?? [])
         );
     }
 
