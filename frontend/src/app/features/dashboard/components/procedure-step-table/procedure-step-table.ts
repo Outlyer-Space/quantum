@@ -39,6 +39,9 @@ export class ProcedureStepTableComponent {
     /** The reactive FormGroup holding input-step controls. */
     inputForm = input.required<FormGroup<Record<string, FormControl<string>>>>();
 
+    /** The IDs of sections that the user has manually closed */
+    closedSectionIds = input<Set<string>>(new Set());
+
     /**
      * Gating predicate injected from the parent.
      * Returns true if the given step may currently be edited.

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, map, of } from 'rxjs';
 import {
@@ -21,11 +21,20 @@ import {
 export class ProcedureService {
     private http = inject(HttpClient);
 
-    /** Global event bus to force dashboard components to refresh immediately */
+    /** Legacy event bus — kept for components not yet migrated to rxResource. */
     public refresh$ = new Subject<void>();
+
+    /**
+     * Signal-based refresh counter for rxResource consumers.
+     * Increment this instead of emitting on refresh$ once a component
+     * has been migrated to rxResource (the resource reads this in its
+     * request() fn, so any increment triggers a re-fetch automatically).
+     */
+    public refreshTick = signal(0);
 
     public requestRefresh(): void {
         this.refresh$.next();
+        this.refreshTick.update(n => n + 1);
     }
 
     // ───────────────────────────────────────────────
@@ -80,7 +89,7 @@ export class ProcedureService {
     /** Fetch live procedure instance, mapping dynamic recorded values onto the static steps */
     getLiveInstanceData(id: string, revision: string): Observable<ProcedureData> {
         return this.http.get<RawProcedure>('/api/procedures/single', {
-            params: { id }
+            params: { id, revision }
         }).pipe(
             map(proc => {
                 if (!proc) {
@@ -112,8 +121,10 @@ export class ProcedureService {
 
     /** Lightweight fetch of only the active users array for a running instance */
     getActiveUsers(id: string, revision: string): Observable<ActiveUser[]> {
-        return this.getLiveInstanceData(id, revision).pipe(
-            map(data => data.activeUsers ?? [])
+        return this.http.get<{ users: ActiveUser[] }>('/api/procedures/instances/users', {
+            params: { id, revision, includeRoles: 'true' }
+        }).pipe(
+            map(data => data.users || [])
         );
     }
 

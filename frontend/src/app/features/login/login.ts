@@ -40,8 +40,24 @@ export class Login {
     private authService = inject(AuthService);
     private titleService = inject(Title);
 
+    /** The active auth provider ('Mongo' or 'Microsoft') */
+    protected provider = signal<string>('Mongo');
+
     constructor() {
         this.titleService.setTitle('Login | Quantum');
+        this.authService.getAuthConfig().subscribe({
+            next: (config) => {
+                this.provider.set(config.provider);
+            },
+            error: (err) => {
+                console.error('Failed to load auth config:', err);
+            }
+        });
+    }
+
+    /** Redirect to Microsoft Azure AD SSO auth route */
+    protected onMicrosoftLogin(): void {
+        window.location.href = '/login_oauth2';
     }
 
     /** Random background chosen once on init */

@@ -5,6 +5,7 @@
                 [steps]="flattenedSteps()"
                 [readonly]="!isRunningInstance()"
                 [inputForm]="inputForm"
+                [closedSectionIds]="closedSectionIds()"
                 [canEdit]="canEditStep"
                 (stepToggled)="onStepToggled($event)"
                 (inputSet)="onInputSet($event)"

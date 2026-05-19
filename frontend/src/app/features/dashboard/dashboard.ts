@@ -17,7 +17,7 @@ export class Dashboard {
         // No procedure context on the dashboard home page
         this.nav.sidebarViewState.set(null);
         this.nav.sidebarProcedureId.set(null);
-        this.nav.sidebarActiveUsers.set([]);
+        this.nav.clearActiveUsers();
         this.nav.procedureTitle.set('');
     }
 }

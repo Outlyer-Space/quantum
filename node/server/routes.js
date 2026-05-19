@@ -119,6 +119,12 @@ module.exports = function (config, app, passport, user) {
     // MODERN SPA API AUTHENTICATION ENDPOINTS (Returns JSON, NO REDIRECTS)
     // =============================================================================
 
+    app.get('/api/auth/config', function (req, res) {
+        res.json({
+            provider: config.auth.provider || 'Mongo'
+        });
+    });
+
     app.get('/api/auth/me', function (req, res) {
         if (req.isAuthenticated()) {
             var u = req.user.toObject ? req.user.toObject() : Object.assign({}, req.user);
@@ -231,6 +237,7 @@ module.exports = function (config, app, passport, user) {
     app.post('/api/procedures/instances/steps',         ensureAuth, ensureProcedureMissionAccess, procs.setInfo);
     app.post('/api/procedures/instances/complete',      ensureAuth, ensureProcedureMissionAccess, procs.setInstanceCompleted);
     app.post('/api/procedures/instances/comments',      ensureAuth, ensureProcedureMissionAccess, procs.setComments);
+    app.get('/api/procedures/instances/users',           ensureAuth, ensureProcedureMissionAccess, procs.getInstanceUsers);
     app.post('/api/procedures/instances/user-status',   ensureAuth, ensureProcedureMissionAccess, procs.setUserStatus);
     app.post('/api/procedures/instances/parent-steps',  ensureAuth, ensureProcedureMissionAccess, procs.setParentsInfo);
 

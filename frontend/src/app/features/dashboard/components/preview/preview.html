@@ -4,7 +4,7 @@
             <app-procedure-step-table
                 [steps]="flattenedSteps()"
                 [readonly]="true"
-                [inputForm]="inputForm"
+                [inputForm]="inputForm()"
                 (stepToggled)="onStepToggled($event)" />
         </div>
     </main>

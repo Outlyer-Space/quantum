@@ -37,7 +37,7 @@
                         <td class="col-view">
                             <a [routerLink]="[
                                     '/dashboard/procedure/' + (mode() === 'archived' ? 'archivedinstance' : 'runninginstance'),
-                                    procedureId(),
+                                    id(),
                                     instance.version,
                                     instance.revision
                                 ]" class="view-link" [attr.aria-label]="'View ' + mode() + ' instance'">

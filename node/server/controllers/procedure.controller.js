@@ -22,7 +22,13 @@ module.exports = {
             };
         }
 
-        ProcedureModel.find(query, {}, function (err, procdata) {
+        ProcedureModel.find(query, {
+            procedureID: 1,
+            title: 1,
+            lastuse: 1,
+            eventname: 1,
+            'instances.running': 1
+        }, function (err, procdata) {
             if (err) {
                 console.log("Error finding procedures data in DB: " + err);
             }
@@ -37,7 +43,18 @@ module.exports = {
         if (!id) {
             return res.status(400).json({ error: 'Bad Request', message: 'Procedure ID is required' });
         }
-        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+        var projection = {
+            procedureID: 1,
+            title: 1,
+            eventname: 1,
+            sections: 1
+        };
+
+        if (req.query.revision) {
+            projection.instances = { $elemMatch: { revision: parseInt(req.query.revision, 10) } };
+        }
+
+        ProcedureModel.findOne({ 'procedureID': id }, projection, function (err, model) {
             if (err) {
                 console.log(err);
                 return res.status(500).json({ error: 'Internal Server Error' });
@@ -97,10 +114,94 @@ module.exports = {
         });
 
     },
+    /**
+     * Lightweight endpoint: returns only the users array for a specific instance revision.
+     * Uses a MongoDB projection so the full sections/steps are never loaded from the DB.
+     * Replaces the pattern of calling getSingleProcedure just to extract users.
+     *
+     * GET /api/procedures/instances/users?id=<procedureID>&revision=<revisionNum>
+     *
+     * Optional query param: ?includeRoles=true
+     * When present, performs a server-side join with the User collection to attach
+     * each user's current callsign for the procedure's mission, eliminating the
+     * second frontend request to /api/users/role-status.
+     */
+    getInstanceUsers: function (req, res) {
+        var procid = req.query.id;
+        var revision = parseInt(req.query.revision, 10);
+
+        if (!procid || isNaN(revision)) {
+            return res.status(400).json({ error: 'Bad Request', message: 'id and revision are required' });
+        }
+
+        // Projection: only load revision + users fields from each instance subdocument.
+        // sections, Steps, versions are NOT loaded from MongoDB at all.
+        ProcedureModel.findOne(
+            { 'procedureID': procid },
+            { 'eventname': 1, 'instances.revision': 1, 'instances.users': 1 },
+            function (err, procs) {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).json({ error: 'Internal Server Error' });
+                }
+                if (!procs) {
+                    return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
+                }
+
+                var inst = procs.instances.find(function (i) { return i.revision === revision; });
+                if (!inst) {
+                    return res.status(404).json({ error: 'Not Found', message: 'Revision not found' });
+                }
+
+                var users = inst.users || [];
+
+                // Optional server-side callsign enrichment to avoid a second round-trip
+                // to /api/users/role-status from the frontend.
+                if (req.query.includeRoles === 'true' && users.length > 0) {
+                    var UserModel = mongoose.model('User');
+                    var missionName = (procs.eventname || '').toLowerCase();
+                    var emails = users.map(function (u) { return u.email; });
+
+                    UserModel.find(
+                        { 'auth.email': { $in: emails } },
+                        { 'auth.email': 1, 'missions': 1 },
+                        function (err, userDocs) {
+                            if (err) {
+                                // Non-fatal: return users without callsigns rather than failing
+                                console.warn('Could not enrich users with callsigns:', err.message);
+                                return res.json({ users: users });
+                            }
+
+                            var enriched = users.map(function (u) {
+                                var doc = userDocs.find(function (d) { return d.auth && d.auth.email === u.email; });
+                                var missionEntry = doc && doc.missions &&
+                                    doc.missions.find(function (m) { return (m.name || '').toLowerCase() === missionName; });
+                                var callsign = missionEntry && missionEntry.currentRole && missionEntry.currentRole.callsign;
+                                return callsign ? Object.assign({}, u.toObject ? u.toObject() : u, { callsign: callsign }) : u;
+                            });
+
+                            res.json({ users: enriched });
+                        }
+                    );
+                } else {
+                    res.json({ users: users });
+                }
+            }
+        );
+    },
     getAllInstances: function (req, res) {
         var id = req.query.procedureID;
 
-        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+        ProcedureModel.findOne({ 'procedureID': id }, {
+            title: 1,
+            'instances.revision': 1,
+            'instances.version': 1,
+            'instances.openedBy': 1,
+            'instances.startedAt': 1,
+            'instances.closedBy': 1,
+            'instances.completedAt': 1,
+            'instances.running': 1
+        }, function (err, model) {
             if (err) {
                 console.log(err);
             }

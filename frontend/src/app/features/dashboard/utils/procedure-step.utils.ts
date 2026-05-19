@@ -3,14 +3,15 @@ import { ProcedureStep } from '../../../core/models/procedure.model';
 
 /**
  * Flattens a nested ProcedureStep tree into a single flat array,
- * respecting the `isOpen` flag for collapsed parent nodes.
+ * respecting the `closedSectionIds` set for collapsed parent nodes.
  */
-export function flattenSteps(steps: ProcedureStep[]): ProcedureStep[] {
+export function flattenSteps(steps: ProcedureStep[], closedSectionIds?: Set<string>): ProcedureStep[] {
     const result: ProcedureStep[] = [];
     const flatten = (list: ProcedureStep[]) => {
         for (const step of list) {
             result.push(step);
-            if (step.isOpen && step.children) {
+            const isClosed = closedSectionIds ? closedSectionIds.has(step.id) : !step.isOpen;
+            if (!isClosed && step.children) {
                 flatten(step.children);
             }
         }
@@ -43,25 +44,18 @@ export function buildInputFormControls(
 
 /**
  * Patches an existing FormGroup with updated values from a new steps array.
- * Skips the control currently focused by the user to avoid interrupting typing.
+ * Note: We no longer overwrite the FormControl values during a poll because
+ * the input box is a local scratchpad. Overwriting it would wipe out any
+ * drafted text the user has typed but not yet submitted if they lose focus.
  */
 export function patchInputForm(
     form: FormGroup<Record<string, FormControl<string>>>,
     steps: ProcedureStep[],
     focusedControlId: string | null
 ): void {
-    const walk = (list: ProcedureStep[]) => {
-        for (const step of list) {
-            if (step.type === 'input') {
-                const ctrl = form.controls[step.id];
-                if (ctrl && step.id !== focusedControlId) {
-                    ctrl.setValue(step.inputValue ?? '', { emitEvent: false });
-                }
-            }
-            if (step.children) walk(step.children);
-        }
-    };
-    walk(steps);
+    // Intentionally left blank. 
+    // The server state is rendered in the DOM via {{ step.recordedValue }},
+    // while the form controls hold unsent draft data that should not be wiped.
 }
 
 /**

@@ -57,6 +57,13 @@ export class AuthService {
             }
         });
     }
+ 
+    /**
+     * Get active authentication provider configuration
+     */
+    public getAuthConfig(): Observable<{ provider: string }> {
+        return this.http.get<{ provider: string }>('/api/auth/config');
+    }
 
     /** 
      * Get user roles for a specific mission to map callsigns

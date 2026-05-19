@@ -31,14 +31,17 @@ export const routes: Routes = [
             },
             {
                 path: 'procedure/run/:id',
+                data: { mode: 'run' },
                 loadComponent: () => import('./features/dashboard/components/view-procedure/view-procedure').then(m => m.ViewProcedureComponent),
             },
             {
                 path: 'procedure/runninginstance/:id/:version/:revision',
+                data: { mode: 'running' },
                 loadComponent: () => import('./features/dashboard/components/view-procedure/view-procedure').then(m => m.ViewProcedureComponent),
             },
             {
                 path: 'procedure/archivedinstance/:id/:version/:revision',
+                data: { mode: 'archived' },
                 loadComponent: () => import('./features/dashboard/components/view-procedure/view-procedure').then(m => m.ViewProcedureComponent),
             }
         ]

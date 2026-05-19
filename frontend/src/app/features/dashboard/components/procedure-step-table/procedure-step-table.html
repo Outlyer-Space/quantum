@@ -5,11 +5,10 @@
             [class.is-expandable]="step.children && step.children.length > 0"
             [class.step-completed]="!!step.recordedValue && (!step.children || step.children.length === 0)">
 
-            <!-- Toggle / Icon Column -->
             <td class="col-icon">
                 @if (step.children && step.children.length > 0) {
                 <button class="toggle-btn" (click)="onToggle(step)" aria-label="Toggle children">
-                    <span class="fa fa-chevron-right toggle-icon" [class.open]="step.isOpen"></span>
+                    <span class="fa fa-chevron-right toggle-icon" [class.open]="!closedSectionIds().has(step.id)"></span>
                 </button>
                 }
             </td>
