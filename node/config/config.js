@@ -14,10 +14,8 @@
 
 */
 
-// show banner + current config
-
 const fs    = require('fs')
-const fpath = './app/media/quantum.banner'
+const fpath = './media/quantum.banner'
 const data  = fs.readFileSync(fpath, { encoding: 'utf8', flag: 'r' })
 console.log(data)
 console.log(' > NODE_ENV            : ' + process.env.NODE_ENV)

@@ -20,31 +20,7 @@ module.exports = function (config, app, passport, user) {
     // VIEWS
     // ******************************************************************************
 
-    if (process.env.SERVE_ANGULAR !== 'true') {
-        // Home + Login page
-        app.get('/', function (req, res) {
-            const flashMsg = req.flash('error')
-            console.log(flashMsg)
-            res.render('index.ejs', {
-                login: config.auth.provider,
-                flash: flashMsg
-            })
-        })
 
-        // Dashboard (main view)
-        app.get('/dashboard', ensureLoggedIn('./'), function (req, res) {
-            res.render('dashboard.ejs', {
-                user: req.user
-            })
-        })
-
-        // User Info (settings)
-        app.get('/profile', ensureLoggedIn('./'), function (req, res) {
-            res.render('profile.ejs', {
-                user: req.user
-            })
-        })
-    } // End of conditional EJS views
 
     // Current authenticated user for frontend bootstrap
     app.get('/api/me', ensureLoggedIn('./'), function (req, res) {
@@ -256,11 +232,8 @@ module.exports = function (config, app, passport, user) {
     app.post('/api/users/allowed-roles',                ensureAuth, ensureLeadRole, usr.setAllowedRoles);
     app.get('/api/users/role-status',                   ensureAuth, usr.getUsersCurrentRole);
 
-    // SPA CATCH-ALL
-    if (process.env.SERVE_ANGULAR === 'true') {
-        const path = require('path')
-        app.get('*', function (req, res) {
-            res.sendFile(path.join(__dirname, '../public/index.html'))
-        })
-    }
+    const path = require('path')
+    app.get('*', function (req, res) {
+        res.sendFile(path.join(__dirname, '../public/index.html'))
+    })
 };

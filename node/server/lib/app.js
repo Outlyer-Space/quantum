@@ -46,15 +46,10 @@ module.exports = function (config, passport) {
   app.use(passport.initialize())
   app.use(passport.session())
 
-  if (process.env.SERVE_ANGULAR === 'true') {
-    app.use(express.static(path.join(pwd, '/public')))
-  }
-  app.use(express.static(path.join(pwd, '/app')))
+  app.use(express.static(path.join(pwd, '/public')))
   app.use(flash())
 
   app.set('port', 3000)                            // port, http://localhost:3000
-  app.set('views', path.join(pwd, '/app/views'))   // views def directory
-  app.set('view engine', 'ejs')                    // use ejs for templating
 
   return app
 }
