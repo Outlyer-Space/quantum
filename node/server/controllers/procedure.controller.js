@@ -71,6 +71,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             if (model) {
                 var sections = model.sections;
@@ -97,6 +101,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (model) {
@@ -204,6 +212,10 @@ module.exports = {
         }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             var allinstances = {};
 
@@ -284,7 +296,7 @@ module.exports = {
                 var roleErrSteps = [];
                 for (var r = 0; r < sheet1.length; r++) {
                     sheet1[r].Type = sheet1[r].Type.replace(/\s/g, '');
-                    if (sheet1[r].Type.toUpperCase !== 'HEADING') {
+                    if (sheet1[r].Type.toUpperCase() !== 'HEADING') {
                         if (sheet1[r].Role) {
                             sheet1[r].Role = sheet1[r].Role.replace(/\s/g, '');
                             var isRoleValid = checkRoleValidity(sheet1[r].Role);
@@ -305,11 +317,11 @@ module.exports = {
                 var nonHeadingErr = [];
                 if (errorTypeSteps.length === 0) {
                     if (roleErrSteps.length > 0) {
-                        res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                        return res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
                     }
 
                     if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                        res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                        return res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                     }
 
                     if (fileverify === sheet1.length) {
@@ -335,34 +347,34 @@ module.exports = {
                         }
 
                         if (headingErr.length > 0 && nonHeadingErr.length > 0) {
-                            res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
+                            return res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
                         } else if (headingErr.length > 0 && nonHeadingErr.length === 0) {
-                            res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
+                            return res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
                         } else if (nonHeadingErr.length > 0 && headingErr.length === 0) {
-                            res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
+                            return res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
                         }
                     } else {
-                        res.json({ error_code: 0, err_desc: "Not a valid file" });
+                        return res.json({ error_code: 0, err_desc: "Not a valid file" });
                     }
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
+                    return res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length === 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
+                    return res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
                 } else if (roleErrSteps.length > 0 && errorTypeSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                    return res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
                 } else if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING' && errorTypeSteps.length === 0 && roleErrSteps.length === 0) {
-                    res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else {
-                    res.json({ error_code: 0, err_desc: "Not a valid file" });
+                    return res.json({ error_code: 0, err_desc: "Not a valid file" });
                 }
             } else {
-                res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
+                return res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
             }
             //End of Validations
 
@@ -444,10 +456,11 @@ module.exports = {
                     }
                 });
             } else if (fileverify !== sheet1.length) {
-                res.json({ error_code: 0, err_desc: "Not a valid file" });
+                return res.json({ error_code: 0, err_desc: "Not a valid file" });
             }
         } catch (e) {
             console.log(e);
+            return res.status(500).json({ error_code: 500, err_desc: "Internal Server Error" });
         }
     },
     saveProcedureInstance: function (req, res) {
@@ -461,6 +474,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             if (procs) {
                 var instancesteps = [];
@@ -506,6 +523,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -560,6 +581,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -598,6 +623,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -649,6 +678,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -720,6 +753,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': prevProcId }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -761,6 +798,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {

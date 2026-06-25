@@ -492,7 +492,8 @@ export class ViewProcedureComponent implements OnDestroy {
         const id = this.id();
         const revision = this.revision();
         if (id && revision) {
-            this.procedureService.setUserStatus(id, revision, username, email, false).subscribe();
+            const payload = { pid: id, revision: parseInt(revision, 10), username, email, status: false };
+            navigator.sendBeacon('/api/procedures/instances/user-status', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
         }
     }
 

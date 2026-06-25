@@ -22,13 +22,6 @@ module.exports = function (config, app, passport, user) {
 
 
 
-    // Current authenticated user for frontend bootstrap
-    app.get('/api/me', ensureLoggedIn('./'), function (req, res) {
-        var u = req.user.toObject ? req.user.toObject() : Object.assign({}, req.user);
-        if (u.auth) { delete u.auth.token; delete u.auth.salt; }
-        res.json(u);
-    })
-
     // ******************************************************************************
     // ACTIONS
     // ******************************************************************************
@@ -208,7 +201,7 @@ module.exports = function (config, app, passport, user) {
     app.post('/api/procedures/upload',                  ensureAuth, ensureMissionAccess, upload.single('file'), procs.uploadFile);
     app.patch('/api/procedures/name',                   ensureAuth, ensureProcedureMissionAccess, procs.updateProcedureName);
     app.get('/api/procedures/instances',                ensureAuth, ensureProcedureMissionAccess, procs.getAllInstances);
-    app.get('/api/procedures/instances/live',           ensureAuth, ensureProcedureMissionAccess, procs.getLiveInstanceData);
+    // /api/procedures/instances/live route removed as it's superseded by /api/procedures/single
     app.post('/api/procedures/instances',               ensureAuth, ensureProcedureMissionAccess, procs.saveProcedureInstance);
     app.post('/api/procedures/instances/steps',         ensureAuth, ensureProcedureMissionAccess, procs.setInfo);
     app.post('/api/procedures/instances/complete',      ensureAuth, ensureProcedureMissionAccess, procs.setInstanceCompleted);

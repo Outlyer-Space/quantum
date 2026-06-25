@@ -117,20 +117,10 @@ module.exports = {
                     console.warn(`User ${user.auth?.email} has empty allowedRoles for mission: ${mission}`);
                 }
 
-                const aRoles = allowedRoles.reduce((acc, role) => {
-                    // Safety check for role structure
-                    if (role && role.callsign) {
-                        acc[role.callsign] = 1;
-                    } else {
-                        console.warn(`Invalid role structure for user ${user.auth?.email}:`, role);
-                    }
-                    return acc;
-                }, {});
-
                 return {
                     auth: user.auth,
                     currentRole: userMission.currentRole,
-                    allowedRoles: aRoles
+                    allowedRoles: allowedRoles
                 };
             }).filter(Boolean);
 

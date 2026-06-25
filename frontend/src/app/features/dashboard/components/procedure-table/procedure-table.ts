@@ -6,6 +6,7 @@ import {
     effect,
     viewChild,
     inject,
+    OnDestroy
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { rxResource } from '@angular/core/rxjs-interop';
@@ -27,7 +28,7 @@ type SortField = 'id' | 'title' | 'lastUse' | 'running' | 'archived';
     templateUrl: './procedure-table.html',
     styleUrl: './procedure-table.scss',
 })
-export class ProcedureTableComponent {
+export class ProcedureTableComponent implements OnDestroy {
     private procedureService = inject(ProcedureService);
     private authService = inject(AuthService);
     private router = inject(Router);
@@ -227,10 +228,21 @@ export class ProcedureTableComponent {
         }
     }
 
+    private timeoutId: any;
+
+    ngOnDestroy(): void {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+        }
+    }
+
     protected triggerAction(procId: string, action: string): void {
         if (this.activeAction()?.id === procId && this.activeAction()?.action === action) return;
         this.activeAction.set({ id: procId, action });
-        setTimeout(() => {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+        }
+        this.timeoutId = setTimeout(() => {
             if (this.activeAction()?.id === procId && this.activeAction()?.action === action) {
                 this.activeAction.set(null);
             }

@@ -186,7 +186,7 @@ export class ProcedureService {
         const payload = {
             id,
             usernamerole: status ? `${username} - ${status}` : username,
-            lastuse: new Date().toLocaleString(),
+            lastuse: new Date().toISOString(),
             username,
             email,
             status
@@ -205,7 +205,7 @@ export class ProcedureService {
             steptype: steptype === 'input' ? 'Input' : steptype,
             info: info,
             usernamerole: username, // Fallback format used on the backend
-            lastuse: new Date().toLocaleString()
+            lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances/steps', payload);
     }
@@ -216,7 +216,7 @@ export class ProcedureService {
             id,
             revision: parseInt(revision, 10),
             usernamerole: username,
-            lastuse: new Date().toLocaleString()
+            lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances/complete', payload);
     }
