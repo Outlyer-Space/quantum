@@ -207,6 +207,19 @@ export class ProcedureService {
         return this.http.post('/api/procedures/instances/steps', payload);
     }
 
+    /** Set completion info for multiple parent heading steps at once */
+    setParentsInfo(id: string, revision: string, parentsArray: { index: number, parent: any }[], info: string, username: string): Observable<any> {
+        const payload = {
+            id,
+            revision: parseInt(revision, 10),
+            parentsArray,
+            info,
+            usernamerole: username,
+            lastuse: new Date().toISOString()
+        };
+        return this.http.post('/api/procedures/instances/parent-steps', payload);
+    }
+
     /** Set an entire procedure instance to the Completed/Archived status */
     completeInstance(id: string, revision: string, username: string): Observable<any> {
         const payload = {

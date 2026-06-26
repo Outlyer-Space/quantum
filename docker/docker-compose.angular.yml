@@ -32,7 +32,7 @@ services:
       mongo:
         condition: service_healthy
     env_file:
-      - ../secrets.env
+      - ../${ENV_FILE_NAME:-secrets.env}
     environment:
       - SERVE_ANGULAR=true
     ports:

@@ -175,7 +175,8 @@ module.exports = {
 
                 // role is now stored directly on each user object in the instance,
                 // so no secondary UserModel lookup is needed.
-                res.json({ users: users });
+                var users = inst.users || [];
+                return res.json({ users: users });
             }
         );
     },
@@ -550,7 +551,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -593,7 +594,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -647,7 +648,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -764,7 +765,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -825,7 +826,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });

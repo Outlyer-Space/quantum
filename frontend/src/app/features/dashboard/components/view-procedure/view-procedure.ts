@@ -507,7 +507,7 @@ export class ViewProcedureComponent implements OnDestroy {
         const id = this.id();
         const revision = this.revision();
         if (id && revision) {
-            const payload = { pid: id, revision: parseInt(revision, 10), username, email, status: false };
+            const payload = { pid: id, revision: parseInt(revision, 10), username, email, isOnline: false };
             navigator.sendBeacon('/api/procedures/instances/user-status', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
         }
     }
@@ -522,6 +522,16 @@ export class ViewProcedureComponent implements OnDestroy {
      */
     private autoCompleteParents(): void {
         const steps = this.localStepsCache ?? [];
+        
+        const newlyCompleted: any[] = [];
+        const newlyUncompleted: any[] = [];
+        
+        const now = new Date();
+        const utcClock = `${this.getDayOfYear(now)}.${
+            String(now.getUTCHours()).padStart(2, '0')}:${
+            String(now.getUTCMinutes()).padStart(2, '0')}:${
+            String(now.getUTCSeconds()).padStart(2, '0')} UTC`;
+
         const markParents = (list: ProcedureStep[]): void => {
             for (const step of list) {
                 if (step.children && step.children.length > 0) {
@@ -530,19 +540,30 @@ export class ViewProcedureComponent implements OnDestroy {
                         c => c.recordedValue && c.recordedValue.trim().length > 0
                     );
                     if (allDone && !step.recordedValue) {
-                        const now = new Date();
-                        const utcClock = `${this.getDayOfYear(now)}.${
-                            String(now.getUTCHours()).padStart(2, '0')}:${
-                            String(now.getUTCMinutes()).padStart(2, '0')}:${
-                            String(now.getUTCSeconds()).padStart(2, '0')} UTC`;
                         step.recordedValue = utcClock;
+                        newlyCompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' } });
                     } else if (!allDone && step.recordedValue) {
                         step.recordedValue = '';
+                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' } });
                     }
                 }
             }
         };
         markParents(steps);
+        
+        const id = this.id();
+        const revision = this.revision();
+        const user = this.authService.user();
+        if (!id || !revision || !user || !this.isRunningInstance()) return;
+        
+        const username = user.auth?.name || 'Unknown User';
+
+        if (newlyCompleted.length > 0) {
+            this.procedureService.setParentsInfo(id, revision, newlyCompleted, utcClock, username).subscribe();
+        }
+        if (newlyUncompleted.length > 0) {
+            this.procedureService.setParentsInfo(id, revision, newlyUncompleted, '', username).subscribe();
+        }
     }
 
     private getDayOfYear(date: Date): string {
