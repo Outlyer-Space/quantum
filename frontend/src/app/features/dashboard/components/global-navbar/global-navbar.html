@@ -1,0 +1,22 @@
+<!-- Global Settings and About Dialogs -->
+<app-settings-dialog />
+<app-about-dialog />
+
+<nav class="top-navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-left">
+        <a routerLink="/dashboard" class="logo-link" aria-label="Quantum home">
+            <img src="media/logos/Quantum_Logo_Regular.png" alt="Quantum" class="nav-logo" width="120" height="24" />
+        </a>
+        @if (nav.title()) {
+        <div class="proc-header-title">{{ nav.title() }}</div>
+        }
+    </div>
+    <div class="navbar-right">
+        @if (nav.showReturnBtn()) {
+        <a routerLink="/dashboard" class="btn btn-return">Exit</a>
+        }
+        <app-user-menu [userName]="userName()" [callsign]="userCallsign()" [showAdminBtn]="isLeadRole()"
+            (settingsRequested)="openSettings()" (aboutRequested)="openAbout()"
+            (userAdminRequested)="openUserAdmin()" />
+    </div>
+</nav>

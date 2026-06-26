@@ -7,9 +7,10 @@ var procedureSchema = mongoose.Schema({
     title: { type: String, required: true },
     lastuse: { type: String },
     sections: { type: Array, required: true },
-    eventname: { type: String, required: true },
+    eventname: { type: String, required: true, index: true },
     uploadedBy: { type: String },
     updatedBy: { type: String },
+    instanceCounter: { type: Number, default: 0 },
     instances: { type: Array },
     versions: { type: Array }
 });

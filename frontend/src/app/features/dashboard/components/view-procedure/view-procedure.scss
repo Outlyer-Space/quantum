@@ -1,0 +1,91 @@
+// Layout-only styles for ViewProcedureComponent.
+// All step-table styles now live in procedure-step-table.scss.
+@use 'sass:color';
+
+$primary: #337ab7;
+$bg-color: #F2F3F4;
+$sidebar-width: 320px;
+$cyan-primary: #07d1ea;
+
+/* ── Global ── */
+:host {
+    display: block;
+    min-height: 100vh;
+    background-color: $bg-color;
+    font-family: 'Inter', sans-serif;
+}
+
+.dashboard-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.preview-container {
+    width: 100%;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* ── Complete button ── */
+.completion-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem 0;
+}
+
+.btn-complete-modern {
+    background: $primary;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 10px 32px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: background-color 0.15s ease;
+
+    &:hover { background: color.adjust($primary, $lightness: -8%); }
+    &:active { background: color.adjust($primary, $lightness: -12%); }
+}
+
+/* ── Sidebar Toggle Button ── */
+.sidebar-toggle-btn {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    width: 24px;
+    height: 40px;
+    background: $cyan-primary;
+    color: #fff;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: right 0.3s ease-in-out;
+
+    &:hover { background: color.adjust($cyan-primary, $lightness: -8%); }
+    &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    &.is-open { right: $sidebar-width; }
+}
+
+@media only screen and (max-width: 736px) {
+    .sidebar-toggle-btn.is-open { right: 260px; }
+}

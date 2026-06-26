@@ -1,0 +1,41 @@
+@if (isOpen()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="settings-title">Switch Role</h2>
+        <button class="close-btn" (click)="close()" aria-label="Close settings">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        @if (loading()) {
+        <div class="loading-spinner">Loading roles...</div>
+        } @else {
+        @if (roles().length === 0) {
+        <p class="no-roles-msg">No available roles assigned to this account.</p>
+        }
+        @for (pair of rolePairs; track $index) {
+        <div class="role-row">
+            @for (role of pair; track role.callsign) {
+            <label class="role-option">
+                <input type="radio" name="user-role" [value]="role.name" [checked]="selectedRoleName() === role.name"
+                    (change)="onRoleChange(role.name)" />
+                <span class="role-label">{{ role.name }} ({{ role.callsign }})</span>
+            </label>
+            }
+        </div>
+        }
+        }
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        <button class="btn btn-close" (click)="close()" [disabled]="loading()">Close</button>
+        <button class="btn btn-save" (click)="save()" [disabled]="loading() || roles().length === 0">Save</button>
+    </div>
+</div>
+}

@@ -1,0 +1,11 @@
+<div class="dashboard-layout">
+    <main class="main-content">
+        <div class="preview-container">
+            <app-procedure-step-table
+                [steps]="flattenedSteps()"
+                [readonly]="true"
+                [inputForm]="inputForm()"
+                (stepToggled)="onStepToggled($event)" />
+        </div>
+    </main>
+</div>

@@ -1,4 +1,5 @@
 var mongoose = require('mongoose');
+var fs = require('fs');
 var ProcedureModel = mongoose.model('procedure');
 var XLSX = require("xlsx");
 var configRole = require('../../config/role')
@@ -8,14 +9,72 @@ var validTypes = Object.keys(configStep.types);
 
 module.exports = {
     getProcedureList: function (req, res) {
-        ProcedureModel.find({}, {}, function (err, procdata) {
+        // Build mission filter from middleware (null = no filter for lead roles)
+        var query = {};
+
+        // If the frontend sends ?mission=<name>, filter to that single mission
+        if (req.query.mission) {
+            query.eventname = { $regex: new RegExp('^' + req.query.mission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') };
+        } else if (req.userMissionNames) {
+            // Case-insensitive match against all of the user's missions
+            query.eventname = {
+                $regex: new RegExp('^(' + req.userMissionNames.map(function (n) { return n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')$', 'i')
+            };
+        }
+
+        ProcedureModel.find(query, {
+            procedureID: 1,
+            title: 1,
+            lastuse: 1,
+            eventname: 1,
+            'instances.running': 1
+        }, function (err, procdata) {
             if (err) {
                 console.log("Error finding procedures data in DB: " + err);
+                return res.status(500).json({ error: 'Internal Server Error' });
             }
             if (procdata) {
-                res.send(procdata);
+                var result = procdata.map(function (p) {
+                    var instances = p.instances || [];
+                    return {
+                        _id: p._id,
+                        procedureID: p.procedureID,
+                        title: p.title,
+                        lastuse: p.lastuse,
+                        eventname: p.eventname,
+                        running: instances.filter(function (i) { return i.running; }).length,
+                        archived: instances.filter(function (i) { return !i.running; }).length
+                    };
+                });
+                res.send(result);
             }
+        });
+    },
+    getSingleProcedure: function (req, res) {
+        var id = req.query.id;
+        if (!id) {
+            return res.status(400).json({ error: 'Bad Request', message: 'Procedure ID is required' });
+        }
+        var projection = {
+            procedureID: 1,
+            title: 1,
+            eventname: 1,
+            sections: 1
+        };
 
+        if (req.query.revision) {
+            projection.instances = { $elemMatch: { revision: parseInt(req.query.revision, 10) } };
+        }
+
+        ProcedureModel.findOne({ 'procedureID': id }, projection, function (err, model) {
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
+            }
+            res.json(model);
         });
     },
     getProcedureData: function (req, res) {
@@ -24,6 +83,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             if (model) {
                 var sections = model.sections;
@@ -50,6 +113,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (model) {
@@ -67,12 +134,71 @@ module.exports = {
         });
 
     },
+    /**
+     * Lightweight endpoint: returns only the users array for a specific instance revision.
+     * Uses a MongoDB projection so the full sections/steps are never loaded from the DB.
+     * Replaces the pattern of calling getSingleProcedure just to extract users.
+     *
+     * GET /api/procedures/instances/users?id=<procedureID>&revision=<revisionNum>
+     *
+     * Optional query param: ?includeRoles=true
+     * When present, performs a server-side join with the User collection to attach
+     * each user's current callsign for the procedure's mission, eliminating the
+     * second frontend request to /api/users/role-status.
+     */
+    getInstanceUsers: function (req, res) {
+        var procid = req.query.id;
+        var revision = parseInt(req.query.revision, 10);
+
+        if (!procid || isNaN(revision)) {
+            return res.status(400).json({ error: 'Bad Request', message: 'id and revision are required' });
+        }
+
+        // Projection: only load revision + users fields from each instance subdocument.
+        // sections, Steps, versions are NOT loaded from MongoDB at all.
+        ProcedureModel.findOne(
+            { 'procedureID': procid },
+            { 'eventname': 1, 'instances.revision': 1, 'instances.users': 1 },
+            function (err, procs) {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).json({ error: 'Internal Server Error' });
+                }
+                if (!procs) {
+                    return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
+                }
+
+                var inst = procs.instances.find(function (i) { return i.revision === revision; });
+                if (!inst) {
+                    return res.status(404).json({ error: 'Not Found', message: 'Revision not found' });
+                }
+
+                // role is now stored directly on each user object in the instance,
+                // so no secondary UserModel lookup is needed.
+                var users = inst.users || [];
+                return res.json({ users: users });
+            }
+        );
+    },
     getAllInstances: function (req, res) {
         var id = req.query.procedureID;
 
-        ProcedureModel.findOne({ 'procedureID': id }, function (err, model) {
+        ProcedureModel.findOne({ 'procedureID': id }, {
+            title: 1,
+            'instances.revision': 1,
+            'instances.version': 1,
+            'instances.openedBy': 1,
+            'instances.startedAt': 1,
+            'instances.closedBy': 1,
+            'instances.completedAt': 1,
+            'instances.running': 1
+        }, function (err, model) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!model) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             var allinstances = {};
 
@@ -93,8 +219,24 @@ module.exports = {
             var filename = req.file.originalname.split(" - ");
             var filepath = req.file.path;
             var workbook = XLSX.readFile(filepath);
+            // Clean up temp file now that it's been read into memory
+            fs.unlink(filepath, function (unlinkErr) {
+                if (unlinkErr) console.error('Failed to delete temp upload:', unlinkErr.message);
+            });
             var sheet1 = XLSX.utils.sheet_to_json(workbook.Sheets.Sheet1);
             var userdetails = req.body.userdetails;
+            // Mission sent explicitly from the frontend; fall back to filename[1] for
+            // legacy files that still use the old 3-part 'index - mission - title.xlsx' format.
+            var missionName = (req.body.mission && req.body.mission.trim())
+                ? req.body.mission.trim().toLowerCase()
+                : (filename.length >= 3 ? filename[1].trim().toLowerCase() : null);
+            if (!missionName) {
+                return res.status(400).json({ error_code: 0, err_desc: 'Mission name is required for upload.' });
+            }
+            // Validate the user is authorized for this mission
+            if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === missionName; })) {
+                return res.status(403).json({ error_code: 0, err_desc: 'You do not have access to upload to this mission.' });
+            }
             var errordetails = ""
 
             // File Upload Validations
@@ -137,7 +279,7 @@ module.exports = {
                 var roleErrSteps = [];
                 for (var r = 0; r < sheet1.length; r++) {
                     sheet1[r].Type = sheet1[r].Type.replace(/\s/g, '');
-                    if (sheet1[r].Type.toUpperCase !== 'HEADING') {
+                    if (sheet1[r].Type.toUpperCase() !== 'HEADING') {
                         if (sheet1[r].Role) {
                             sheet1[r].Role = sheet1[r].Role.replace(/\s/g, '');
                             var isRoleValid = checkRoleValidity(sheet1[r].Role);
@@ -158,11 +300,11 @@ module.exports = {
                 var nonHeadingErr = [];
                 if (errorTypeSteps.length === 0) {
                     if (roleErrSteps.length > 0) {
-                        res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                        return res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
                     }
 
                     if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                        res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                        return res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                     }
 
                     if (fileverify === sheet1.length) {
@@ -188,34 +330,34 @@ module.exports = {
                         }
 
                         if (headingErr.length > 0 && nonHeadingErr.length > 0) {
-                            res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
+                            return res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
                         } else if (headingErr.length > 0 && nonHeadingErr.length === 0) {
-                            res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
+                            return res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
                         } else if (nonHeadingErr.length > 0 && headingErr.length === 0) {
-                            res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
+                            return res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
                         }
                     } else {
-                        res.json({ error_code: 0, err_desc: "Not a valid file" });
+                        return res.json({ error_code: 0, err_desc: "Not a valid file" });
                     }
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
+                    return res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length === 0 && roleErrSteps.length > 0 && sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING') {
-                    res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else if (errorTypeSteps.length > 0 && roleErrSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
+                    return res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
                 } else if (roleErrSteps.length > 0 && errorTypeSteps.length === 0 && sheet1[sheet1.length - 1].Type.toUpperCase() !== 'HEADING') {
-                    res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                    return res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
                 } else if (sheet1[sheet1.length - 1].Type.toUpperCase() === 'HEADING' && errorTypeSteps.length === 0 && roleErrSteps.length === 0) {
-                    res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
+                    return res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": sheet1[sheet1.length - 1].Step, "Type": sheet1[sheet1.length - 1].Type }] });
                 } else {
-                    res.json({ error_code: 0, err_desc: "Not a valid file" });
+                    return res.json({ error_code: 0, err_desc: "Not a valid file" });
                 }
             } else {
-                res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
+                return res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
             }
             //End of Validations
 
@@ -229,9 +371,12 @@ module.exports = {
                     }
 
                     if (procs) { // Update a procedure
-                        var ptitle = filename[2].split(".");
-                        procs.procedureID = filename[0];
-                        procs.title = filename[1] + " - " + ptitle[0];
+                        // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
+                        var titlePart = filename.length >= 3 ? filename[2] : filename[1];
+                        var ptitle = titlePart.split(".");
+                        procs.procedureID = filename[0].trim();
+                        procs.title = ptitle[0].trim();
+                        procs.eventname = missionName;
 
                         if (procs.versions && procs.versions.length > 0) {
                             procs.versions.push(sheet1);
@@ -263,11 +408,14 @@ module.exports = {
                     } else { //Save a new procedure
 
                         var pfiles = new ProcedureModel();
-                        var ptitle = filename[2].split(".");
+                        // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
+                        var titlePart = filename.length >= 3 ? filename[2] : filename[1];
+                        var ptitle = titlePart.split(".");
 
-                        pfiles.procedureID = filename[0];
-                        pfiles.title = filename[1] + " - " + ptitle[0];
+                        pfiles.procedureID = filename[0].trim();
+                        pfiles.title = ptitle[0].trim();
                         pfiles.lastuse = "";
+                        pfiles.instanceCounter = 0;
                         pfiles.instances = [];
                         pfiles.versions = [];
                         pfiles.sections = []; // Explicitly initialize array
@@ -278,7 +426,7 @@ module.exports = {
 
                         pfiles.versions.push(pfiles.sections);
 
-                        pfiles.eventname = filename[1];
+                        pfiles.eventname = missionName;
                         pfiles.uploadedBy = userdetails;
                         pfiles.save(function (err, result) {
                             if (err) {
@@ -292,10 +440,11 @@ module.exports = {
                     }
                 });
             } else if (fileverify !== sheet1.length) {
-                res.json({ error_code: 0, err_desc: "Not a valid file" });
+                return res.json({ error_code: 0, err_desc: "Not a valid file" });
             }
         } catch (e) {
             console.log(e);
+            return res.status(500).json({ error_code: 500, err_desc: "Internal Server Error" });
         }
     },
     saveProcedureInstance: function (req, res) {
@@ -304,25 +453,34 @@ module.exports = {
         var lastuse = req.body.lastuse;//start time
         var username = req.body.username;
         var useremail = req.body.email;
-        var userstatus = req.body.status;
+        var userrole = req.body.role;
 
-        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+        ProcedureModel.findOneAndUpdate(
+            { 'procedureID': procid },
+            { $inc: { instanceCounter: 1 } },
+            { new: true },
+            function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
             if (procs) {
                 var instancesteps = [];
                 for (var i = 0; i < procs.sections.length; i++) {
                     instancesteps.push({ "step": procs.sections[i].Step, "info": "" })
                 }
-                var revision = procs.instances.length + 1;
+                var revision = procs.instanceCounter;
                 var versionNum = procs.versions.length;
 
                 procs.instances.push({
-                    "openedBy": usernamerole, "Steps": instancesteps, "closedBy": "", "startedAt": lastuse, "completedAt": "", "revision": procs.instances.length + 1, "running": true, users: [{
+                    "openedBy": usernamerole, "Steps": instancesteps, "closedBy": "", "startedAt": lastuse, "completedAt": "", "revision": revision, "running": true, users: [{
                         "name": username,
                         "email": useremail,
-                        "status": userstatus
+                        "role": userrole,
+                        "isOnline": true
                     }], "version": versionNum
                 });
 
@@ -354,6 +512,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -389,7 +551,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -408,6 +570,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -428,7 +594,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -446,6 +612,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -478,7 +648,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -488,7 +658,7 @@ module.exports = {
     },
     setUserStatus: function (req, res) {
         var email = req.body.email;
-        var status = req.body.status;
+        var isOnline = req.body.isOnline;
         var procid = req.body.pid;
         var username = req.body.username;
         var revision = req.body.revision;
@@ -497,6 +667,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -516,13 +690,14 @@ module.exports = {
                         for (var i = 0; i < len; i++) {
                             if (procs.instances[liveinstanceID].users[i].email === email) {
                                 // when the user object exits already
-                                procs.instances[liveinstanceID].users[i].status = status;
+                                procs.instances[liveinstanceID].users[i].isOnline = isOnline;
                                 break;
                             } else if (i === len - 1) {
                                 procs.instances[liveinstanceID].users.push({
                                     'name': username,
                                     'email': email,
-                                    'status': status
+                                    'role': procs.instances[liveinstanceID].users[0]?.role || '',
+                                    'isOnline': isOnline
                                 });
                             }
                         }
@@ -531,7 +706,8 @@ module.exports = {
                         procs.instances[liveinstanceID].users.push({
                             'name': username,
                             'email': email,
-                            'status': status
+                            'role': '',
+                            'isOnline': isOnline
                         });
                     }
                 } else {
@@ -541,7 +717,7 @@ module.exports = {
                         for (var j = 0; j < procs.instances[i].users.length; j++) {
                             if (procs.instances[i].users[j].email === email) {
                                 // when the user object exits already
-                                procs.instances[i].users[j].status = status;
+                                procs.instances[i].users[j].isOnline = isOnline;
                             }
                         }
                     }
@@ -554,7 +730,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send({ status: status });
+                        res.send({ isOnline: isOnline });
                     }
 
                 });
@@ -568,19 +744,28 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': prevProcId }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
+                var newMission = (newprocedurename.gname || procs.eventname || '').toLowerCase();
+                // Validate the user has access to the target mission
+                if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === newMission; })) {
+                    return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to the target mission' });
+                }
                 procs.procedureID = newprocedurename.id;
-                procs.eventname = newprocedurename.gname;
-                procs.title = newprocedurename.gname + " - " + newprocedurename.title;
+                procs.eventname = newMission;
+                procs.title = newprocedurename.title;
 
                 procs.save(function (err, result) {
                     if (err) {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });
@@ -604,6 +789,10 @@ module.exports = {
         ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
             if (err) {
                 console.log(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
+            if (!procs) {
+                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             if (procs) {
@@ -637,7 +826,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send(result);
+                        return res.json({ success: true });
                     }
 
                 });

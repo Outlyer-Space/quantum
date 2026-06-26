@@ -11,12 +11,12 @@ IFS=$'\n\t'
 
 # DEFAULTs -----------------------------------------------------
 
-IMAGE="${IMAGE:-outlyer/quantum}"
-CONTAINER="${CONTAINER:-quantum}"
-DOCKERFILE="${DOCKERFILE:-docker/Dockerfile}"
-CONTEXT="${CONTEXT:-node}"
+IMAGE="${IMAGE:-outlyer/quantum-angular}"
+CONTAINER="${CONTAINER:-quantum-angular}"
+DOCKERFILE="${DOCKERFILE:-docker/Dockerfile.Angular}"
+CONTEXT="${CONTEXT:-.}"
 PULL="${PULL:-false}"
-COMPOSE_FILE="docker/docker-compose.yml"
+COMPOSE_FILE="docker/docker-compose.angular.yml"
 
 
 # FUNCTIONS  -----------------------------------------------------
@@ -32,16 +32,16 @@ usage() {
 
   Usage:    ./quantum.sh [command]
 
-  debug     Run node directly on host (dev)
-  pm2       Run with pm2 on host (dev)
-  docker    Run built image, mounting ./node (dev hot-reload style)
-  deploy    Run built image without mounting source (prod-like)
-  build     docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
-  up        docker compose up --build -d
-  down      docker compose down
-  clean     Remove container and image
-  rebuild   Clean + build
-  help      Show this message (default when no command specified)
+  debug        Run node directly on host (dev)
+  pm2          Run with pm2 on host (dev)
+  docker       Run built image, mounting ./node (dev hot-reload style)
+  deploy       Run built image without mounting source (prod-like)
+  build        docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
+  up           docker compose up --build -d  (Angular full-stack, production build)
+  down         docker compose down           (Angular full-stack)
+  clean        Remove container and image
+  rebuild      Clean + build
+  help         Show this message (default when no command specified)
 
   Env       IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 EOF
@@ -60,6 +60,14 @@ run()    {
     echo "$output" >&2
     return 1
   fi
+}
+
+# Host prereq (Node.js)
+capture_git_info() {
+  export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+  export GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  export APP_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "unknown")
+  log "Branch: $GIT_BRANCH | Commit: $GIT_COMMIT | Version: $APP_VERSION"
 }
 
 # Host prereq (Node.js)
@@ -171,10 +179,7 @@ case "$cmd" in
     run "Removing old image: $IMAGE" docker rmi -f "$IMAGE"
     
     # Capture git info for build
-    GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    APP_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-    log "Branch: $GIT_BRANCH | Commit: $GIT_COMMIT | Version: $APP_VERSION"
+    capture_git_info
     
     args=( -t "$IMAGE" -f "$DOCKERFILE" )
     args+=( --build-arg "GIT_BRANCH=$GIT_BRANCH" )
@@ -189,12 +194,7 @@ case "$cmd" in
     check_docker
     check_secrets
     show_config
-    
-    export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-    export GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    export APP_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-    log "Branch: $GIT_BRANCH | Commit: $GIT_COMMIT | Version: $APP_VERSION"
-    
+    capture_git_info
     run "Starting stack (rebuild + detach)" docker compose -f "$COMPOSE_FILE" up --build -d
     run "Showing stack status" docker compose -f "$COMPOSE_FILE" ps
     ;;

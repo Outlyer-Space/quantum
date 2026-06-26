@@ -1,0 +1,26 @@
+<div class="dashboard-layout">
+    <main class="main-content">
+        <div class="preview-container">
+            <app-procedure-step-table
+                [steps]="flattenedSteps()"
+                [readonly]="!isRunningInstance()"
+                [inputForm]="inputForm"
+                [closedSectionIds]="closedSectionIds()"
+                [canEdit]="canEditStep"
+                (stepToggled)="onStepToggled($event)"
+                (inputSet)="onInputSet($event)"
+                (inputCleared)="onInputCleared($event)"
+                (stepChecked)="onStepChecked($event)"
+                (controlFocused)="onControlFocused($event)"
+                (controlBlurred)="onControlBlurred()" />
+        </div>
+
+        @if (isRunningInstance() && allActionableStepsCompleted()) {
+        <div class="completion-container">
+            <button class="btn-complete-modern" (click)="completeProcedure()">
+                Close Procedure
+            </button>
+        </div>
+        }
+    </main>
+</div>

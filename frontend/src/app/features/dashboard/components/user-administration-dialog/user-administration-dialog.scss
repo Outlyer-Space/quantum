@@ -1,0 +1,228 @@
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background-color: #fff;
+    border-radius: 4px;
+    width: 500px;
+    max-width: 90vw;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+
+    h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .btn-close-header {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #999;
+        cursor: pointer;
+        transition: color 0.15s ease;
+
+        &:hover {
+            color: #333;
+        }
+    }
+}
+
+.dialog-tabs {
+    display: flex;
+    border-bottom: 2px solid #eee;
+    padding: 0 20px;
+
+    .tab-btn {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #777;
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease;
+
+        &:hover {
+            color: #333;
+        }
+
+        &.active {
+            color: #337ab7;
+            border-bottom-color: #337ab7;
+        }
+    }
+}
+
+.dialog-body {
+    padding: 20px;
+
+    .form-group {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        width: 130px;
+        font-size: 13px;
+        color: #555;
+        padding-top: 8px;
+    }
+
+    .form-control {
+        flex: 1;
+
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            background-color: #fff;
+
+            &:focus {
+                outline: none;
+                border-color: #337ab7;
+            }
+        }
+    }
+
+    .roles-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+
+        label {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: #333;
+            cursor: pointer;
+            user-select: none;
+
+            input[type="checkbox"] {
+                margin-right: 10px;
+                cursor: pointer;
+                width: 14px;
+                height: 14px;
+            }
+        }
+    }
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+
+    button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .btn-cancel {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        color: #333;
+
+        &:hover {
+            background-color: #f5f5f5;
+        }
+    }
+
+    .btn-save {
+        background-color: #337ab7;
+        border: 1px solid #2e6da4;
+        color: #fff;
+
+        &:hover {
+            background-color: #286090;
+        }
+
+        &:disabled {
+            background-color: #a6cce8;
+            border-color: #a6cce8;
+            cursor: not-allowed;
+        }
+    }
+}
+
+// ── Missions tab styles ──
+
+.no-data-msg {
+    font-size: 13px;
+    color: #999;
+    font-style: italic;
+}
+
+.add-mission-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .mission-input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #333;
+
+        &:focus {
+            outline: none;
+            border-color: #337ab7;
+        }
+    }
+
+    .btn-add {
+        padding: 8px 14px;
+        background-color: #27ae60;
+        border: 1px solid #219a52;
+        color: #fff;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+            background-color: #219a52;
+        }
+
+        &:disabled {
+            background-color: #a3d9b1;
+            border-color: #a3d9b1;
+            cursor: not-allowed;
+        }
+    }
+}

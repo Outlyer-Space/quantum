@@ -1,0 +1,331 @@
+@use 'sass:color';
+
+$border-color: #e5e5e5;
+$primary: #337ab7;
+$radius: 4px;
+
+:host {
+    display: contents;
+}
+
+/* ── Backdrop ── */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* ── Panel — near the top, wide ── */
+.dialog-panel {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    width: 820px;
+    max-width: 94vw;
+    min-height: 400px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Header ── */
+.dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid $border-color;
+    background: #f0f0f0;
+    border-radius: 6px 6px 0 0;
+
+    h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #333;
+        text-transform: uppercase;
+    }
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    font-weight: 700;
+    color: #000;
+    opacity: 0.3;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+
+    &:hover {
+        opacity: 0.6;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 2px;
+    }
+}
+
+/* ── Mission selector row ── */
+.mission-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px 0;
+}
+
+.mission-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+    min-width: 52px;
+}
+
+.mission-select {
+    flex: 1;
+    height: 34px;
+    padding: 0 10px;
+    font-size: 14px;
+    color: #333;
+    background: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+
+    &:focus {
+        outline: 2px solid #4a90d9;
+        outline-offset: 1px;
+    }
+}
+
+/* ── Upload row ── */
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 20px 16px;
+}
+
+.hidden-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.filename-input {
+    flex: 1;
+    height: 34px;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: #555;
+    background: #fafafa;
+    border: 1px solid #ccc;
+    border-left: none;
+    border-right: none;
+    font-family: 'Inter', sans-serif;
+
+    &::placeholder {
+        color: #999;
+    }
+}
+
+/* ── Buttons ── */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+    height: 34px;
+    box-sizing: border-box;
+
+    &:focus-visible {
+        outline: 2px solid $primary;
+        outline-offset: 2px;
+    }
+}
+
+.btn-browse {
+    background: $primary;
+    color: #fff;
+    border-color: color.adjust($primary, $lightness: -8%);
+    border-radius: $radius 0 0 $radius;
+
+    &:hover {
+        background: color.adjust($primary, $lightness: -10%);
+    }
+}
+
+.btn-add {
+    background: $primary;
+    color: #fff;
+    border-color: color.adjust($primary, $lightness: -8%);
+    border-radius: 0 $radius $radius 0;
+    min-width: 60px;
+
+    &:hover {
+        background: color.adjust($primary, $lightness: -10%);
+    }
+}
+
+/* ── Toast area ── */
+.toast-area {
+    padding: 6px 16px;
+
+    p {
+        margin: 0;
+        font-size: 13px;
+        color: #c0392b;
+        background: #fbeaea;
+        border: 1px solid #e6b0aa;
+        border-radius: $radius;
+        padding: 8px 12px;
+    }
+
+    &.success p {
+        color: #1e7e34;
+        background: #d4edda;
+        border-color: #c3e6cb;
+    }
+
+    &.info p {
+        color: #0c5460;
+        background: #d1ecf1;
+        border-color: #bee5eb;
+    }
+}
+
+/* ── Master Template section ── */
+.template-section {
+    margin: 8px 16px 16px;
+    border: 1px solid #ddd;
+    border-radius: $radius;
+    overflow: hidden;
+}
+
+.template-header {
+    background: #e8e8e8;
+}
+
+.template-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: $primary;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.toggle-icon {
+    display: inline-block;
+    font-size: 16px;
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+
+    &.expanded {
+        transform: rotate(90deg);
+    }
+}
+
+.template-body {
+    background: #fafafa;
+    padding: 12px 20px;
+}
+
+.download-link {
+    margin: 0 0 10px 0;
+
+    a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: $primary;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+.template-rules {
+    margin: 0;
+    padding-left: 22px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #444;
+
+    li {
+        margin-bottom: 2px;
+    }
+
+    strong {
+        color: #333;
+    }
+
+    em {
+        color: #666;
+    }
+}
+
+/* ── Responsive ── */
+@media only screen and (max-width: 860px) {
+    .dialog-panel {
+        width: 96vw;
+        top: 40px;
+        min-height: auto;
+    }
+
+    .upload-row {
+        flex-wrap: wrap;
+    }
+
+    .filename-input {
+        border-left: 1px solid #ccc;
+        border-right: 1px solid #ccc;
+        order: 3;
+        flex-basis: 100%;
+        margin-top: 8px;
+        border-radius: $radius;
+    }
+
+    .btn-browse {
+        border-radius: $radius;
+    }
+
+    .btn-add {
+        border-radius: $radius;
+    }
+}

@@ -1,0 +1,94 @@
+@if (isOpen()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog panel -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="upload-title">Upload a Procedure</h2>
+        <button class="close-btn" (click)="close()" aria-label="Close upload dialog">×</button>
+    </div>
+
+    <!-- Mission selector -->
+    <div class="mission-row">
+        <label class="mission-label" for="upload-mission">Mission</label>
+        <select id="upload-mission" class="mission-select"
+            [ngModel]="selectedMission()" (ngModelChange)="selectedMission.set($event)">
+            @for (m of availableMissions(); track m) {
+            <option [value]="m">{{ m }}</option>
+            }
+        </select>
+    </div>
+
+    <!-- Upload row -->
+    <div class="upload-row">
+        <!-- Hidden native file input -->
+        <input #fileInput type="file" accept=".xlsx" class="hidden-input" (change)="onFileSelected($event)" />
+
+        <button class="btn btn-browse" type="button" (click)="browse()">Browse</button>
+
+        <input type="text" class="filename-input" readonly [value]="selectedFile()?.name ?? ''"
+            placeholder="Filename format:  index - title.xlsx" />
+
+        <button class="btn btn-add" type="button" (click)="submit()">Add</button>
+    </div>
+
+    <!-- Toast area -->
+    @if (toastMessage()) {
+    <div class="toast-area" [class.success]="toastType() === 'success'" [class.info]="toastType() === 'info'"
+        role="status" aria-live="polite">
+        <p>{{ toastMessage() }}</p>
+    </div>
+    }
+
+    <!-- Master Template accordion -->
+    <div class="template-section">
+        <div class="template-header">
+            <button class="template-toggle" type="button" (click)="toggleTemplate()"
+                [attr.aria-expanded]="templateExpanded()">
+                <span class="toggle-icon" [class.expanded]="templateExpanded()">›</span>
+                Master Template
+            </button>
+        </div>
+
+        @if (templateExpanded()) {
+        <div class="template-body">
+            <p class="download-link">
+                <a href="media/procedure-master-template.xlsx" download target="_blank">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14"
+                        height="14" aria-hidden="true">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                    </svg>
+                    Download Template
+                </a>
+            </p>
+
+            <ul class="template-rules">
+                <li>File Type should be <strong>.xlsx</strong> only.</li>
+                <li>Step, Type, Role, Content fields are mandatory. Reference and Procedures columns are
+                    optional.</li>
+                <li>Only one type can be given for a step. Valid Step types include
+                    <strong>Heading, Action, Caution, Decision, Info, Record, Verify and Warning.</strong>
+                </li>
+                <li>Role can be one or many (delimited by , if many). Valid roles are
+                    <strong>MD, CC, SYS, GC, PROXY, NAV, IT and SIM.</strong>
+                </li>
+                <li>Sheet name of the file should always be <strong>Sheet1</strong>.</li>
+                <li>Make sure Step column has cell formatting set to <strong>text</strong>.
+                    Note: This will avoid rounding the step numbers when uploaded.</li>
+                <li>Numbering for Steps are in hierarchical order starting with x.0 as top sections.</li>
+                <li>Only Heading type step number should end with <strong>.0</strong>.
+                    For example <em>1.0, 1.2.1.0</em></li>
+                <li>Heading type steps are either section headers or subsection headers.
+                    That means they do not have checkbox when executing the procedure.</li>
+                <li>Last Step should not be of type <strong>Heading.</strong></li>
+                <li>Reference and Procedures columns are optional. Reference field is used to provide valid
+                    URL to additional information. Procedures field is used to provide procedure index
+                    numbers described in the content of that step. More details in the template.</li>
+            </ul>
+        </div>
+        }
+    </div>
+</div>
+}

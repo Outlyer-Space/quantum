@@ -10,6 +10,14 @@ const app      = require('./server/lib/app')(config, passport)     // quantum ap
 
 // load routes & start server
 require('./server/routes')(config, app, passport, user)
-app.listen(app.get('port'), function () {
+const server = app.listen(app.get('port'), function () {
   console.log(`App is running port ${app.get('port')}`)
+})
+server.on('error', function (err) {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`ERROR: Port ${app.get('port')} is already in use. Stop the existing process first.`)
+    process.exit(1)
+  } else {
+    throw err
+  }
 })

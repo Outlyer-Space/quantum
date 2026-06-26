@@ -1,0 +1,233 @@
+@use 'sass:color';
+
+/* ── Colors ── */
+$link-color: #337ab7;
+$red-logout: #d64545;
+$red-logout-bg: rgba($red-logout, 0.06);
+$red-logout-hover: rgba($red-logout, 0.12);
+$grey-settings: #616161;
+$grey-settings-bg: rgba($grey-settings, 0.05);
+$grey-settings-hover: rgba($grey-settings, 0.10);
+$blue-about: #2e86de;
+$blue-about-bg: rgba($blue-about, 0.06);
+$blue-about-hover: rgba($blue-about, 0.12);
+$green-admin: #2e7d32;
+$green-admin-bg: rgba($green-admin, 0.06);
+$green-admin-hover: rgba($green-admin, 0.12);
+$border-color: #e8eaed;
+$card-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+$radius: 8px;
+
+:host {
+    display: block;
+}
+
+.user-menu-wrapper {
+    position: relative;
+}
+
+/* ── Trigger button ── */
+.user-trigger {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.2s ease, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    &:active {
+        transform: scale(0.97);
+    }
+
+    &:focus-visible {
+        outline: 2px solid $link-color;
+        outline-offset: 2px;
+    }
+}
+
+.user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--user-menu-name-color, #1a1a1a);
+    line-height: 1.3;
+}
+
+.user-callsign {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--user-menu-callsign-color, #555);
+    line-height: 1.3;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #12c700;
+    box-shadow: 0 0 4px rgba(#12c700, 0.5);
+}
+
+
+
+/* ── Invisible backdrop ── */
+.menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+}
+
+@keyframes slideDownFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Dropdown menu ── */
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 200;
+    min-width: 180px;
+    margin: 0;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid $border-color;
+    border-radius: $radius;
+    box-shadow: $card-shadow;
+    list-style: none;
+    transform-origin: top right;
+    animation: slideDownFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Divider ── */
+.menu-divider {
+    height: 1px;
+    margin: 4px 8px;
+    background: $border-color;
+}
+
+/* ── Menu item (shared) ── */
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-align: left;
+    transition: background-color 0.12s ease, color 0.12s ease;
+
+    &:focus-visible {
+        outline: 2px solid $link-color;
+        outline-offset: -2px;
+    }
+
+    img {
+        flex-shrink: 0;
+    }
+}
+
+.item-label {
+    flex: 1;
+}
+
+/* ── Logout — red ── */
+.item-logout {
+    color: $red-logout;
+
+    &:hover {
+        background-color: $red-logout-hover;
+        color: color.adjust($red-logout, $lightness: -8%);
+    }
+}
+
+/* ── Settings — grey ── */
+.item-settings {
+    color: $grey-settings;
+
+    &:hover {
+        background-color: $grey-settings-hover;
+        color: color.adjust($grey-settings, $lightness: -12%);
+    }
+}
+
+/* ── About — blue ── */
+.item-about {
+    color: $blue-about;
+
+    &:hover {
+        background-color: $blue-about-hover;
+        color: color.adjust($blue-about, $lightness: -8%);
+    }
+}
+
+/* ── User Admin — green ── */
+.item-admin {
+    color: $green-admin;
+
+    .fa {
+        color: $green-admin !important;
+    }
+
+    .item-label {
+        margin-left: 0 !important;
+    }
+
+    &:hover {
+        background-color: $green-admin-hover;
+        color: color.adjust($green-admin, $lightness: -8%);
+    }
+}
+
+/* ── Responsive ── */
+@media only screen and (max-width: 736px) {
+    .user-name {
+        font-size: 12px;
+    }
+
+    .user-callsign {
+        font-size: 10px;
+    }
+
+    .dropdown-menu {
+        min-width: 150px;
+        padding: 4px;
+    }
+
+    .menu-item {
+        font-size: 13px;
+        padding: 8px 10px;
+        gap: 8px;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+    }
+}

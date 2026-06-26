@@ -3,9 +3,10 @@ services:
   mongo:
     image: mongo:6
     container_name: mongo
+    command: [ "--quiet" ]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')" ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -43,6 +44,7 @@ services:
 volumes:
   mongo-data:
   node_modules:
+
 
 networks:
   quantum-net:

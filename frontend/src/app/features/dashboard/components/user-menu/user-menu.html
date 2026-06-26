@@ -1,0 +1,50 @@
+<div class="user-menu-wrapper">
+    <!-- Trigger button -->
+    <button id="user-menu-trigger" class="user-trigger" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()"
+        aria-haspopup="true" aria-controls="user-dropdown">
+        <span class="user-name">{{ userName() }}</span>
+        <span class="user-callsign">
+            <span class="status-dot" aria-label="Online"></span>
+            {{ callsign() }}
+        </span>
+
+    </button>
+
+    <!-- Backdrop (click to close) -->
+    @if (menuOpen()) {
+    <div class="menu-backdrop" (click)="closeMenu()" aria-hidden="true"></div>
+    }
+
+    <!-- Dropdown menu -->
+    @if (menuOpen()) {
+    <ul id="user-dropdown" class="dropdown-menu" role="menu" aria-label="User options">
+        <li role="none">
+            <button role="menuitem" class="menu-item item-logout" (click)="logout(); closeMenu()">
+                <img src="media/icons/logout.svg" width="16" height="16" alt="" aria-hidden="true">
+                <span class="item-label">Logout</span>
+            </button>
+        </li>
+        <li class="menu-divider" role="separator"></li>
+        <li role="none">
+            <button role="menuitem" class="menu-item item-settings" (click)="openSettings(); closeMenu()">
+                <img src="media/icons/settings.svg" width="16" height="16" alt="" aria-hidden="true">
+                <span class="item-label">Settings</span>
+            </button>
+        </li>
+        @if (showAdminBtn()) {
+        <li role="none">
+            <button role="menuitem" class="menu-item item-admin" (click)="openUserAdmin(); closeMenu()">
+                <span class="fa fa-users" aria-hidden="true"></span>
+                <span class="item-label">User Administration</span>
+            </button>
+        </li>
+        }
+        <li role="none">
+            <button role="menuitem" class="menu-item item-about" (click)="openAbout(); closeMenu()">
+                <img src="media/icons/about.svg" width="16" height="16" alt="" aria-hidden="true">
+                <span class="item-label">About</span>
+            </button>
+        </li>
+    </ul>
+    }
+</div>

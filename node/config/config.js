@@ -14,21 +14,19 @@
 
 */
 
-// show banner + current config
-
 const fs    = require('fs')
-const fpath = './app/media/quantum.banner'
+const fpath = './media/quantum.banner'
 const data  = fs.readFileSync(fpath, { encoding: 'utf8', flag: 'r' })
 console.log(data)
 console.log(' > NODE_ENV            : ' + process.env.NODE_ENV)
 console.log(' > MONGO_DB_URL        : ' + process.env.MONGO_DB_URL)
 console.log(' > MONGO_DB_USR        : ' + process.env.MONGO_DB_USR)
-console.log(' > MONGO_DB_PWD        : ' + process.env.MONGO_DB_PWD)
+console.log(' > MONGO_DB_PWD        : ' + (process.env.MONGO_DB_PWD ? '****' : '(not set)'))
 console.log(' > AUTH_PROVIDER       : ' + process.env.AUTH_PROVIDER)
-console.log(' > AUTH_TENANT_ID      : ' + process.env.AUTH_TENANT_ID)
+console.log(' > AUTH_TENANT_ID      : ' + (process.env.AUTH_TENANT_ID ? '****' : '(not set)'))
 console.log(' > AUTH_CALLBACK_URL   : ' + process.env.AUTH_CALLBACK_URL)
 console.log(' > AUTH_CLIENT_ID      : ' + process.env.AUTH_CLIENT_ID)
-console.log(' > AUTH_CLIENT_SECRET  : ' + process.env.AUTH_CLIENT_SECRET)
+console.log(' > AUTH_CLIENT_SECRET  : ' + (process.env.AUTH_CLIENT_SECRET ? '****' : '(not set)'))
 console.log('-'.repeat(95))
 
 // function to return active config
@@ -75,8 +73,12 @@ module.exports = function (basePath) {
       break
 
     default: // development
+      const safeConfig = JSON.parse(JSON.stringify(myconfig))
+      safeConfig.mongo.pwd = safeConfig.mongo.pwd ? '****' : '(not set)'
+      safeConfig.auth.clientSecret = safeConfig.auth.clientSecret ? '****' : '(not set)'
+      safeConfig.auth.tenantID = safeConfig.auth.tenantID ? '****' : '(not set)'
       console.log(' Quantum active config :')
-      console.log(JSON.stringify(myconfig, null, 2))
+      console.log(JSON.stringify(safeConfig, null, 2))
       console.log('-'.repeat(95))
   }
 

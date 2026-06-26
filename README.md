@@ -2,7 +2,7 @@
 
 Quantum is a collaborative procedure management application used by ground operators during test/flight for launch vehicles or satellites. Procedures are sequences of tasks to be executed for implementing a mission by multiple operators with different assigned roles. Quantum includes a library of available procedures, live execution, and an "as-run" archive. It was originally developed by a Silicon Valley based startup called Audacy which shut down in 2019.
 
-Quantum consists of a modular front-end (UI), and a REST API backend. The application is browser based using the MEAN technology stack (Mongo db, Express, Angular, NodeJS) with the aim of incorporating rapid maintenance and upgradeability while operating in a mission critical environment.
+Quantum consists of a modular front-end (UI), and a REST API backend. The application is browser based using the MEAN technology stack (MongoDB, Express, Angular 21, NodeJS).
 
 ## Purpose
 
@@ -57,40 +57,29 @@ Start Docker Desktop (Windows/macOS) or the Docker daemon (Linux).
   cd /path/to/Quantum
   ```
 
-Prefer PowerShell? You can still invoke Git Bash:
->
-> ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./start.sh up"
-> ```
-
 ---
 
 ### 3) Bring the stack up (recommended)
 
-After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on linux:
+After making sure Docker is running, run the following command inside Git Bash (Windows) or your regular terminal if you're on Linux:
 
 ```bash
 ./quantum.sh up
 ```
 
-> Prefer PowerShell? You can still invoke Git Bash:
->
-> ```powershell
-> & "C:\Program Files\Git\bin\bash.exe" -lc "./quantum.sh up"
-> ```
-
-- Runs `docker compose up --build -d` under the hood.
-- Builds images and starts **MongoDB** and **Quantum** in the background with healthy startup order.
+- Runs `docker compose up --build -d` using the Angular full-stack compose file.
+- Builds and starts **MongoDB**, the **Node.js API**, and the **Angular 21 frontend** with a production build served via Nginx.
+- Angular frontend is served on **port 4201**; the API remains on **port 3000**.
 
 ---
 
-### 4) Alternative: dev hot-reload style
+### 4) Alternative: dev hot-reload style (Node API only)
 
 ```bash
 ./quantum.sh docker
 ```
 
-Runs the Quantum image and **bind-mounts** `./node → /node`, so local edits are reflected inside the container (ideal for active development).
+Runs the Quantum API image and **bind-mounts** `./node → /node`, so local edits to the backend are reflected inside the container (useful for API-only development without rebuilding the Angular frontend).
 
 ---
 
@@ -112,25 +101,24 @@ AUTH_CLIENT_SECRET = 2infinity
 ## Script usage (for reference)
 
 ```text
-Usage: ./quantum.sh [debug|pm2|docker|deploy|build|up|down|clean|rebuild]
-
-  debug    Run node directly on host (dev)
-  pm2      Run with pm2 on host (dev)
-  docker   Run built image, mounting ./node (dev hot-reload style)
-  deploy   Run built image without mounting source (prod-like)
-  build    docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
-  up       docker compose up --build -d
-  down     docker compose down
-  clean    Remove container and image
-  rebuild  Clean + build
+Usage: ./quantum.sh [command]
+  up            docker compose up --build -d  (Node-only stack — DEPRECATED)
+  down          docker compose down           (Node-only stack — DEPRECATED)
+  docker        Run built image, mounting ./node (API dev hot-reload)
+  deploy        Run built image without mounting source (prod-like)
+  build         docker build -t ${IMAGE} -f ${DOCKERFILE} ${CONTEXT}
+  clean         Remove container and image
+  rebuild       Clean + build
+  debug         Run node directly on host (dev)
+  pm2           Run with pm2 on host (dev)
 
 Env: IMAGE, CONTAINER, DOCKERFILE, CONTEXT, PULL=true
 ```
 
 **Which should I use?**
 
-- **First time / most users:** `./quantum.sh up` ✅
-- **Active local development:** `./quantum.sh docker`
+- **First time / most users:** `./quantum.sh up`
+- **API-only development:** `./quantum.sh docker`
 - **Rebuild only:** `./quantum.sh build`
 - **Stop everything:** `./quantum.sh down`
 

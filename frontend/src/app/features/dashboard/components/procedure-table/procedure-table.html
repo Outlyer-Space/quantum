@@ -1,0 +1,169 @@
+<section aria-label="Procedures list">
+    <!-- Search bar + Mission filter -->
+    <div class="search-bar">
+        <div class="search-input-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                width="18" height="18" aria-hidden="true">
+                <path
+                    d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input id="procedure-search" type="search" placeholder="Search by title…"
+                aria-label="Search procedures by title" [value]="searchQuery()"
+                (input)="onSearchInput($any($event.target).value)" />
+        </div>
+
+        <div class="mission-filter">
+            <label class="mission-filter-label" for="mission-select">Mission</label>
+            <select id="mission-select" class="mission-select"
+                [value]="selectedMission()" (change)="onMissionChange($any($event.target).value)">
+                @if (availableMissions().length > 1) {
+                <option value="">All Missions</option>
+                }
+                @for (m of availableMissions(); track m) {
+                <option [value]="m">{{ m }}</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="tbl-header">
+            <table aria-label="Procedures" role="grid">
+                <thead>
+                    <tr role="row">
+                        <th scope="col" style="width: 8%">
+                            <button class="sort-btn" (click)="toggleSort('id')"
+                                [attr.aria-sort]="sortField() === 'id' ? (sortReverse() ? 'descending' : 'ascending') : 'none'">
+                                No.
+                                @if (sortField() === 'id') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 32%">
+                            <button class="sort-btn" (click)="toggleSort('title')">
+                                Title
+                                @if (sortField() === 'title') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 20%">
+                            <button class="sort-btn" (click)="toggleSort('lastUse')">
+                                Last Use
+                                @if (sortField() === 'lastUse') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" class="center-col" style="width: 12%">
+                            <button class="sort-btn" (click)="toggleSort('running')">
+                                Running
+                                @if (sortField() === 'running') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" class="center-col" style="width: 12%">
+                            <button class="sort-btn" (click)="toggleSort('archived')">
+                                Archived
+                                @if (sortField() === 'archived') {
+                                <span class="sort-icon" aria-hidden="true">{{ sortReverse() ? '▲' : '▼' }}</span>
+                                }
+                            </button>
+                        </th>
+                        <th scope="col" style="width: 16%">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <!-- Table body -->
+        <div class="tbl-content">
+            <table>
+                @if (filteredProcedures().length > 0) {
+                <tbody>
+                    @for (proc of filteredProcedures(); track proc.id) {
+                    <tr>
+                        <td style="width: 8%">{{ proc.id }}</td>
+                        <td style="width: 32%">{{ proc.title }}</td>
+                        <td style="width: 20%">{{ proc.lastUse }}</td>
+                        <td class="center-col" style="width: 12%">
+                            <a [routerLink]="['/dashboard/instances', proc.id]" class="instance-link"
+                                aria-label="View running instances" data-tooltip="View active instances"
+                                style="text-decoration: none; font-weight: bold; color: #337ab7;">
+                                {{ proc.running }}
+                            </a>
+                        </td>
+                        <td class="center-col" style="width: 12%">
+                            <a [routerLink]="['/dashboard/archived', proc.id]" class="instance-link"
+                                aria-label="View archived instances" data-tooltip="View archived instances"
+                                style="text-decoration: none; font-weight: bold; color: #337ab7;">
+                                {{ proc.archived }}
+                            </a>
+                        </td>
+                        <td style="width: 16%">
+                            <div class="actions-wrapper">
+                                <button type="button" class="actions-trigger" aria-label="More actions">
+                                    <span class="fa fa-bars" style="vertical-align:middle"></span>
+                                </button>
+                                <div class="btn-group" role="group" aria-label="Procedure actions">
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'preview')"
+                                        [routerLink]="['/dashboard/preview', proc.id]" data-tooltip="View procedure"
+                                        aria-label="View procedure">
+                                        <span class="fa-stack fa-stack-15" style="vertical-align:middle">
+                                            <i class="fa fa-search fa-stack-1x fa-lower-right"></i>
+                                            <i class="fa fa-file-o fa-stack-2x fa-stack-15x fa-upper-left"></i>
+                                        </span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'rename')"
+                                        (click)="openEditDialog(proc)" data-tooltip="Rename"
+                                        aria-label="Rename procedure">
+                                        <span class="fa fa-edit" style="vertical-align:middle"></span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'download')"
+                                        (click)="openDownloadDialog(proc)" data-tooltip="Download"
+                                        aria-label="Download procedure">
+                                        <span class="fa fa-download" style="vertical-align:middle"></span>
+                                    </button>
+                                    <button type="button" class="btn-group__item"
+                                        [class.btn-group__item--active]="isActive(proc.id, 'start')"
+                                        (click)="runProcedure(proc)" data-tooltip="Run" aria-label="Run procedure">
+                                        <span class="fa fa-caret-right iconDisplay"
+                                            style="vertical-align:middle"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+                } @else {
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            @if (searchQuery()) {
+                            No procedures matching "{{ searchQuery() }}".
+                            } @else {
+                            No procedures available.
+                            }
+                        </td>
+                    </tr>
+                </tbody>
+                }
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- Edit Dialog -->
+<app-edit-procedure-dialog (saved)="saveProcedure($event)" />
+
+<!-- Download Dialog -->
+<app-download-procedure-dialog (confirmed)="performDownload()" />
