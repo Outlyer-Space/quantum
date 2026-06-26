@@ -20,6 +20,10 @@ module.exports = function (config, passport) {
   const pwd = config.node.path
   const isProd = process.env.NODE_ENV === 'production'
 
+  // Trust the Azure load balancer to properly set X-Forwarded-Proto
+  // This is REQUIRED for express-session to set a secure cookie over HTTP
+  app.set('trust proxy', 1)
+
   // Security headers
   app.use(helmet({
     contentSecurityPolicy: false,  // Angular handles CSP via meta tags
