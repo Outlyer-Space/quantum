@@ -52,7 +52,7 @@ pipeline {
 
                 sh """
                     docker build --pull \
-                        -f docker/Dockerfile.azure \
+                        -f docker/Dockerfile.Angular \
                         --build-arg GIT_BRANCH="${env.CLEAN_BRANCH}" \
                         --build-arg GIT_COMMIT="${env.SHORT_COMMIT}" \
                         --build-arg APP_VERSION="${env.APP_VERSION}" \
