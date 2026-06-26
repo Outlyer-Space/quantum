@@ -10,6 +10,7 @@ var procedureSchema = mongoose.Schema({
     eventname: { type: String, required: true, index: true },
     uploadedBy: { type: String },
     updatedBy: { type: String },
+    instanceCounter: { type: Number, default: 0 },
     instances: { type: Array },
     versions: { type: Array }
 });

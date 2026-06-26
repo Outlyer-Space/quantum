@@ -65,11 +65,11 @@
             <ul class="users-list">
                 @for (user of activeUsers(); track user.email) {
                 <li class="user-item">
-                    <span class="status-indicator" [class.is-online]="user.status === true || user.status === 'true'"></span>
+                    <span class="status-indicator" [class.is-online]="user.isOnline"></span>
                     <div class="user-info">
                         <span class="user-name">{{ user.name || user.email }}</span>
-                        @if (user.callsign) {
-                        <span class="user-role">{{ user.callsign }}</span>
+                        @if (user.role) {
+                        <span class="user-role">{{ user.role }}</span>
                         }
                     </div>
                 </li>

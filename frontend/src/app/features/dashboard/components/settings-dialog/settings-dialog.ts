@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, signal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { Role } from '../../models/role';
 import { UserService } from '../../../../core/services/user.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { NavbarService } from '../../services/navbar.service';
 
 @Component({
     selector: 'app-settings-dialog',
@@ -14,11 +16,23 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class SettingsDialogComponent {
     private userService = inject(UserService);
     private auth = inject(AuthService);
+    private nav = inject(NavbarService);
 
-    /** First mission the user belongs to, used to authorize role API calls */
+    /**
+     * The mission to use for role API calls.
+     * Prefers the procedure's mission when inside a procedure view;
+     * falls back to missions[0] on the main dashboard.
+     */
     private get mission(): string {
         const user = this.auth.user();
-        return user?.missions?.[0]?.name ?? '';
+        if (!user?.missions?.length) return '';
+
+        const activeMission = this.nav.activeMission();
+        if (activeMission) {
+            const found = user.missions.find(m => m.name?.toLowerCase() === activeMission);
+            if (found) return found.name ?? '';
+        }
+        return user.missions[0]?.name ?? '';
     }
 
     /** All available roles */
@@ -51,25 +65,21 @@ export class SettingsDialogComponent {
         }
 
         this.loading.set(true);
-        this.userService.getAllowedRoles(user.auth.email, mission).subscribe({
-            next: (allowedRoles: any) => {
-                // Ensure it's an array. Backend sends Object map sometimes, but endpoint should return array based on our previous logic
-                const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : Object.keys(allowedRoles).map(k => allowedRoles[k]);
+        forkJoin({
+            allowed: this.userService.getAllowedRoles(user.auth.email, mission),
+            current:  this.userService.getCurrentRole(user.auth.email, mission)
+        }).subscribe({
+            next: ({ allowed, current }: { allowed: any; current: Role }) => {
+                // Ensure it's an array — backend may send an object map
+                const rolesArray = Array.isArray(allowed)
+                    ? allowed
+                    : Object.keys(allowed).map((k: string) => allowed[k]);
                 this.roles.set(rolesArray);
-
-                this.userService.getCurrentRole(user.auth.email, mission).subscribe({
-                    next: (currentRole: Role) => {
-                        this.selectedRoleName.set(currentRole?.name || '');
-                        this.loading.set(false);
-                    },
-                    error: (err) => {
-                        console.error('Failed to get current role', err);
-                        this.loading.set(false);
-                    }
-                });
+                this.selectedRoleName.set(current?.name || '');
+                this.loading.set(false);
             },
             error: (err) => {
-                console.error('Failed to get allowed roles', err);
+                console.error('Failed to load role settings', err);
                 this.loading.set(false);
             }
         });

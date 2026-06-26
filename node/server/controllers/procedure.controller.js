@@ -31,11 +31,23 @@ module.exports = {
         }, function (err, procdata) {
             if (err) {
                 console.log("Error finding procedures data in DB: " + err);
+                return res.status(500).json({ error: 'Internal Server Error' });
             }
             if (procdata) {
-                res.send(procdata);
+                var result = procdata.map(function (p) {
+                    var instances = p.instances || [];
+                    return {
+                        _id: p._id,
+                        procedureID: p.procedureID,
+                        title: p.title,
+                        lastuse: p.lastuse,
+                        eventname: p.eventname,
+                        running: instances.filter(function (i) { return i.running; }).length,
+                        archived: instances.filter(function (i) { return !i.running; }).length
+                    };
+                });
+                res.send(result);
             }
-
         });
     },
     getSingleProcedure: function (req, res) {
@@ -161,39 +173,9 @@ module.exports = {
                     return res.status(404).json({ error: 'Not Found', message: 'Revision not found' });
                 }
 
-                var users = inst.users || [];
-
-                // Optional server-side callsign enrichment to avoid a second round-trip
-                // to /api/users/role-status from the frontend.
-                if (req.query.includeRoles === 'true' && users.length > 0) {
-                    var UserModel = mongoose.model('User');
-                    var missionName = (procs.eventname || '').toLowerCase();
-                    var emails = users.map(function (u) { return u.email; });
-
-                    UserModel.find(
-                        { 'auth.email': { $in: emails } },
-                        { 'auth.email': 1, 'missions': 1 },
-                        function (err, userDocs) {
-                            if (err) {
-                                // Non-fatal: return users without callsigns rather than failing
-                                console.warn('Could not enrich users with callsigns:', err.message);
-                                return res.json({ users: users });
-                            }
-
-                            var enriched = users.map(function (u) {
-                                var doc = userDocs.find(function (d) { return d.auth && d.auth.email === u.email; });
-                                var missionEntry = doc && doc.missions &&
-                                    doc.missions.find(function (m) { return (m.name || '').toLowerCase() === missionName; });
-                                var callsign = missionEntry && missionEntry.currentRole && missionEntry.currentRole.callsign;
-                                return callsign ? Object.assign({}, u.toObject ? u.toObject() : u, { callsign: callsign }) : u;
-                            });
-
-                            res.json({ users: enriched });
-                        }
-                    );
-                } else {
-                    res.json({ users: users });
-                }
+                // role is now stored directly on each user object in the instance,
+                // so no secondary UserModel lookup is needed.
+                res.json({ users: users });
             }
         );
     },
@@ -432,6 +414,7 @@ module.exports = {
                         pfiles.procedureID = filename[0].trim();
                         pfiles.title = ptitle[0].trim();
                         pfiles.lastuse = "";
+                        pfiles.instanceCounter = 0;
                         pfiles.instances = [];
                         pfiles.versions = [];
                         pfiles.sections = []; // Explicitly initialize array
@@ -469,9 +452,13 @@ module.exports = {
         var lastuse = req.body.lastuse;//start time
         var username = req.body.username;
         var useremail = req.body.email;
-        var userstatus = req.body.status;
+        var userrole = req.body.role;
 
-        ProcedureModel.findOne({ 'procedureID': procid }, function (err, procs) {
+        ProcedureModel.findOneAndUpdate(
+            { 'procedureID': procid },
+            { $inc: { instanceCounter: 1 } },
+            { new: true },
+            function (err, procs) {
             if (err) {
                 console.log(err);
                 return res.status(500).json({ error: 'Internal Server Error' });
@@ -484,14 +471,15 @@ module.exports = {
                 for (var i = 0; i < procs.sections.length; i++) {
                     instancesteps.push({ "step": procs.sections[i].Step, "info": "" })
                 }
-                var revision = procs.instances.length + 1;
+                var revision = procs.instanceCounter;
                 var versionNum = procs.versions.length;
 
                 procs.instances.push({
-                    "openedBy": usernamerole, "Steps": instancesteps, "closedBy": "", "startedAt": lastuse, "completedAt": "", "revision": procs.instances.length + 1, "running": true, users: [{
+                    "openedBy": usernamerole, "Steps": instancesteps, "closedBy": "", "startedAt": lastuse, "completedAt": "", "revision": revision, "running": true, users: [{
                         "name": username,
                         "email": useremail,
-                        "status": userstatus
+                        "role": userrole,
+                        "isOnline": true
                     }], "version": versionNum
                 });
 
@@ -669,7 +657,7 @@ module.exports = {
     },
     setUserStatus: function (req, res) {
         var email = req.body.email;
-        var status = req.body.status;
+        var isOnline = req.body.isOnline;
         var procid = req.body.pid;
         var username = req.body.username;
         var revision = req.body.revision;
@@ -701,13 +689,14 @@ module.exports = {
                         for (var i = 0; i < len; i++) {
                             if (procs.instances[liveinstanceID].users[i].email === email) {
                                 // when the user object exits already
-                                procs.instances[liveinstanceID].users[i].status = status;
+                                procs.instances[liveinstanceID].users[i].isOnline = isOnline;
                                 break;
                             } else if (i === len - 1) {
                                 procs.instances[liveinstanceID].users.push({
                                     'name': username,
                                     'email': email,
-                                    'status': status
+                                    'role': procs.instances[liveinstanceID].users[0]?.role || '',
+                                    'isOnline': isOnline
                                 });
                             }
                         }
@@ -716,7 +705,8 @@ module.exports = {
                         procs.instances[liveinstanceID].users.push({
                             'name': username,
                             'email': email,
-                            'status': status
+                            'role': '',
+                            'isOnline': isOnline
                         });
                     }
                 } else {
@@ -726,7 +716,7 @@ module.exports = {
                         for (var j = 0; j < procs.instances[i].users.length; j++) {
                             if (procs.instances[i].users[j].email === email) {
                                 // when the user object exits already
-                                procs.instances[i].users[j].status = status;
+                                procs.instances[i].users[j].isOnline = isOnline;
                             }
                         }
                     }
@@ -739,7 +729,7 @@ module.exports = {
                         console.log(err);
                     }
                     if (result) {
-                        res.send({ status: status });
+                        res.send({ isOnline: isOnline });
                     }
 
                 });

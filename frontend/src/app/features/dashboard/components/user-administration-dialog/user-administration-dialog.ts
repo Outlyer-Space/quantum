@@ -1,7 +1,7 @@
-import { Component, EventEmitter, OnInit, Output, inject, signal } from '@angular/core';
+import { Component, inject, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { UserService } from '../../../../core/services/user.service';
 import { UserAdmin, Role } from '../../../../core/models/user.model';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -16,8 +16,9 @@ type TabId = 'roles' | 'missions';
     templateUrl: './user-administration-dialog.html',
     styleUrls: ['./user-administration-dialog.scss']
 })
-export class UserAdministrationDialogComponent implements OnInit {
-    @Output() close = new EventEmitter<void>();
+export class UserAdministrationDialogComponent {
+    /** Emitted when the dialog should be closed */
+    close = output<void>();
 
     private userService = inject(UserService);
     private auth = inject(AuthService);
@@ -90,9 +91,8 @@ export class UserAdministrationDialogComponent implements OnInit {
                     this.userMissions.set([]);
                 }
             });
-    }
 
-    ngOnInit(): void {
+        // Kick off initial data load from the constructor instead of ngOnInit
         this.loadData();
     }
 
@@ -123,40 +123,35 @@ export class UserAdministrationDialogComponent implements OnInit {
         this.loading.set(true);
         this.error.set(null);
 
-        // Fetch Role config first, then users for ALL lead missions in parallel
-        this.userService.getRoles().subscribe({
-            next: (rolesConfig: any) => {
-                const rawRoles = rolesConfig?.roles || {};
+        // Fetch role config AND all users for lead missions in parallel
+        forkJoin({
+            rolesConfig: this.userService.getRoles(),
+            usersPerMission: forkJoin(missions.map(m => this.userService.getUsers(m)))
+        }).subscribe({
+            next: ({ rolesConfig, usersPerMission }: { rolesConfig: any; usersPerMission: (UserAdmin[] | null)[] }) => {
+                // Parse roles
+                const rawRoles = (rolesConfig as any)?.roles || {};
                 const parsedRoles = Object.keys(rawRoles).map(k => ({
                     name: rawRoles[k].name,
                     callsign: rawRoles[k].callsign
                 }));
                 this.availableRoles.set(parsedRoles);
 
-                // Query all lead missions in parallel and merge results
-                forkJoin(missions.map(m => this.userService.getUsers(m))).subscribe({
-                    next: (results: (UserAdmin[] | null)[]) => {
-                        const merged = new Map<string, UserAdmin>();
-                        results.forEach((users, idx) => {
-                            (users || []).forEach(u => {
-                                if (!merged.has(u.auth.email)) {
-                                    merged.set(u.auth.email, { ...u, mission: missions[idx] });
-                                }
-                            });
-                        });
-                        this.users.set(Array.from(merged.values()));
-                        this.loading.set(false);
-                    },
-                    error: (err: any) => {
-                        console.error('Failed to load users', err);
-                        this.error.set('Failed to load users for your missions.');
-                        this.loading.set(false);
-                    }
+                // Merge users across all lead missions, keyed by email
+                const merged = new Map<string, UserAdmin>();
+                usersPerMission.forEach((users, idx) => {
+                    (users || []).forEach(u => {
+                        if (!merged.has(u.auth.email)) {
+                            merged.set(u.auth.email, { ...u, mission: missions[idx] });
+                        }
+                    });
                 });
+                this.users.set(Array.from(merged.values()));
+                this.loading.set(false);
             },
             error: (err: any) => {
-                console.error('Failed to load roles config', err);
-                this.error.set('Failed to load roles configuration.');
+                console.error('Failed to load admin data', err);
+                this.error.set('Failed to load roles or users. Please try again.');
                 this.loading.set(false);
             }
         });

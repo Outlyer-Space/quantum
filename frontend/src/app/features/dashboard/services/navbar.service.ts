@@ -15,6 +15,13 @@ export class NavbarService {
     sidebarProcedureId = signal<string | null>(null);
     procedureTitle = signal<string>('');
 
+    /**
+     * The mission (eventname) of the procedure currently being viewed.
+     * Written by ViewProcedureComponent when a procedure loads, cleared on destroy.
+     * null means the user is on the main dashboard (no active procedure).
+     */
+    activeMission = signal<string | null>(null);
+
     // ── Active users ───────────────────────────────────────────────────────
 
     /**
@@ -72,8 +79,8 @@ export class NavbarService {
                 // Angular's trackBy sees no identity change on this row
                 if (
                     ex.name     === inc.name     &&
-                    ex.status   === inc.status   &&
-                    ex.callsign === inc.callsign
+                    ex.isOnline === inc.isOnline  &&
+                    ex.role     === inc.role
                 ) {
                     return ex;
                 }

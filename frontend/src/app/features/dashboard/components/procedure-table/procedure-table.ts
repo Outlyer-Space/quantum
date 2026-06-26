@@ -314,12 +314,12 @@ export class ProcedureTableComponent implements OnDestroy {
         const username = currentUser?.auth.name || 'Unknown User';
         const email = currentUser?.auth.email || 'unknown@example.com';
 
-        let status = 'VIP';
+        let role = 'VIP';
         if (currentUser?.missions && currentUser.missions.length > 0) {
-            status = currentUser.missions[0].currentRole?.callsign || 'VIP';
+            role = currentUser.missions[0].currentRole?.callsign || 'VIP';
         }
 
-        this.procedureService.createInstance(proc.id, username, email, status).subscribe({
+        this.procedureService.createInstance(proc.id, username, email, role).subscribe({
             next: (response) => {
                 this.router.navigate([
                     '/dashboard/procedure/runninginstance',

@@ -40,7 +40,7 @@ export interface RawInstance {
     running: boolean;
     version: number;
     Steps: { step: string; info: string; recordedValue?: string; comments?: string }[];
-    users: { name: string; email: string; status: string }[];
+    users: { name: string; email: string; role: string; isOnline: boolean }[];
 }
 
 /** Raw backend procedure document from MongoDB */
@@ -53,6 +53,21 @@ export interface RawProcedure {
     sections: RawSection[];
     instances: RawInstance[];
     versions: RawSection[][];
+}
+
+/**
+ * Projected shape returned by GET /api/procedures (dashboard list).
+ * The backend omits sections, instances, and versions to keep the
+ * payload small — so those fields must NOT be declared here.
+ */
+export interface RawProcedureSummary {
+    _id: string;
+    procedureID: string;
+    title: string;
+    eventname: string;
+    lastuse: string;
+    running?: number;
+    archived?: number;
 }
 
 /** A running (open) instance of a procedure */
@@ -93,6 +108,6 @@ export interface ProcedureData {
 export interface ActiveUser {
     name: string;
     email: string;
-    status: string | boolean;
-    callsign?: string;
+    role: string;
+    isOnline: boolean;
 }

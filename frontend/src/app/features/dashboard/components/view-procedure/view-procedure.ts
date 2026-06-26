@@ -178,11 +178,20 @@ export class ViewProcedureComponent implements OnDestroy {
             const s = source[i];
             if (!t || !s || t.id !== s.id) continue;
 
+            // HEADING steps have children — their recordedValue is a locally-computed
+            // timestamp set by autoCompleteParents(). The server never stores it, so
+            // the incoming value from the poll is always blank. Syncing it here would
+            // overwrite the local timestamp every tick, causing a visible flicker.
+            if (t.children && t.children.length > 0) {
+                // Still recurse into children so their values stay in sync.
+                if (s.children && s.children.length === t.children.length) {
+                    this.syncStepValues(t.children, s.children);
+                }
+                continue;
+            }
+
             if (t.recordedValue !== s.recordedValue) {
                 t.recordedValue = s.recordedValue;
-            }
-            if (t.children && s.children && t.children.length === s.children.length) {
-                this.syncStepValues(t.children, s.children);
             }
         }
     }
@@ -259,6 +268,11 @@ export class ViewProcedureComponent implements OnDestroy {
             if (!data?.title) return;
 
             this.nav.procedureTitle.set(data.title);
+            // Write the active mission so the navbar and settings dialog can
+            // derive the correct callsign without defaulting to missions[0].
+            if (data.eventname) {
+                this.nav.activeMission.set(data.eventname.toLowerCase());
+            }
 
             if (mode === 'archived') {
                 this.nav.title.set(`Archive: ${data.title} (${id})`);
@@ -318,6 +332,7 @@ export class ViewProcedureComponent implements OnDestroy {
         this.clearUserPresence();
         this.nav.sidebarViewState.set(null);
         this.nav.sidebarProcedureId.set(null);
+        this.nav.activeMission.set(null);
         this.nav.clearActiveUsers();
         this.nav.procedureTitle.set('');
     }

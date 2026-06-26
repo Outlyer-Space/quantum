@@ -8,6 +8,7 @@ import {
     ProcedureData,
     ProcedureSummary,
     RawProcedure,
+    RawProcedureSummary,
     RawSection,
     StepType,
     ActiveUser
@@ -47,19 +48,15 @@ export class ProcedureService {
         const params: Record<string, string> = {};
         if (mission) params['mission'] = mission;
 
-        return this.http.get<RawProcedure[]>('/api/procedures', { params }).pipe(
-            map(procs => procs.map(p => {
-                const running = p.instances ? p.instances.filter(i => i.running).length : 0;
-                const archived = p.instances ? p.instances.filter(i => !i.running).length : 0;
-                return {
-                    id: p.procedureID,
-                    title: p.title,
-                    lastUse: p.lastuse || '',
-                    running,
-                    archived,
-                    eventname: p.eventname || ''
-                };
-            }))
+        return this.http.get<RawProcedureSummary[]>('/api/procedures', { params }).pipe(
+            map(procs => procs.map(p => ({
+                id: p.procedureID,
+                title: p.title,
+                lastUse: p.lastuse || '',
+                running: p.running ?? 0,
+                archived: p.archived ?? 0,
+                eventname: p.eventname || ''
+            })))
         );
     }
 
@@ -108,13 +105,13 @@ export class ProcedureService {
     }
 
     /** Send user presence heartbeat for an instance */
-    setUserStatus(id: string, revision: string, username: string, email: string, status: boolean): Observable<any> {
+    setUserStatus(id: string, revision: string, username: string, email: string, isOnline: boolean): Observable<any> {
         const payload = {
             pid: id,
             revision,
             username,
             email,
-            status
+            isOnline
         };
         return this.http.post('/api/procedures/instances/user-status', payload);
     }
@@ -122,7 +119,7 @@ export class ProcedureService {
     /** Lightweight fetch of only the active users array for a running instance */
     getActiveUsers(id: string, revision: string): Observable<ActiveUser[]> {
         return this.http.get<{ users: ActiveUser[] }>('/api/procedures/instances/users', {
-            params: { id, revision, includeRoles: 'true' }
+            params: { id, revision }
         }).pipe(
             map(data => data.users || [])
         );
@@ -182,14 +179,14 @@ export class ProcedureService {
      * Create a new running instance of a procedure.
      * Returns an object containing the new `revision` number.
      */
-    createInstance(id: string, username: string, email: string, status: string): Observable<{ revision: number }> {
+    createInstance(id: string, username: string, email: string, role: string): Observable<{ revision: number }> {
         const payload = {
             id,
-            usernamerole: status ? `${username} - ${status}` : username,
+            usernamerole: role ? `${username} - ${role}` : username,
             lastuse: new Date().toISOString(),
             username,
             email,
-            status
+            role
         };
         return this.http.post<{ revision: number }>('/api/procedures/instances', payload);
     }
