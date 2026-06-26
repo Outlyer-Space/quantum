@@ -174,7 +174,7 @@ pipeline {
 
                 // Push the current HEAD to the GitHub remote
                 sh """
-                    git push github HEAD:refs/heads/main
+                    git push --force github HEAD:refs/heads/main
                 """
             }
         }

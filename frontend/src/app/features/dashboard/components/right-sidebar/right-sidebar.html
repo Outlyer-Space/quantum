@@ -63,7 +63,7 @@
         <div class="sidebar-section">
             <h3 class="section-title">Online Users</h3>
             <ul class="users-list">
-                @for (user of activeUsers(); track user.email) {
+                @for (user of onlineUsers(); track user.email) {
                 <li class="user-item">
                     <span class="status-indicator" [class.is-online]="user.isOnline"></span>
                     <div class="user-info">

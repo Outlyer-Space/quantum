@@ -137,6 +137,13 @@ export class ViewProcedureComponent implements OnDestroy {
     private lastRenderedProcId: string | null = null;
 
     /**
+     * Tracks the flatIndex of steps that have an optimistic UI update currently
+     * in-flight to the server. Prevents background polls from overriding the
+     * optimistic value before the server resolves the update.
+     */
+    private pendingUpdates = new Set<number>();
+
+    /**
      * The step tree exposed to the template.
      *
      * First load or procedure change → replace cache wholesale.
@@ -151,8 +158,10 @@ export class ViewProcedureComponent implements OnDestroy {
 
         if (!this.localStepsCache || this.lastRenderedProcId !== id) {
             // First load or navigated to a different procedure — replace cache
+            // and clear any pending guards from a previous procedure session.
+            this.pendingUpdates.clear();
             this.localStepsCache = data.steps;
-            this.lastRenderedProcId = id;          // plain property write — always safe in computed
+            this.lastRenderedProcId = id;
             return this.localStepsCache;
         }
 
@@ -178,14 +187,16 @@ export class ViewProcedureComponent implements OnDestroy {
             const s = source[i];
             if (!t || !s || t.id !== s.id) continue;
 
-            // HEADING steps have children — their recordedValue is a locally-computed
-            // timestamp set by autoCompleteParents(). The server never stores it, so
-            // the incoming value from the poll is always blank. Syncing it here would
-            // overwrite the local timestamp every tick, causing a visible flicker.
             if (t.children && t.children.length > 0) {
-                // Still recurse into children so their values stay in sync.
                 if (s.children && s.children.length === t.children.length) {
                     this.syncStepValues(t.children, s.children);
+                }
+                continue;
+            }
+
+            if (this.pendingUpdates.has(t.flatIndex)) {
+                if (s.recordedValue === t.recordedValue) {
+                    this.pendingUpdates.delete(t.flatIndex);
                 }
                 continue;
             }
@@ -372,11 +383,12 @@ export class ViewProcedureComponent implements OnDestroy {
         ctrl.reset('');
 
         const username = this.authService.user()?.auth?.name || 'Unknown User';
+        this.pendingUpdates.add(step.flatIndex);
         this.procedureService.setStepValue(
             this.id(), this.revision()!, step.flatIndex, val, step.type, username
         ).subscribe({
-            next: () => this.procedureService.requestRefresh(),
             error: (err) => {
+                this.pendingUpdates.delete(step.flatIndex);
                 console.error('Failed to save step value:', err);
                 step.recordedValue = previous;
             },
@@ -390,11 +402,12 @@ export class ViewProcedureComponent implements OnDestroy {
         step.recordedValue = '';
 
         const username = this.authService.user()?.auth?.name || 'Unknown User';
+        this.pendingUpdates.add(step.flatIndex);
         this.procedureService.setStepValue(
             this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
         ).subscribe({
-            next: () => this.procedureService.requestRefresh(),
             error: (err) => {
+                this.pendingUpdates.delete(step.flatIndex);
                 console.error('Failed to clear input value:', err);
                 step.recordedValue = previous;
             },
@@ -422,11 +435,13 @@ export class ViewProcedureComponent implements OnDestroy {
             step.recordedValue = timestamp;
             this.autoCompleteParents();
 
+            this.pendingUpdates.add(step.flatIndex);
+
             this.procedureService.setStepValue(
                 this.id(), this.revision()!, step.flatIndex, '', step.type, username, timestamp
             ).subscribe({
-                next: () => this.procedureService.requestRefresh(),
                 error: (err) => {
+                    this.pendingUpdates.delete(step.flatIndex);
                     console.error('Failed to save step completion:', err);
                     step.recordedValue = previous;
                     checkbox.checked = false;
@@ -437,11 +452,13 @@ export class ViewProcedureComponent implements OnDestroy {
             step.recordedValue = '';
             this.autoCompleteParents();
 
+            this.pendingUpdates.add(step.flatIndex);
+
             this.procedureService.setStepValue(
                 this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
             ).subscribe({
-                next: () => this.procedureService.requestRefresh(),
                 error: (err) => {
+                    this.pendingUpdates.delete(step.flatIndex);
                     console.error('Failed to rewind step:', err);
                     step.recordedValue = previous;
                     checkbox.checked = true;
@@ -500,16 +517,19 @@ export class ViewProcedureComponent implements OnDestroy {
     }
 
     private clearUserPresence(): void {
-        if (!this.isRunningInstance()) return;
+        const id = this.id();
+        const revision = this.revision();
+        if (!id || !revision || !this.isRunningInstance()) return;
+
         const user = this.authService.user();
         const username = user?.auth?.name || 'Unknown User';
         const email = user?.auth?.email || '';
-        const id = this.id();
-        const revision = this.revision();
-        if (id && revision) {
-            const payload = { pid: id, revision: parseInt(revision, 10), username, email, isOnline: false };
-            navigator.sendBeacon('/api/procedures/instances/user-status', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
-        }
+
+        // Use sendBeacon for reliable delivery during page unload.
+        // Wrap in a Blob with application/json so Express body-parser picks it up!
+        const payload = { pid: id, revision: parseInt(revision, 10), username, email, isOnline: false };
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon('/api/procedures/instances/user-status', blob);
     }
 
     /**

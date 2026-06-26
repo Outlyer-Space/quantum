@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ActiveUser } from '../../../../core/models/procedure.model';
 import { IconComponent, IconName } from '../../../../shared/components/icon/icon';
@@ -22,6 +22,9 @@ export class RightSidebarComponent {
     viewState = input<'archived' | 'running' | 'preview' | null>(null);
     procedureId = input<string | null>(null);
     activeUsers = input<ActiveUser[]>([]);
+
+    /** Filter the raw activeUsers list to only show those currently online */
+    onlineUsers = computed(() => this.activeUsers().filter(u => u.isOnline));
 
     /** Emitted when the tab button is clicked */
     toggle = output<void>();
