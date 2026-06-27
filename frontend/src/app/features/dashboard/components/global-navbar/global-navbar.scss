@@ -34,12 +34,30 @@
         margin: 15px;
     }
 
-    .proc-header-title {
+    .navbar-center {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 14px;
-        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mission-header-title {
+        font-size: 16px;
+        color: #111; // dark color so it stands out
+        font-weight: 700; // bolder
+    }
+
+    .title-separator {
+        color: #888;
+        font-size: 18px;
+        font-weight: 300;
+    }
+
+    .proc-header-title {
+        font-size: 15px;
+        color: #444;
         font-weight: 500;
     }
 
@@ -84,11 +102,13 @@
             filter: invert(1) brightness(2);
         }
 
-        .proc-header-title {
+        .proc-header-title, .mission-header-title, .title-separator {
             color: #fff;
-            font-weight: 600;
-            letter-spacing: 0.5px;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .mission-header-title {
+            font-weight: 700;
         }
 
         .btn-return {

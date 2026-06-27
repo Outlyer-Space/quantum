@@ -15,19 +15,23 @@
         @if (loading()) {
         <div class="loading-spinner">Loading roles...</div>
         } @else {
-        @if (roles().length === 0) {
+        @if (allMissions().length === 0) {
         <p class="no-roles-msg">No available roles assigned to this account.</p>
         }
-        @for (pair of rolePairs; track $index) {
+        @for (mission of allMissions(); track mission.name) {
+        <h3 class="mission-header">{{ mission.name }}</h3>
+        @for (pair of getRolePairs(mission.allowedRoles); track $index) {
         <div class="role-row">
             @for (role of pair; track role.callsign) {
             <label class="role-option">
-                <input type="radio" name="user-role" [value]="role.name" [checked]="selectedRoleName() === role.name"
-                    (change)="onRoleChange(role.name)" />
+                <input type="radio" name="user-role" [value]="mission.name + '::' + role.name" 
+                    [checked]="selectedRoleValue() === (mission.name + '::' + role.name)"
+                    (change)="onRoleChange(mission.name, role)" />
                 <span class="role-label">{{ role.name }} ({{ role.callsign }})</span>
             </label>
             }
         </div>
+        }
         }
         }
     </div>
@@ -35,7 +39,7 @@
     <!-- Footer -->
     <div class="dialog-footer">
         <button class="btn btn-close" (click)="close()" [disabled]="loading()">Close</button>
-        <button class="btn btn-save" (click)="save()" [disabled]="loading() || roles().length === 0">Save</button>
+        <button class="btn btn-save" (click)="save()" [disabled]="loading() || allMissions().length === 0">Save</button>
     </div>
 </div>
 }

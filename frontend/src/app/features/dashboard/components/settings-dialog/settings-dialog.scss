@@ -87,6 +87,19 @@ $radius: 4px;
         text-align: center;
         font-weight: 500;
     }
+
+    .mission-header {
+        margin: 16px 0 12px 0;
+        font-size: 1.15em;
+        color: #333; // Dark black
+        font-weight: 600;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 6px;
+
+        &:first-of-type {
+            margin-top: 0;
+        }
+    }
 }
 
 .role-row {

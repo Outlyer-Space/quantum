@@ -39,27 +39,42 @@ module.exports = async function ensureLeadRole(req, res, next) {
 
         // Case-insensitive mission lookup to handle 'Quantum' vs 'quantum'
         const missionLower = mission.toLowerCase();
-        const userMission = user.missions.find(m => m.name && m.name.toLowerCase() === missionLower);
+        const targetMission = user.missions.find(m => m.name && m.name.toLowerCase() === missionLower);
+        let isAuthorized = false;
 
-        if (!userMission) {
+        // 1. Check if authorized specifically for the target mission
+        if (targetMission && targetMission.currentRole && targetMission.currentRole.callsign) {
+            if (LEAD_ROLES.includes(targetMission.currentRole.callsign.toUpperCase())) {
+                isAuthorized = true;
+            }
+        }
+
+        // 2. If not authorized yet, check if they hold a lead role in ANY mission (Global Admin Bypass)
+        if (!isAuthorized) {
+            const hasAnyLeadRole = user.missions.some(m => 
+                m.currentRole && 
+                m.currentRole.callsign && 
+                LEAD_ROLES.includes(m.currentRole.callsign.toUpperCase())
+            );
+
+            if (hasAnyLeadRole) {
+                isAuthorized = true;
+            }
+        }
+
+        if (isAuthorized) {
+            return next();
+        }
+
+        // 3. Fallback error handlers
+        if (!targetMission) {
             return res.status(403).json({ error: 'Forbidden', message: `User is not part of mission: ${mission}` });
-        }
-
-        const currentRole = userMission.currentRole;
-
-        if (!currentRole || !currentRole.callsign) {
-            return res.status(403).json({ error: 'Forbidden', message: 'User has no active role in this mission' });
-        }
-
-        if (!LEAD_ROLES.includes(currentRole.callsign.toUpperCase())) {
+        } else {
             return res.status(403).json({
                 error: 'Forbidden',
-                message: `Role ${currentRole.callsign} is not authorized for this action. Lead role required.`
+                message: `Role ${targetMission.currentRole ? targetMission.currentRole.callsign : 'Unknown'} is not authorized for this action. Lead role required.`
             });
         }
-
-        // User is authorized — proceed
-        next();
 
     } catch (error) {
         console.error('Error in ensureLeadRole middleware:', error);

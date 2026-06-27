@@ -156,6 +156,7 @@ module.exports = function (config, app, passport, user) {
     // middleware
     var ensureLeadRole = require('./lib/ensureLeadRole')
     var { ensureMissionAccess, ensureProcedureMissionAccess } = require('./lib/ensureMissionAccess')
+    var ensureNotVip = require('./lib/ensureNotVip')
 
     // file upload (multer)
     var multer = require('multer')
@@ -198,17 +199,17 @@ module.exports = function (config, app, passport, user) {
     app.get('/api/procedures/single',                   ensureAuth, ensureProcedureMissionAccess, procs.getSingleProcedure);
     app.get('/api/procedures/data',                     ensureAuth, ensureProcedureMissionAccess, procs.getProcedureData);
     app.get('/api/procedures/roles',                    ensureAuth, procs.getQuantumRoles);
-    app.post('/api/procedures/upload',                  ensureAuth, ensureMissionAccess, upload.single('file'), procs.uploadFile);
-    app.patch('/api/procedures/name',                   ensureAuth, ensureProcedureMissionAccess, procs.updateProcedureName);
+    app.post('/api/procedures/upload',                  ensureAuth, ensureMissionAccess, upload.single('file'), ensureNotVip, procs.uploadFile);
+    app.patch('/api/procedures/name',                   ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.updateProcedureName);
     app.get('/api/procedures/instances',                ensureAuth, ensureProcedureMissionAccess, procs.getAllInstances);
     // /api/procedures/instances/live route removed as it's superseded by /api/procedures/single
-    app.post('/api/procedures/instances',               ensureAuth, ensureProcedureMissionAccess, procs.saveProcedureInstance);
-    app.post('/api/procedures/instances/steps',         ensureAuth, ensureProcedureMissionAccess, procs.setInfo);
-    app.post('/api/procedures/instances/complete',      ensureAuth, ensureProcedureMissionAccess, procs.setInstanceCompleted);
-    app.post('/api/procedures/instances/comments',      ensureAuth, ensureProcedureMissionAccess, procs.setComments);
+    app.post('/api/procedures/instances',               ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.saveProcedureInstance);
+    app.post('/api/procedures/instances/steps',         ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.setInfo);
+    app.post('/api/procedures/instances/complete',      ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.setInstanceCompleted);
+    app.post('/api/procedures/instances/comments',      ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.setComments);
     app.get('/api/procedures/instances/users',           ensureAuth, ensureProcedureMissionAccess, procs.getInstanceUsers);
-    app.post('/api/procedures/instances/user-status',   ensureAuth, ensureProcedureMissionAccess, procs.setUserStatus);
-    app.post('/api/procedures/instances/parent-steps',  ensureAuth, ensureProcedureMissionAccess, procs.setParentsInfo);
+    app.post('/api/procedures/instances/user-status',   ensureAuth, ensureProcedureMissionAccess, procs.setUserStatus); // Allowing user-status so VIPs might be able to leave/join? Or should VIP not be able to join/leave?
+    app.post('/api/procedures/instances/parent-steps',  ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.setParentsInfo);
 
     // ===========================================================================
     // USERS API

@@ -84,6 +84,16 @@
         display: flex;
         flex-direction: row;
         margin-bottom: 20px;
+
+        &.mt-2 {
+            margin-top: 8px;
+        }
+
+        &.border-separator {
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 16px;
+        }
     }
 
     .form-label {

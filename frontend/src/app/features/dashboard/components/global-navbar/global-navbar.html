@@ -7,10 +7,18 @@
         <a routerLink="/dashboard" class="logo-link" aria-label="Quantum home">
             <img src="media/logos/Quantum_Logo_Regular.png" alt="Quantum" class="nav-logo" width="120" height="24" />
         </a>
+    </div>
+    
+    <div class="navbar-center">
+        @if (activeMission()) {
+        <span class="mission-header-title">Mission - {{ activeMission() }}</span>
+        }
         @if (nav.title()) {
-        <div class="proc-header-title">{{ nav.title() }}</div>
+        <span class="title-separator">|</span>
+        <span class="proc-header-title">{{ nav.title() }}</span>
         }
     </div>
+
     <div class="navbar-right">
         @if (nav.showReturnBtn()) {
         <a routerLink="/dashboard" class="btn btn-return">Exit</a>

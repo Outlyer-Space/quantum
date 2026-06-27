@@ -23,15 +23,15 @@ export class GlobalNavbarComponent {
 
     userName = computed(() => this.auth.user()?.auth?.name || 'Unknown User');
 
+    activeMission = computed(() => this.nav.activeMission() || this.auth.globalActiveMission());
+
     userCallsign = computed(() => {
         const user = this.auth.user();
         if (!user?.missions?.length) return 'VIP';
 
-        // If we're inside a procedure view, use that procedure's mission.
-        // Otherwise fall back to the first mission (dashboard context).
-        const activeMission = this.nav.activeMission();
-        const mission = activeMission
-            ? user.missions.find(m => m.name?.toLowerCase() === activeMission)
+        const missionName = this.activeMission();
+        const mission = missionName
+            ? user.missions.find(m => m.name?.toLowerCase() === missionName.toLowerCase())
             : user.missions[0];
 
         return mission?.currentRole?.callsign || 'VIP';

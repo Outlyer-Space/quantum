@@ -223,81 +223,97 @@ module.exports = {
     },
     setMissionForUser: function (req, res) {
         var email = req.body.email;
-        var mission = (req.body.mission || '').toLowerCase();
+        var inputMission = (req.body.mission || '').trim();
+        if (!inputMission) {
+             return res.status(400).json({ error: 'Mission parameter is required' });
+        }
+        var missionLower = inputMission.toLowerCase();
         var defaultRole = {
             'name': configRole.roles['VIP'].name,
             'callsign': configRole.roles['VIP'].callsign
         };
-        var missionCount = 0;
-        var missionObj;
 
-        //count the number of users for this mission
-        User.countDocuments({ 'missions.name': { $regex: new RegExp('^' + mission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }, function (err, count) {
-            if (err) {
-                console.log(err);
+        // First, check if this mission already exists in the system to preserve its original casing
+        User.findOne({ 'missions.name': { $regex: new RegExp('^' + inputMission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }, function(err, existingUser) {
+            var finalMissionName = inputMission; 
+            if (existingUser && existingUser.missions) {
+                var found = existingUser.missions.find(function(m) { return m.name && m.name.toLowerCase() === missionLower; });
+                if (found) {
+                    finalMissionName = found.name;
+                }
             }
 
-            User.findOne({ 'auth.email': email }, function (err, user) {
+            //count the number of users for this mission
+            User.countDocuments({ 'missions.name': { $regex: new RegExp('^' + inputMission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }, function (err, count) {
                 if (err) {
                     console.log(err);
                 }
 
-                if (user) {
-                    //If zero users for this mission, then assign user as Mission Director
-                    if (count === 0) {
-                        var userRole = {
-                            'name': configRole.roles['MD'].name,
-                            'callsign': configRole.roles['MD'].callsign
-                        };
-                        missionObj = {
-                            'name': mission,
-                            'currentRole': userRole,
-                            'allowedRoles': []
-                        };
-                        missionObj.allowedRoles.push(defaultRole);
-                        missionObj.allowedRoles.push(userRole);
+                User.findOne({ 'auth.email': email }, function (err, user) {
+                    if (err) {
+                        console.log(err);
+                    }
 
-                        user.missions.push(missionObj);
-                    } else {
-                        //check if the mission exists in the user's mission list
-                        for (var i = 0; i < user.missions.length; i++) {
-                            if (user.missions[i].name && user.missions[i].name.toLowerCase() === mission) {
-                                if (!containsObject(user.missions[i].currentRole, user.missions[i].allowedRoles)) {
-                                    //update current role to default role if current role is not a part of allowed roles
-                                    user.missions[i].currentRole = defaultRole;
-                                }
-                                missionObj = user.missions[i];
-                                missionCount++;
-                            }
-                        }
-
-                        //If mission does not exist for this user, assign Observer role
-                        if (missionCount == 0) {
+                    if (user) {
+                        var missionCount = 0;
+                        var missionObj;
+                        
+                        //If zero users for this mission, then assign user as Mission Director
+                        if (count === 0) {
+                            var userRole = {
+                                'name': configRole.roles['MD'].name,
+                                'callsign': configRole.roles['MD'].callsign
+                            };
                             missionObj = {
-                                'name': mission,
-                                'currentRole': defaultRole,
+                                'name': finalMissionName,
+                                'currentRole': userRole,
                                 'allowedRoles': []
                             };
                             missionObj.allowedRoles.push(defaultRole);
+                            missionObj.allowedRoles.push(userRole);
 
                             user.missions.push(missionObj);
+                        } else {
+                            //check if the mission exists in the user's mission list
+                            for (var i = 0; i < user.missions.length; i++) {
+                                if (user.missions[i].name && user.missions[i].name.toLowerCase() === missionLower) {
+                                    if (!containsObject(user.missions[i].currentRole, user.missions[i].allowedRoles)) {
+                                        //update current role to default role if current role is not a part of allowed roles
+                                        user.missions[i].currentRole = defaultRole;
+                                    }
+                                    missionObj = user.missions[i];
+                                    missionCount++;
+                                }
+                            }
+
+                            //If mission does not exist for this user, assign Observer role
+                            if (missionCount == 0) {
+                                missionObj = {
+                                    'name': finalMissionName,
+                                    'currentRole': defaultRole,
+                                    'allowedRoles': []
+                                };
+                                missionObj.allowedRoles.push(defaultRole);
+
+                                user.missions.push(missionObj);
+                            }
                         }
+
+                        user.markModified('missions');
+
+                        user.save(function (err, result) {
+                            if (err) {
+                                console.log(err);
+                            }
+
+                            if (result) {
+                                res.send(missionObj);
+                            }
+
+                        });
                     }
 
-                    user.markModified('missions');
-
-                    user.save(function (err, result) {
-                        if (err) {
-                            console.log(err);
-                        }
-
-                        if (result) {
-                            res.send(missionObj);
-                        }
-
-                    });
-                }
-
+                });
             });
         });
     },
@@ -316,7 +332,7 @@ module.exports = {
             }
 
             const user = await User.findOne(
-                { 'auth.email': email, 'missions.name': mission }
+                { 'auth.email': email }
             );
 
             if (!user) {
@@ -353,24 +369,37 @@ module.exports = {
             const { email, roles } = req.body;
             const mission = (req.body.mission || '').toLowerCase();
 
-            if (!email || !roles || !mission) {
+            if (!email || !roles) {
                 return res.status(400).send([]);
             }
 
             const user = await User.findOne(
-                { 'auth.email': email, 'missions.name': mission }
+                { 'auth.email': email }
             );
 
             if (!user) {
                 return res.status(404).send([]);
             }
 
-            const missionIndex = user.missions.findIndex(m => m.name && m.name.toLowerCase() === mission);
-            if (missionIndex === -1) {
-                return res.status(404).send([]);
+            // Try to find the specific mission first
+            const missionIndex = mission
+                ? user.missions.findIndex(m => m.name && m.name.toLowerCase() === mission)
+                : -1;
+
+            if (missionIndex !== -1) {
+                // Update the specific mission
+                user.missions[missionIndex].allowedRoles = roles;
+            } else {
+                // Mission not matched (e.g. MD is in a different mission than target user).
+                // Update allowed roles for all missions the target user belongs to.
+                if (user.missions.length === 0) {
+                    return res.status(404).send([]);
+                }
+                user.missions.forEach(m => {
+                    m.allowedRoles = roles;
+                });
             }
 
-            user.missions[missionIndex].allowedRoles = roles;
             user.markModified('missions');
 
             const result = await user.save();

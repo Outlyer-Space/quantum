@@ -128,6 +128,7 @@ function ensureProcedureMissionAccess(req, res, next) {
         }
 
         req.userMissionNames = missionNames;
+        req.procMissionName = procMission;
         next();
     });
 }
