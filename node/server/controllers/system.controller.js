@@ -16,7 +16,16 @@ exports.getVersion = async function(req, res) {
         if (mongoose.connection.readyState === 1) {
             // Get the connection URL (fallback to host/name if full URL isn't readily available)
             if (mongoose.connection.client && mongoose.connection.client.s && mongoose.connection.client.s.url) {
-                dbUrl = mongoose.connection.client.s.url;
+                try {
+                    const parsedUrl = new URL(mongoose.connection.client.s.url);
+                    parsedUrl.username = '';
+                    parsedUrl.password = '';
+                    parsedUrl.search = '';
+                    dbUrl = parsedUrl.toString();
+                } catch (e) {
+                    // Fallback string replacement if URL parsing fails
+                    dbUrl = mongoose.connection.client.s.url.split('?')[0].replace(/\/\/[^@]+@/, '//');
+                }
             } else if (mongoose.connection.host) {
                 dbUrl = `${mongoose.connection.host}:${mongoose.connection.port}/${mongoose.connection.name}`;
             }
