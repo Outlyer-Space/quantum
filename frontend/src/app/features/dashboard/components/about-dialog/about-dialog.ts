@@ -15,6 +15,8 @@ export class AboutDialogComponent {
         version: 'Loading...',
         branch: 'Loading...',
         commit: 'Loading...',
+        dbUrl: 'Loading...',
+        dbVersion: 'Loading...',
     });
 
     isOpen = signal(false);

@@ -83,4 +83,27 @@
         </div>
         }
     </nav>
+
+    <!-- System Status Section -->
+    <div class="sidebar-section status-section">
+        <h3 class="section-title">System Status</h3>
+        @if (isLoadingStatus()) {
+            <div class="status-loading">Loading...</div>
+        } @else if (systemStatus()) {
+            <ul class="status-list">
+                <li class="status-item">
+                    <span class="status-label">Server</span>
+                    <span class="status-value" [class.is-okay]="systemStatus()?.server === 'OKAY'" [class.is-offline]="systemStatus()?.server !== 'OKAY'">{{ systemStatus()?.server }}</span>
+                </li>
+                <li class="status-item">
+                    <span class="status-label">Database</span>
+                    <span class="status-value" [class.is-okay]="systemStatus()?.database === 'OKAY'" [class.is-offline]="systemStatus()?.database !== 'OKAY'">{{ systemStatus()?.database }}</span>
+                </li>
+                <li class="status-item last-poll">
+                    <span class="status-label">Last Poll</span>
+                    <span class="status-value">{{ systemStatus()?.timestamp | date:'mediumTime' }}</span>
+                </li>
+            </ul>
+        }
+    </div>
 </aside>

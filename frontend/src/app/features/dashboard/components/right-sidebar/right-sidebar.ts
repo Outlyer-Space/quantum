@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, inject, signal, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DatePipe } from '@angular/common';
 import { ActiveUser } from '../../../../core/models/procedure.model';
 import { IconComponent, IconName } from '../../../../shared/components/icon/icon';
 import { AuthService } from '../../../../core/services/auth.service';
+import { SystemService, SystemStatus } from '../../../../core/services/system.service';
 
 interface SidebarItem {
     label: string;
@@ -14,13 +16,38 @@ interface SidebarItem {
 @Component({
     selector: 'app-right-sidebar',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [RouterLink, IconComponent],
+    imports: [RouterLink, IconComponent, DatePipe],
     templateUrl: './right-sidebar.html',
     styleUrl: './right-sidebar.scss',
 })
 export class RightSidebarComponent {
     private authService = inject(AuthService);
+    private systemService = inject(SystemService);
     protected isVip = this.authService.isVip;
+    
+    systemStatus = signal<SystemStatus | null>(null);
+    isLoadingStatus = signal<boolean>(false);
+
+    constructor() {
+        effect(() => {
+            if (this.isOpen()) {
+                this.fetchStatus();
+            }
+        });
+    }
+
+    private fetchStatus() {
+        this.isLoadingStatus.set(true);
+        this.systemService.getSystemStatus().subscribe({
+            next: (status) => {
+                this.systemStatus.set(status);
+                this.isLoadingStatus.set(false);
+            },
+            error: () => {
+                this.isLoadingStatus.set(false);
+            }
+        });
+    }
 
     isOpen = input.required<boolean>();
     viewState = input<'archived' | 'running' | 'preview' | null>(null);

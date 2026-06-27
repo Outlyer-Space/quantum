@@ -189,6 +189,7 @@ module.exports = function (config, app, passport, user) {
     // SYSTEM API
     // ===========================================================================
     app.get('/api/version', ensureAuth, system.getVersion);
+    app.get('/api/status', ensureAuth, system.getStatus);
 
     // ===========================================================================
     // PROCEDURES API

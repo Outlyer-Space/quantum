@@ -6,6 +6,14 @@ export interface VersionInfo {
     version: string;
     branch: string;
     commit: string;
+    dbUrl?: string;
+    dbVersion?: string;
+}
+
+export interface SystemStatus {
+    server: 'OKAY' | 'OFFLINE';
+    database: 'OKAY' | 'OFFLINE';
+    timestamp: string;
 }
 
 @Injectable({
@@ -26,6 +34,22 @@ export class SystemService {
                     branch: 'Error loading',
                     commit: 'Error loading'
                 });
+            })
+        );
+    }
+
+    /**
+     * Gets the real-time server and database health status.
+     */
+    getSystemStatus(): Observable<SystemStatus> {
+        return this.http.get<SystemStatus>('/api/status').pipe(
+            catchError(err => {
+                console.error('Failed to fetch system status:', err);
+                return of({
+                    server: 'OFFLINE',
+                    database: 'OFFLINE',
+                    timestamp: new Date().toISOString()
+                } as SystemStatus);
             })
         );
     }
