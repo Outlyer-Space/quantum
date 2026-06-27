@@ -47,7 +47,10 @@
                     {{ item.label }}
                 </a>
                 } @else {
-                <button class="sidebar-link" type="button" (click)="onItemClick(item)">
+                <button class="sidebar-link" type="button" 
+                    (click)="onItemClick(item)"
+                    [disabled]="isVip() && item.action === 'upload'"
+                    [attr.data-tooltip]="isVip() && item.action === 'upload' ? 'Observers cannot upload' : null">
                     <span class="item-icon" aria-hidden="true">
                         <app-icon [name]="item.icon" size="16" />
                     </span>

@@ -578,13 +578,20 @@ module.exports = {
 
             if (procs) {
                 //get procedure instance with the revision num
+                var instanceFound = false;
                 for (var i = 0; i < procs.instances.length; i++) {
-                    if (procs.instances[i].revision === procrevision) {
+                    if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
                         procs.instances[i].closedBy = usernamerole;
                         procs.instances[i].completedAt = lastuse;
                         procs.instances[i].running = false;
+                        instanceFound = true;
                         break;
                     }
+                }
+                
+                if (!instanceFound) {
+                    console.log('Could not find instance with revision:', procrevision, 'in procedure:', procid);
+                    return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
                 }
                 procs.lastuse = lastuse;
                 procs.markModified('procedure');

@@ -57,6 +57,11 @@ export class UserAdministrationDialogComponent {
     selectedUserControl = new FormControl<UserAdmin | null>(null);
     selectedRolesMap = signal<Map<string, Role>>(new Map());
 
+    /** Missions belonging to the currently selected user in the Roles tab */
+    selectedUserMissions = signal<string[]>([]);
+    /** The mission chosen in the Roles tab mission dropdown */
+    selectedRoleMission = signal<string>('');
+
     // ── Missions tab state ──
     allUsers = signal<UserAdmin[]>([]);
     allMissions = signal<string[]>([]);
@@ -69,16 +74,26 @@ export class UserAdministrationDialogComponent {
     newMission = signal<string>('');
 
     constructor() {
-        // When a new user is selected in the dropdown, map their allowedRoles to the checks
+        // When a new user is selected in the dropdown, load their missions and reset roles
         this.selectedUserControl.valueChanges
             .pipe(takeUntilDestroyed())
             .subscribe(user => {
-                const newMap = new Map<string, Role>();
-                if (user && user.allowedRoles) {
-                    const rolesArray = this.parseAllowedRoles(user.allowedRoles);
-                    rolesArray.forEach(r => newMap.set(r.callsign, r));
+                this.selectedRolesMap.set(new Map());
+                this.selectedUserMissions.set([]);
+                this.selectedRoleMission.set('');
+
+                if (user?.auth?.email) {
+                    this.userService.getUserMissions(user.auth.email, this.authMission).subscribe({
+                        next: (missions: string[]) => {
+                            this.selectedUserMissions.set(missions);
+                            // Auto-select the first mission and load its roles
+                            if (missions.length > 0) {
+                                this.selectedRoleMission.set(missions[0]);
+                                this.loadRolesForMission(user, missions[0]);
+                            }
+                        }
+                    });
                 }
-                this.selectedRolesMap.set(newMap);
             });
 
         // When a user is selected in the missions tab, load their missions
@@ -94,6 +109,28 @@ export class UserAdministrationDialogComponent {
 
         // Kick off initial data load from the constructor instead of ngOnInit
         this.loadData();
+    }
+
+    onRoleMissionChange(mission: string): void {
+        this.selectedRoleMission.set(mission);
+        const user = this.selectedUserControl.value;
+        if (user) {
+            this.loadRolesForMission(user, mission);
+        }
+    }
+
+    private loadRolesForMission(user: UserAdmin, mission: string): void {
+        this.userService.getAllowedRoles(user.auth.email, mission).subscribe({
+            next: (allowed: any) => {
+                const rolesArray = this.parseAllowedRoles(
+                    Array.isArray(allowed) ? allowed : Object.keys(allowed).map((k: string) => allowed[k])
+                );
+                const newMap = new Map<string, Role>();
+                rolesArray.forEach(r => newMap.set(r.callsign, r));
+                this.selectedRolesMap.set(newMap);
+            },
+            error: () => this.selectedRolesMap.set(new Map())
+        });
     }
 
     private parseAllowedRoles(allowedRoles: Role[] | Record<string, number>): Role[] {
@@ -185,15 +222,13 @@ export class UserAdministrationDialogComponent {
 
     saveRoles(): void {
         const user = this.selectedUserControl.value;
+        const mission = this.selectedRoleMission();
         if (!user || this.saving()) return;
 
         this.saving.set(true);
-        // Extract array of Roles from Map
         const roleArray = Array.from(this.selectedRolesMap().values());
 
-        // Use the mission the user record was loaded from; fall back to first lead mission
-        const missionForSave = (user as UserAdmin).mission ?? this.authMission;
-        this.userService.setAllowedRoles(user.auth.email, roleArray, missionForSave).subscribe({
+        this.userService.setAllowedRoles(user.auth.email, roleArray, mission || this.authMission).subscribe({
             next: () => {
                 this.saving.set(false);
                 this.close.emit();

@@ -37,6 +37,23 @@
                     </div>
                 </div>
 
+                @if (selectedUserControl.value) {
+                <div class="form-group border-separator">
+                    <div class="form-label">Mission</div>
+                    <div class="form-control">
+                        @if (selectedUserMissions().length === 0) {
+                        <p class="no-data-msg">This user has no missions assigned.</p>
+                        } @else {
+                        <select [ngModel]="selectedRoleMission()" (ngModelChange)="onRoleMissionChange($event)">
+                            @for (m of selectedUserMissions(); track m) {
+                            <option [value]="m">{{ m }}</option>
+                            }
+                        </select>
+                        }
+                    </div>
+                </div>
+                }
+
                 <div class="form-group mt-2">
                     <div class="form-label">Allowed Roles</div>
                     <div class="form-control">
@@ -44,7 +61,7 @@
                             @for (role of availableRoles(); track role.callsign) {
                             <label>
                                 <input type="checkbox" [checked]="isRoleChecked(role.callsign)"
-                                    [disabled]="!selectedUserControl.value"
+                                    [disabled]="!selectedUserControl.value || !selectedRoleMission()"
                                     (change)="toggleRole(role.callsign, $event)">
                                 {{ role.name }} ({{ role.callsign }})
                             </label>

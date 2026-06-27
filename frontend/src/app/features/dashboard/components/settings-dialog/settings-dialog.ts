@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { Role } from '../../models/role';
 import { UserService } from '../../../../core/services/user.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -18,28 +18,13 @@ export class SettingsDialogComponent {
     private auth = inject(AuthService);
     private nav = inject(NavbarService);
 
-    /**
-     * The mission to use for role API calls.
-     * Prefers the procedure's mission when inside a procedure view;
-     * falls back to missions[0] on the main dashboard.
-     */
-    private get mission(): string {
-        const user = this.auth.user();
-        if (!user?.missions?.length) return '';
+    /** All available missions and their roles */
+    protected allMissions = signal<{ name: string; allowedRoles: Role[] }[]>([]);
 
-        const activeMission = this.nav.activeMission();
-        if (activeMission) {
-            const found = user.missions.find(m => m.name?.toLowerCase() === activeMission);
-            if (found) return found.name ?? '';
-        }
-        return user.missions[0]?.name ?? '';
-    }
-
-    /** All available roles */
-    protected roles = signal<Role[]>([]);
-
-    /** The currently selected role name (bound to radio group) */
-    protected selectedRoleName = signal('');
+    /** The currently selected value (mission::role) */
+    protected selectedRoleValue = signal('');
+    protected selectedMission = signal('');
+    protected selectedRole = signal<Role | null>(null);
 
     /** Whether the dialog is visible — controlled by parent */
     isOpen = signal(false);
@@ -56,26 +41,48 @@ export class SettingsDialogComponent {
 
     private loadUserRoles(): void {
         const user = this.auth.user();
-        if (!user || !user.auth?.email) return;
+        if (!user || !user.auth?.email || !user.missions) return;
 
-        const mission = this.mission;
-        if (!mission) {
-            console.warn('Settings dialog: user has no missions assigned, skipping role load');
+        this.loading.set(true);
+        const requests = user.missions.map(m => {
+            const missionName = m.name || '';
+            return forkJoin({
+                mission: of(missionName),
+                allowed: this.userService.getAllowedRoles(user.auth.email, missionName),
+                current: this.userService.getCurrentRole(user.auth.email, missionName)
+            });
+        });
+
+        if (requests.length === 0) {
+            this.loading.set(false);
             return;
         }
 
-        this.loading.set(true);
-        forkJoin({
-            allowed: this.userService.getAllowedRoles(user.auth.email, mission),
-            current:  this.userService.getCurrentRole(user.auth.email, mission)
-        }).subscribe({
-            next: ({ allowed, current }: { allowed: any; current: Role }) => {
-                // Ensure it's an array — backend may send an object map
-                const rolesArray = Array.isArray(allowed)
-                    ? allowed
-                    : Object.keys(allowed).map((k: string) => allowed[k]);
-                this.roles.set(rolesArray);
-                this.selectedRoleName.set(current?.name || '');
+        forkJoin(requests).subscribe({
+            next: (results) => {
+                const missions = results.map(res => {
+                    const rolesArray = Array.isArray(res.allowed)
+                        ? res.allowed
+                        : Object.keys(res.allowed).map((k: string) => res.allowed[k]);
+                    return {
+                        name: res.mission,
+                        allowedRoles: rolesArray as Role[]
+                    };
+                });
+                this.allMissions.set(missions);
+                
+                // Pre-select the global active mission
+                const activeMission = this.auth.globalActiveMission();
+                const currentRes = results.find(r => r.mission === activeMission);
+                if (currentRes && currentRes.current) {
+                    this.selectedRoleValue.set(`${activeMission}::${currentRes.current.name}`);
+                    this.selectedMission.set(activeMission);
+                    this.selectedRole.set(currentRes.current);
+                } else if (results.length > 0 && results[0].current) {
+                    this.selectedRoleValue.set(`${results[0].mission}::${results[0].current.name}`);
+                    this.selectedMission.set(results[0].mission);
+                    this.selectedRole.set(results[0].current);
+                }
                 this.loading.set(false);
             },
             error: (err) => {
@@ -90,14 +97,17 @@ export class SettingsDialogComponent {
     }
 
     protected save(): void {
-        const selected = this.roles().find(r => r.name === this.selectedRoleName());
         const user = this.auth.user();
-        const mission = this.mission;
+        const mission = this.selectedMission();
+        const role = this.selectedRole();
 
-        if (selected && user?.auth?.email && mission) {
+        if (role && user?.auth?.email && mission) {
             this.loading.set(true);
-            this.userService.setUserRole(user.auth.email, selected, mission).subscribe({
+            this.userService.setUserRole(user.auth.email, role, mission).subscribe({
                 next: () => {
+                    this.auth.globalActiveMission.set(mission);
+                    localStorage.setItem('globalActiveMission', mission);
+                    
                     // Re-fetch the session to update signals in navbar
                     this.auth.initSession().subscribe({
                         next: () => {
@@ -121,16 +131,18 @@ export class SettingsDialogComponent {
         }
     }
 
-    protected onRoleChange(roleName: string): void {
-        this.selectedRoleName.set(roleName);
+    protected onRoleChange(missionName: string, role: Role): void {
+        this.selectedRoleValue.set(`${missionName}::${role.name}`);
+        this.selectedMission.set(missionName);
+        this.selectedRole.set(role);
     }
 
     /** Helper: pair roles into rows of 2 for the grid layout */
-    protected get rolePairs(): Role[][] {
-        const all = this.roles();
+    protected getRolePairs(roles: Role[]): Role[][] {
         const pairs: Role[][] = [];
-        for (let i = 0; i < all.length; i += 2) {
-            pairs.push(all.slice(i, i + 2));
+        if (!roles) return pairs;
+        for (let i = 0; i < roles.length; i += 2) {
+            pairs.push(roles.slice(i, i + 2));
         }
         return pairs;
     }

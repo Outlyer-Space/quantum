@@ -33,6 +33,8 @@ export class ProcedureTableComponent implements OnDestroy {
     private authService = inject(AuthService);
     private router = inject(Router);
 
+    protected isVip = this.authService.isVip;
+
     // ── Poll tick ──────────────────────────────────────────────────────────
     /** Fires immediately, then every 5 s. Drives the resource re-fetch. */
     private readonly pollTick = toSignal(timer(0, 5000), { initialValue: 0 });
@@ -49,7 +51,7 @@ export class ProcedureTableComponent implements OnDestroy {
         _refresh: number;
     }>({
         params: () => ({
-            mission: this.selectedMission(),
+            mission: this.authService.globalActiveMission(),
             _poll: this.pollTick(),
             _refresh: this.procedureService.refreshTick(),
         }),
@@ -67,18 +69,7 @@ export class ProcedureTableComponent implements OnDestroy {
 
     // ── Filter / sort state ────────────────────────────────────────────────
 
-    /** Missions available to the current user (deduplicated, original casing) */
-    protected availableMissions = computed(() => {
-        const missions = this.authService.user()?.missions ?? [];
-        const unique = new Map<string, string>();
-        missions.forEach(m => {
-            if (m.name) unique.set(m.name.toLowerCase(), m.name);
-        });
-        return Array.from(unique.values());
-    });
 
-    /** Currently selected mission filter (empty string = show all) */
-    protected selectedMission = signal<string>('');
 
     /** Search query bound to the search input */
     protected searchQuery = signal('');
@@ -121,14 +112,7 @@ export class ProcedureTableComponent implements OnDestroy {
     // ── Constructor / effects ──────────────────────────────────────────────
 
     constructor() {
-        // Auto-select the mission when the user belongs to exactly one.
-        // Runs once reactively; if auth resolves after construction this still fires.
-        effect(() => {
-            const missions = this.availableMissions();
-            if (missions.length === 1 && !this.selectedMission()) {
-                this.selectedMission.set(missions[0]);
-            }
-        });
+
 
         // Reconciliation effect: fires whenever the resource resolves with new data.
         // Mutates existing objects in-place so trackBy identity is preserved for
@@ -209,11 +193,7 @@ export class ProcedureTableComponent implements OnDestroy {
 
     // ── Template event handlers ────────────────────────────────────────────
 
-    protected onMissionChange(value: string): void {
-        // Updating selectedMission() automatically updates the resource params(),
-        // which triggers an immediate re-fetch. No separate Subject needed.
-        this.selectedMission.set(value);
-    }
+
 
     protected onSearchInput(value: string): void {
         this.searchQuery.set(value);
@@ -315,8 +295,12 @@ export class ProcedureTableComponent implements OnDestroy {
         const email = currentUser?.auth.email || 'unknown@example.com';
 
         let role = 'VIP';
-        if (currentUser?.missions && currentUser.missions.length > 0) {
-            role = currentUser.missions[0].currentRole?.callsign || 'VIP';
+        const activeMission = this.authService.globalActiveMission();
+        if (currentUser?.missions && activeMission) {
+            const m = currentUser.missions.find(m => m.name === activeMission);
+            if (m && m.currentRole) {
+                role = m.currentRole.callsign || 'VIP';
+            }
         }
 
         this.procedureService.createInstance(proc.id, username, email, role).subscribe({

@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ActiveUser } from '../../../../core/models/procedure.model';
 import { IconComponent, IconName } from '../../../../shared/components/icon/icon';
+import { AuthService } from '../../../../core/services/auth.service';
 
 interface SidebarItem {
     label: string;
@@ -18,6 +19,9 @@ interface SidebarItem {
     styleUrl: './right-sidebar.scss',
 })
 export class RightSidebarComponent {
+    private authService = inject(AuthService);
+    protected isVip = this.authService.isVip;
+
     isOpen = input.required<boolean>();
     viewState = input<'archived' | 'running' | 'preview' | null>(null);
     procedureId = input<string | null>(null);
