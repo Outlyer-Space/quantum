@@ -521,13 +521,19 @@ module.exports = {
             if (procs) {
                 var instance = [];
                 var instanceid;
+                var instanceFound = false;
                 //get procedure instance with the revision num
                 for (var i = 0; i < procs.instances.length; i++) {
-                    if (procs.instances[i].revision === procrevision) {
+                    if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
+                        instanceFound = true;
                         break;
                     }
+                }
+                if (!instanceFound) {
+                    console.log('Could not find instance with revision:', procrevision, 'in procedure:', procid);
+                    return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
                 }
 
                 //Set info for the step of that revision
@@ -629,13 +635,19 @@ module.exports = {
                 //get procedure instance with the revision num
                 var instance = [];
                 var instanceid;
+                var instanceFound = false;
                 //get procedure instance with the revision num
                 for (var i = 0; i < procs.instances.length; i++) {
-                    if (parseInt(procs.instances[i].revision) === parseInt(procrevision)) {
+                    if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
+                        instanceFound = true;
                         break;
                     }
+                }
+                if (!instanceFound) {
+                    console.log('Could not find instance with revision:', procrevision, 'in procedure:', procid);
+                    return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
                 }
 
                 //Set info for the step of that revision
@@ -805,13 +817,19 @@ module.exports = {
             if (procs) {
                 var instance = [];
                 var instanceid;
+                var instanceFound = false;
                 //get procedure instance with the revision num
                 for (var i = 0; i < procs.instances.length; i++) {
-                    if (procs.instances[i].revision === procrevision) {
+                    if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
                         instance = procs.instances[i].Steps;
                         instanceid = i;
+                        instanceFound = true;
                         break;
                     }
+                }
+                if (!instanceFound) {
+                    console.log('Could not find instance with revision:', procrevision, 'in procedure:', procid);
+                    return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
                 }
 
                 //Set info for the step of that revision
