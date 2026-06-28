@@ -536,6 +536,33 @@ module.exports = {
                     return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
                 }
 
+                // === ROLE-BASED ACCESS CONTROL (RBAC) ===
+                const { userHasLeadRole } = require('../lib/ensureMissionAccess');
+                if (!userHasLeadRole(req.user)) {
+                    const versionNum = procs.instances[instanceid].version;
+                    const stepDefinitions = (versionNum && procs.versions && procs.versions[versionNum - 1]) 
+                                            ? procs.versions[versionNum - 1] 
+                                            : procs.sections;
+                    
+                    const requiredRoleStr = stepDefinitions[step] ? stepDefinitions[step].Role : "";
+                    
+                    const mission = req.user && req.user.missions 
+                                    ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) 
+                                    : null;
+                    const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+                    
+                    if (requiredRoleStr) {
+                        if (!userCallsign) {
+                            return res.status(403).json({ error: 'Forbidden', message: 'You have no assigned role for this mission.' });
+                        }
+                        const allowedRoles = requiredRoleStr.split(',').map(r => r.trim().toUpperCase());
+                        if (!allowedRoles.includes(userCallsign.toUpperCase())) {
+                            return res.status(403).json({ error: 'Forbidden', message: 'You are not authorized to execute this step.' });
+                        }
+                    }
+                }
+                // === END RBAC ===
+
                 //Set info for the step of that revision
                 for (var j = 0; j < instance.length; j++) {
                     if (j === step) {

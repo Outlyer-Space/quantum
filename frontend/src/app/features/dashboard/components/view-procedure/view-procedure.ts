@@ -229,12 +229,11 @@ export class ViewProcedureComponent implements OnDestroy {
 
     protected canEditStep = (step: ProcedureStep): boolean => {
         const callsign = this.getUserCallsign();
-        if (
-            callsign &&
-            !this.LEAD_ROLES.includes(callsign.toUpperCase()) &&
-            !step.role.toUpperCase().includes(callsign.toUpperCase())
-        ) {
-            return false;
+        if (callsign && !this.LEAD_ROLES.includes(callsign.toUpperCase())) {
+            const allowedRoles = step.role.split(',').map(r => r.trim().toUpperCase());
+            if (!allowedRoles.includes(callsign.toUpperCase())) {
+                return false;
+            }
         }
         const all = getAllActionableSteps(this.steps());
         const idx = all.findIndex(s => s.flatIndex === step.flatIndex);
