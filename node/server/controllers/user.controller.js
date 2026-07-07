@@ -1,8 +1,14 @@
 var mongoose = require('mongoose');
 var User = mongoose.model('User');
 var multer = require('multer');
-var XLSX = require("xlsx");
+
 var configRole = require('../../config/role');
+
+/** Strips sensitive auth fields before sending user data to the client */
+function safeAuth(auth) {
+    if (!auth) return {};
+    return { id: auth.id, email: auth.email, name: auth.name };
+}
 
 module.exports = {
     getCurrentRole: async function (req, res) {
@@ -86,7 +92,6 @@ module.exports = {
                 return res.status(400).json({ error: 'Mission parameter is required' });
             }
 
-            // Query all users with missions, then filter case-insensitively
             const users = await User.find(
                 { 'missions': { $exists: true, $not: { $size: 0 } } },
                 { 'auth': 1, 'missions': 1 }
@@ -101,24 +106,19 @@ module.exports = {
 
             const allUsers = users.map(user => {
                 if (!user.missions || user.missions.length === 0) {
-                    console.warn(`User ${user.auth?.email} has no missions data`);
                     return null;
                 }
 
                 const userMission = user.missions.find(m => m.name && m.name.toLowerCase() === mission);
                 if (!userMission) {
-                    console.warn(`User ${user.auth?.email} doesn't have mission: ${mission}`);
                     return null;
                 }
 
-                // Safety check for allowedRoles array
                 const allowedRoles = userMission.allowedRoles || [];
-                if (allowedRoles.length === 0) {
-                    console.warn(`User ${user.auth?.email} has empty allowedRoles for mission: ${mission}`);
-                }
 
                 return {
-                    auth: user.auth,
+                    // Security: strip auth.token and auth.salt — never send credentials to clients
+                    auth: safeAuth(user.auth),
                     currentRole: userMission.currentRole,
                     allowedRoles: allowedRoles
                 };
@@ -129,8 +129,6 @@ module.exports = {
 
         } catch (error) {
             console.error('Error in getUsers:', error);
-            console.error('Error stack:', error.stack);
-            console.error('Query mission:', req.query.mission);
             return res.status(500).json({
                 error: 'Internal server error',
                 message: error.message,
@@ -221,101 +219,92 @@ module.exports = {
             return res.status(500).json({ error: 'Internal server error' });
         }
     },
-    setMissionForUser: function (req, res) {
-        var email = req.body.email;
-        var inputMission = (req.body.mission || '').trim();
-        if (!inputMission) {
-             return res.status(400).json({ error: 'Mission parameter is required' });
-        }
-        var missionLower = inputMission.toLowerCase();
-        var defaultRole = {
-            'name': configRole.roles['VIP'].name,
-            'callsign': configRole.roles['VIP'].callsign
-        };
+    setMissionForUser: async function (req, res) {
+        try {
+            var email = req.body.email;
+            var inputMission = (req.body.mission || '').trim();
+            if (!inputMission) {
+                return res.status(400).json({ error: 'Mission parameter is required' });
+            }
+            var missionLower = inputMission.toLowerCase();
+            var defaultRole = {
+                'name': configRole.roles['VIP'].name,
+                'callsign': configRole.roles['VIP'].callsign
+            };
 
-        // First, check if this mission already exists in the system to preserve its original casing
-        User.findOne({ 'missions.name': { $regex: new RegExp('^' + inputMission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }, function(err, existingUser) {
-            var finalMissionName = inputMission; 
+            // Use string-based $regex (not new RegExp) to avoid ReDoS.
+            // Special chars are escaped before interpolation.
+            const escapedMission = inputMission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Check if this mission already exists to preserve its original casing
+            const existingUser = await User.findOne({
+                'missions.name': { $regex: `^${escapedMission}$`, $options: 'i' }
+            }, { 'missions.name': 1 }).lean();
+
+            var finalMissionName = inputMission;
             if (existingUser && existingUser.missions) {
-                var found = existingUser.missions.find(function(m) { return m.name && m.name.toLowerCase() === missionLower; });
+                var found = existingUser.missions.find(m => m.name && m.name.toLowerCase() === missionLower);
                 if (found) {
                     finalMissionName = found.name;
                 }
             }
 
-            //count the number of users for this mission
-            User.countDocuments({ 'missions.name': { $regex: new RegExp('^' + inputMission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }, function (err, count) {
-                if (err) {
-                    console.log(err);
+            // Count users already in this mission
+            const count = await User.countDocuments({
+                'missions.name': { $regex: `^${escapedMission}$`, $options: 'i' }
+            });
+
+            // Find the target user
+            const user = await User.findOne({ 'auth.email': email });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            var missionCount = 0;
+            var missionObj;
+
+            if (count === 0) {
+                // First user in this mission gets Mission Director role
+                var userRole = {
+                    'name': configRole.roles['MD'].name,
+                    'callsign': configRole.roles['MD'].callsign
+                };
+                missionObj = {
+                    'name': finalMissionName,
+                    'currentRole': userRole,
+                    'allowedRoles': [defaultRole, userRole]
+                };
+                user.missions.push(missionObj);
+            } else {
+                // Check if the mission exists in the user's mission list
+                for (var i = 0; i < user.missions.length; i++) {
+                    if (user.missions[i].name && user.missions[i].name.toLowerCase() === missionLower) {
+                        if (!containsObject(user.missions[i].currentRole, user.missions[i].allowedRoles)) {
+                            user.missions[i].currentRole = defaultRole;
+                        }
+                        missionObj = user.missions[i];
+                        missionCount++;
+                    }
                 }
 
-                User.findOne({ 'auth.email': email }, function (err, user) {
-                    if (err) {
-                        console.log(err);
-                    }
+                // Mission does not exist for this user, assign default VIP role
+                if (missionCount === 0) {
+                    missionObj = {
+                        'name': finalMissionName,
+                        'currentRole': defaultRole,
+                        'allowedRoles': [defaultRole]
+                    };
+                    user.missions.push(missionObj);
+                }
+            }
 
-                    if (user) {
-                        var missionCount = 0;
-                        var missionObj;
-                        
-                        //If zero users for this mission, then assign user as Mission Director
-                        if (count === 0) {
-                            var userRole = {
-                                'name': configRole.roles['MD'].name,
-                                'callsign': configRole.roles['MD'].callsign
-                            };
-                            missionObj = {
-                                'name': finalMissionName,
-                                'currentRole': userRole,
-                                'allowedRoles': []
-                            };
-                            missionObj.allowedRoles.push(defaultRole);
-                            missionObj.allowedRoles.push(userRole);
-
-                            user.missions.push(missionObj);
-                        } else {
-                            //check if the mission exists in the user's mission list
-                            for (var i = 0; i < user.missions.length; i++) {
-                                if (user.missions[i].name && user.missions[i].name.toLowerCase() === missionLower) {
-                                    if (!containsObject(user.missions[i].currentRole, user.missions[i].allowedRoles)) {
-                                        //update current role to default role if current role is not a part of allowed roles
-                                        user.missions[i].currentRole = defaultRole;
-                                    }
-                                    missionObj = user.missions[i];
-                                    missionCount++;
-                                }
-                            }
-
-                            //If mission does not exist for this user, assign Observer role
-                            if (missionCount == 0) {
-                                missionObj = {
-                                    'name': finalMissionName,
-                                    'currentRole': defaultRole,
-                                    'allowedRoles': []
-                                };
-                                missionObj.allowedRoles.push(defaultRole);
-
-                                user.missions.push(missionObj);
-                            }
-                        }
-
-                        user.markModified('missions');
-
-                        user.save(function (err, result) {
-                            if (err) {
-                                console.log(err);
-                            }
-
-                            if (result) {
-                                res.send(missionObj);
-                            }
-
-                        });
-                    }
-
-                });
-            });
-        });
+            user.markModified('missions');
+            await user.save();
+            return res.json(missionObj);
+        } catch (error) {
+            console.error('Error in setMissionForUser:', error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
     },
     setUserRole: async function (req, res) {
         try {
@@ -331,9 +320,7 @@ module.exports = {
                 return res.status(403).json({ error: 'Forbidden', message: 'You can only change your own role' });
             }
 
-            const user = await User.findOne(
-                { 'auth.email': email }
-            );
+            const user = await User.findOne({ 'auth.email': email });
 
             if (!user) {
                 return res.status(404).send([]);
@@ -344,7 +331,6 @@ module.exports = {
                 return res.status(400).send([]);
             }
 
-            // Verify the requested role is in the user's allowedRoles for this mission
             const allowed = user.missions[missionIndex].allowedRoles || [];
             const isAllowed = allowed.some(function (r) {
                 return r.callsign === role.callsign;
@@ -357,7 +343,8 @@ module.exports = {
             user.markModified('missions');
 
             const result = await user.save();
-            return res.status(200).send(result);
+            // Security: return only missions data, not the full document with auth credentials
+            return res.status(200).json({ missions: result.missions });
 
         } catch (error) {
             console.error('Error in setUserRole:', error);
@@ -373,25 +360,19 @@ module.exports = {
                 return res.status(400).send([]);
             }
 
-            const user = await User.findOne(
-                { 'auth.email': email }
-            );
+            const user = await User.findOne({ 'auth.email': email });
 
             if (!user) {
                 return res.status(404).send([]);
             }
 
-            // Try to find the specific mission first
             const missionIndex = mission
                 ? user.missions.findIndex(m => m.name && m.name.toLowerCase() === mission)
                 : -1;
 
             if (missionIndex !== -1) {
-                // Update the specific mission
                 user.missions[missionIndex].allowedRoles = roles;
             } else {
-                // Mission not matched (e.g. MD is in a different mission than target user).
-                // Update allowed roles for all missions the target user belongs to.
                 if (user.missions.length === 0) {
                     return res.status(404).send([]);
                 }
@@ -403,7 +384,8 @@ module.exports = {
             user.markModified('missions');
 
             const result = await user.save();
-            return res.status(200).send(result);
+            // Security: return only missions data, not the full document with auth credentials
+            return res.status(200).json({ missions: result.missions });
 
         } catch (error) {
             console.error('Error in setAllowedRoles:', error);
@@ -431,23 +413,20 @@ module.exports = {
                 return res.status(404).send([]);
             }
 
-            // Process users to extract only the relevant mission data
             const processedUsers = users.map(user => {
                 if (!user.missions || user.missions.length === 0) {
-                    console.warn(`User ${user.auth?.email} has no missions data`);
                     return null;
                 }
 
-                // Find the specific mission
                 const userMission = user.missions.find(m => m.name && m.name.toLowerCase() === mission);
                 if (!userMission) {
-                    console.warn(`User ${user.auth?.email} doesn't have mission: ${mission}`);
                     return null;
                 }
 
                 return {
-                    auth: user.auth,
-                    missions: [userMission] // Return only the relevant mission
+                    // Security: strip auth.token and auth.salt
+                    auth: safeAuth(user.auth),
+                    missions: [userMission]
                 };
             }).filter(Boolean);
 
@@ -478,19 +457,15 @@ function containsObject(obj, list) {
 
 //Equality of Objects
 function isEquivalent(a, b) {
-    // Create arrays of property names
     var propA = Object.getOwnPropertyNames(a);
     var propB = Object.getOwnPropertyNames(b);
 
-    // If number of properties are different
     if (propA.length != propB.length) {
         return false;
     }
 
     for (var i = 0; i < propA.length; i++) {
         var property = propA[i];
-
-        // check values of same property
         if (a[property] !== b[property]) {
             return false;
         }

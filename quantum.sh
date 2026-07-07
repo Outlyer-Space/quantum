@@ -73,10 +73,10 @@ capture_git_info() {
 # Host prereq (Node.js)
 check_node() {
   if ! command -v node >/dev/null 2>&1; then
-    warn "NodeJS not found; installing via nvm (16.0.0)"
+    warn "NodeJS not found; installing via nvm (20)"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
     . ~/.nvm/nvm.sh
-    nvm install 16.0.0
+    nvm install 20
   fi
 
   # pm2

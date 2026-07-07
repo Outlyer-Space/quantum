@@ -3,10 +3,9 @@ const express = require('express')         // app framework
 const path = require('path')            // path constructor
 const morgan = require('morgan')          // request logger
 const cookieParser = require('cookie-parser')   // cookie parser
-const bodyParser = require('body-parser')     // body parser
 const flash = require('connect-flash')   // flash messages
 const session = require('express-session') // session management
-const MongoStore = require('connect-mongo') // session store in MongoDB
+const MongoStore = require('connect-mongo').default || require('connect-mongo') // session store in MongoDB
 const helmet = require('helmet')           // security headers
 const mongoSanitize = require('express-mongo-sanitize')
 
@@ -64,9 +63,16 @@ module.exports = function (config, passport) {
     }
   }))
   app.use(morgan(config.node.morgan))
-  app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }))
-  app.use(bodyParser.json({ limit: '1mb' }))
-  app.use(mongoSanitize()) // strip $ and . from req.body, req.query, req.params
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+  app.use(express.json({ limit: '1mb' }))
+  app.use((req, res, next) => {
+    ['body', 'params', 'headers', 'query'].forEach(k => {
+      if (req[k]) {
+        mongoSanitize.sanitize(req[k]);
+      }
+    });
+    next();
+  })
   app.use(cookieParser())
   app.use(passport.initialize())
   app.use(passport.session())

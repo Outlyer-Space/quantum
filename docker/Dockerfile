@@ -1,4 +1,4 @@
-FROM redhat/ubi9
+FROM node:22-alpine
 
 ARG GIT_BRANCH=unknown
 ARG GIT_COMMIT=unknown
@@ -8,9 +8,7 @@ ENV GIT_BRANCH=${GIT_BRANCH} \
 	APP_VERSION=${APP_VERSION} \
 	NODE_ENV=production
 
-RUN yum -y install nodejs git make && \
-	yum -y update --setopt=tsflags=nodocs && \
-	yum clean all && \
+RUN apk add --no-cache git make && \
 	npm install -g pm2
 
 WORKDIR /node

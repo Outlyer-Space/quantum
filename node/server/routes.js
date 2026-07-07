@@ -179,6 +179,17 @@ module.exports = function (config, app, passport, user) {
         }
     })
 
+    // Wrapper to catch Multer errors and return as JSON
+    const uploadMiddleware = upload.single('file');
+    function handleUpload(req, res, next) {
+        uploadMiddleware(req, res, function (err) {
+            if (err) {
+                return res.status(400).json({ message: err.message || 'File upload error' });
+            }
+            next();
+        });
+    }
+
     // Helper: ensure the request is authenticated (JSON 401, no redirect)
     function ensureAuth(req, res, next) {
         if (req.isAuthenticated && req.isAuthenticated()) return next();
@@ -200,7 +211,7 @@ module.exports = function (config, app, passport, user) {
     app.get('/api/procedures/single',                   ensureAuth, ensureProcedureMissionAccess, procs.getSingleProcedure);
     app.get('/api/procedures/data',                     ensureAuth, ensureProcedureMissionAccess, procs.getProcedureData);
     app.get('/api/procedures/roles',                    ensureAuth, procs.getQuantumRoles);
-    app.post('/api/procedures/upload',                  ensureAuth, ensureMissionAccess, upload.single('file'), ensureNotVip, procs.uploadFile);
+    app.post('/api/procedures/upload',                  ensureAuth, ensureMissionAccess, handleUpload, ensureNotVip, procs.uploadFile);
     app.patch('/api/procedures/name',                   ensureAuth, ensureProcedureMissionAccess, ensureNotVip, procs.updateProcedureName);
     app.get('/api/procedures/instances',                ensureAuth, ensureProcedureMissionAccess, procs.getAllInstances);
     // /api/procedures/instances/live route removed as it's superseded by /api/procedures/single
@@ -228,7 +239,7 @@ module.exports = function (config, app, passport, user) {
     app.get('/api/users/role-status',                   ensureAuth, usr.getUsersCurrentRole);
 
     const path = require('path')
-    app.get('*', function (req, res) {
+    app.get('/{*splat}', function (req, res) {
         res.sendFile(path.join(__dirname, '../public/index.html'))
     })
 };

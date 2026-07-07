@@ -14,9 +14,6 @@ module.exports = function (myconfig) {
   const url = new URL(myconfig.mongo.url)
   const options = myconfig.mongo.opt
 
-  options.useNewUrlParser = true
-  options.useUnifiedTopology = true
-
   if (myconfig.mongo.usr && myconfig.mongo.pwd) {
     url.username = myconfig.mongo.usr
     url.password = encodeURIComponent(myconfig.mongo.pwd)
@@ -38,15 +35,15 @@ module.exports = function (myconfig) {
     console.log(`> db-port     : ${mongoose.connection.port}`)
     console.log(`> db-name     : ${mongoose.connection.name}`)
 
-    mongoose.connection.db.listCollections().toArray(function (err, names) {
-      if (names) {
-        const nameList = names.map(function (d) { return String(d.name) })
+    mongoose.connection.db.listCollections().toArray()
+      .then(names => {
+        const nameList = names.map(d => String(d.name))
         console.log(`> collections : ${nameList}`)
-      } else {
+      })
+      .catch(err => {
         console.log('> collections : ERROR')
         console.log(`> ${err}`)
-      }
-    })
+      })
   })
   mongoose.connection.on('error', function (err) {
     console.log(`Mongoose connection error: ${err}`)
@@ -54,9 +51,6 @@ module.exports = function (myconfig) {
   mongoose.connection.on('disconnected', function () {
     console.log('Mongoose connection disconnected')
   })
-
-  // suppresses Mongoose 7 strictQuery deprecation warning
-  mongoose.set('strictQuery', true)
 
   // connect to db
   mongoose.connect(url.href, options)

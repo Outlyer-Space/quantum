@@ -74,7 +74,7 @@ function ensureMissionAccess(req, res, next) {
  * The procedureID is read from req.query.id, req.query.procedureID,
  * req.body.id, or req.body.pid — matching the existing controller patterns.
  */
-function ensureProcedureMissionAccess(req, res, next) {
+async function ensureProcedureMissionAccess(req, res, next) {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User is not authenticated' });
     }
@@ -104,13 +104,9 @@ function ensureProcedureMissionAccess(req, res, next) {
         });
     }
 
-    const ProcedureModel = require('mongoose').model('procedure');
-
-    ProcedureModel.findOne({ procedureID: procedureID }, 'eventname', function (err, proc) {
-        if (err) {
-            console.error('Error checking procedure mission access:', err);
-            return res.status(500).json({ error: 'Internal Server Error' });
-        }
+    try {
+        const ProcedureModel = require('mongoose').model('procedure');
+        const proc = await ProcedureModel.findOne({ procedureID: procedureID }, 'eventname').lean();
 
         if (!proc) {
             return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
@@ -130,7 +126,10 @@ function ensureProcedureMissionAccess(req, res, next) {
         req.userMissionNames = missionNames;
         req.procMissionName = procMission;
         next();
-    });
+    } catch (err) {
+        console.error('Error checking procedure mission access:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
 }
 
 module.exports = {

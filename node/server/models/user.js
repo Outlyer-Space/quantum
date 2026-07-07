@@ -1,5 +1,5 @@
 
-const passportLocalMongoose = require('passport-local-mongoose')
+const passportLocalMongoose = require('passport-local-mongoose').default || require('passport-local-mongoose')
 const passportAzureADoauth2 = require('passport-azure-ad-oauth2')
 const jwt = require('jsonwebtoken')
 const configRole = require('../../config/role')
@@ -18,11 +18,6 @@ const configRole = require('../../config/role')
  * @returns
  */
 module.exports = function (config, mongoose) {
-  // enable push for all models
-  mongoose.plugin(schema => {
-    schema.options.usePushEach = true
-  })
-
   // define user model schema
   // Note: token can be SSO or local password
   const userSchema = new mongoose.Schema({
@@ -132,9 +127,9 @@ module.exports = function (config, mongoose) {
       }
       userSchema.statics.deserializeUser = function () {
         return function (id, done) {
-          User.findById(id, function (err, user) {
-            done(err, user)
-          })
+          User.findById(id)
+            .then(user => done(null, user))
+            .catch(err => done(err))
         }
       }
 
@@ -195,7 +190,7 @@ module.exports = function (config, mongoose) {
 
   // if using local strategy and no users exists yet, create from config
   if (config.auth.provider.toLowerCase() === 'mongo') {
-    User.findOne({}, function (err, obj) {
+    User.findOne({}).then(obj => {
       if (obj == null) {
         const emailAdmin = config.auth.clientID
         const emailDomain = (emailAdmin && emailAdmin.indexOf('@') > -1) ? emailAdmin.slice(emailAdmin.indexOf('@')) : '@example.com'
@@ -234,7 +229,7 @@ module.exports = function (config, mongoose) {
         console.log(`::: Created 1st User ::: ${sysAdmin.email}`)
         console.log(`::: Created 2nd User ::: ${sysUser.email}`)
       }
-    })
+    }).catch(err => console.error('Error checking initial users:', err))
   }
 
   // expose model to our app

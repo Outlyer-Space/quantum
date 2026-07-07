@@ -11,7 +11,7 @@ COPY frontend/ ./
 RUN npx ng build --configuration production
 
 # --- Stage 2: Setup Node Backend & Serve ---
-FROM redhat/ubi9
+FROM node:22-alpine
 
 ARG GIT_BRANCH=unknown
 ARG GIT_COMMIT=unknown
@@ -22,9 +22,7 @@ ENV GIT_BRANCH=${GIT_BRANCH} \
     NODE_ENV=production \
     SERVE_ANGULAR=true
 
-RUN yum -y install nodejs git make && \
-    yum -y update --setopt=tsflags=nodocs && \
-    yum clean all && \
+RUN apk add --no-cache git make && \
     npm install -g pm2
 
 WORKDIR /node
