@@ -5,6 +5,7 @@ process.chdir(__dirname)                                           // set workin
 const config   = require('./config/config')(__dirname)             // dynamic config
 const mongoose = require('./server/lib/mongo')(config)             // mongo connector
 const user     = require('./server/models/user')(config, mongoose) // mongoose user model
+require('./server/models/procedure')                               // register procedure model
 const passport = require('./server/lib/passport')(config, user)    // authentication
 const app      = require('./server/lib/app')(config, passport)     // quantum app
 

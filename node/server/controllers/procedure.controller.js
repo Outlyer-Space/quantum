@@ -109,31 +109,32 @@ module.exports = {
             console.error(err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
-    },
-    getLiveInstanceData: async function (req, res) {
-        try {
-            var id = req.query.procedureID;
-            var revision = req.query.currentRevision;
+    // NOTE: getLiveInstanceData was superseded by getSingleProcedure (/api/procedures/single)
+    // and has no registered route. Kept here for reference in case a dedicated lightweight
+    // instance-by-revision endpoint is needed in the future.
+    //
+    // getLiveInstanceData: async function (req, res) {
+    //     try {
+    //         var id = req.query.procedureID;
+    //         var revision = req.query.currentRevision;
+    //         const model = await ProcedureModel.findOne({ 'procedureID': id }).lean();
+    //         if (!model) {
+    //             return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
+    //         }
+    //         var instances = model.instances;
+    //         var liveinstance = [];
+    //         for (var i = 0; i < instances.length; i++) {
+    //             if (instances[i].revision === parseInt(revision)) {
+    //                 liveinstance = instances[i];
+    //             }
+    //         }
+    //         return res.json(liveinstance);
+    //     } catch (err) {
+    //         console.error(err);
+    //         return res.status(500).json({ error: 'Internal Server Error' });
+    //     }
+    // },
 
-            const model = await ProcedureModel.findOne({ 'procedureID': id }).lean();
-            if (!model) {
-                return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
-            }
-
-            var instances = model.instances;
-            var liveinstance = [];
-
-            for (var i = 0; i < instances.length; i++) {
-                if (instances[i].revision === parseInt(revision)) {
-                    liveinstance = instances[i];
-                }
-            }
-            return res.json(liveinstance);
-        } catch (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Internal Server Error' });
-        }
-    },
     /**
      * Lightweight endpoint: returns only the users array for a specific instance revision.
      * Uses a MongoDB projection so the full sections/steps are never loaded from the DB.
