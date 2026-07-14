@@ -120,49 +120,58 @@ $primary: #337ab7;
     }
 }
 
-/* ── Custom checkbox ── */
-.custom-checkbox {
+/* ── Action Buttons ── */
+.action-btn-container {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    position: relative;
-    width: 24px;
-    height: 24px;
 
-    input[type="checkbox"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-        &:checked + .checkmark { background: $primary; border-color: $primary; &::after { display: block; } }
-        &:disabled + .checkmark { cursor: default; }
-        &:disabled:checked + .checkmark { background: $primary; border-color: $primary; opacity: 0.7; }
-        &:disabled:not(:checked) + .checkmark { background: #e9ecef; border-color: #ced4da; }
-    }
-
-    .checkmark {
-        width: 22px;
-        height: 22px;
-        border: 2px solid #adb5bd;
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: 1px solid #ccc;
         border-radius: 4px;
         background: #fff;
-        transition: background-color 0.15s ease, border-color 0.15s ease;
-        position: relative;
-        &::after {
-            content: '';
-            display: none;
-            position: absolute;
-            left: 6px; top: 2px;
-            width: 6px; height: 12px;
-            border: solid white;
-            border-width: 0 2.5px 2.5px 0;
-            transform: rotate(45deg);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: #555;
+        font-family: 'Inter', sans-serif;
+
+        &:focus { outline: none; box-shadow: 0 0 0 2px rgba($primary, 0.2); }
+        &:disabled { cursor: not-allowed; opacity: 0.6; }
+
+        &.check-toggle {
+            font-size: 20px;
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: #ccc;
+            box-shadow: none;
+
+            &.empty {
+                color: #adb5bd;
+                &:hover:not(:disabled) { color: $primary; }
+            }
+
+            &.checked {
+                color: $primary;
+                &:hover:not(:disabled) { color: #d9534f; } /* Hovering a checked box hints at deletion/undo */
+            }
+
+            &:active:not(:disabled) { transform: scale(0.9); }
         }
-        &:hover { border-color: $primary; }
+
+        &.loading {
+            color: #0056b3;
+            cursor: wait;
+        }
     }
 }
-
 /* ── Input block ── */
 .input-block {
     margin-top: 10px;

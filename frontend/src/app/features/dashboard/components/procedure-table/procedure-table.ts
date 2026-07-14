@@ -236,7 +236,7 @@ export class ProcedureTableComponent implements OnDestroy {
 
     protected openEditDialog(proc: ProcedureSummary): void {
         this.triggerAction(proc.id, 'rename');
-        this.editDialog().open(proc);
+        this.editDialog().open({ id: proc.id, title: proc.title, eventname: proc.eventname });
     }
 
     protected saveProcedure(data: EditProcedureData): void {

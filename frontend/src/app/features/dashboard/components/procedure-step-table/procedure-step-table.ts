@@ -10,7 +10,7 @@ import { ProcedureStep } from '../../../../core/models/procedure.model';
 
 export interface StepCheckEvent {
     step: ProcedureStep;
-    event: Event;
+    action: 'complete' | 'rewind';
 }
 
 /**
@@ -41,6 +41,9 @@ export class ProcedureStepTableComponent {
 
     /** The IDs of sections that the user has manually closed */
     closedSectionIds = input<Set<string>>(new Set());
+
+    /** Flat indices of steps that currently have an in-flight network request. */
+    pendingUpdates = input<Set<number>>(new Set());
 
     /**
      * Gating predicate injected from the parent.
@@ -90,8 +93,8 @@ export class ProcedureStepTableComponent {
         this.inputCleared.emit(step);
     }
 
-    onStepChecked(step: ProcedureStep, event: Event): void {
-        this.stepChecked.emit({ step, event });
+    onStepChecked(step: ProcedureStep, action: 'complete' | 'rewind'): void {
+        this.stepChecked.emit({ step, action });
     }
 
     onFocus(stepId: string): void {

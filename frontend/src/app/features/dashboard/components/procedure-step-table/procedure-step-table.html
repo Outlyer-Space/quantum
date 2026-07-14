@@ -71,12 +71,23 @@
             @if (!readonly()) {
             <td class="col-check">
                 @if ((!step.children || step.children.length === 0) && step.type !== 'input') {
-                <label class="custom-checkbox" [for]="'check-' + step.id">
-                    <input type="checkbox" [id]="'check-' + step.id" [checked]="!!step.recordedValue"
-                        [disabled]="!canEdit()(step)"
-                        (change)="onStepChecked(step, $event)" />
-                    <span class="checkmark"></span>
-                </label>
+                <div class="action-btn-container">
+                    @if (pendingUpdates().has(step.flatIndex)) {
+                    <button class="btn-action check-toggle loading" disabled title="Saving...">
+                        <span class="fa fa-spinner fa-spin"></span>
+                    </button>
+                    } @else if (step.recordedValue) {
+                    <button class="btn-action check-toggle checked" [disabled]="!canEdit()(step)"
+                        (click)="onStepChecked(step, 'rewind')" title="Undo Complete">
+                        <span class="fa fa-check-square"></span>
+                    </button>
+                    } @else if (canEdit()(step)) {
+                    <button class="btn-action check-toggle empty"
+                        (click)="onStepChecked(step, 'complete')" title="Complete Step">
+                        <span class="fa fa-square-o"></span>
+                    </button>
+                    }
+                </div>
                 }
             </td>
             }

@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { catchError, map, tap } from 'rxjs/operators';
-import { Observable, throwError } from 'rxjs';
+import { Observable, throwError, timer } from 'rxjs';
 import { User } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
@@ -26,8 +26,18 @@ export class AuthService {
         return m?.currentRole?.callsign === 'VIP';
     });
 
-    /** Check if user is logged in by querying /api/auth/me */
-    public initSession(): Observable<User> {
+    constructor() {
+        // Poll for user session updates (roles, missions) every 5 seconds
+        // so that changes made by an admin reflect immediately for active users.
+        timer(5000, 5000).subscribe(() => {
+            if (this.user()) {
+                this.refreshSession().subscribe({ error: () => {} });
+            }
+        });
+    }
+
+    /** Manually trigger a refresh of the user session without throwing unhandled errors */
+    public refreshSession(): Observable<User> {
         return this.http.get<User>('/api/auth/me').pipe(
             tap(user => {
                 this.user.set(user);
@@ -39,6 +49,11 @@ export class AuthService {
                 return throwError(() => err);
             })
         );
+    }
+
+    /** Check if user is logged in by querying /api/auth/me */
+    public initSession(): Observable<User> {
+        return this.refreshSession();
     }
 
     private initializeGlobalMission(user: User): void {

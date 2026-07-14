@@ -1,4 +1,4 @@
-import { Component, inject, signal, output } from '@angular/core';
+import { Component, inject, signal, computed, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -72,6 +72,23 @@ export class UserAdministrationDialogComponent {
     selectedMissionUserControl = new FormControl<UserAdmin | null>(null);
     userMissions = signal<string[]>([]);
     newMission = signal<string>('');
+    useCustomNewMission = signal<boolean>(false);
+
+    /** Missions that the currently selected user does NOT have */
+    unassignedMissions = computed(() => {
+        const userMissions = this.userMissions();
+        return this.allMissions().filter(m => !userMissions.includes(m));
+    });
+
+    onNewMissionSelect(value: string): void {
+        if (value === '__custom__') {
+            this.useCustomNewMission.set(true);
+            this.newMission.set('');
+        } else {
+            this.useCustomNewMission.set(false);
+            this.newMission.set(value);
+        }
+    }
 
     constructor() {
         // When a new user is selected in the dropdown, load their missions and reset roles
@@ -100,6 +117,8 @@ export class UserAdministrationDialogComponent {
         this.selectedMissionUserControl.valueChanges
             .pipe(takeUntilDestroyed())
             .subscribe(user => {
+                this.useCustomNewMission.set(false);
+                this.newMission.set('');
                 if (user) {
                     this.loadUserMissions(user.auth.email);
                 } else {
@@ -230,6 +249,7 @@ export class UserAdministrationDialogComponent {
 
         this.userService.setAllowedRoles(user.auth.email, roleArray, mission || this.authMission).subscribe({
             next: () => {
+                this.auth.refreshSession().subscribe();
                 this.saving.set(false);
                 this.close.emit();
             },
@@ -314,7 +334,9 @@ export class UserAdministrationDialogComponent {
         this.missionsSaving.set(true);
         this.userService.addMissionToUser(user.auth.email, mission).subscribe({
             next: () => {
+                this.auth.refreshSession().subscribe();
                 this.missionsSaving.set(false);
+                this.useCustomNewMission.set(false);
                 this.newMission.set('');
                 this.loadUserMissions(user.auth.email);
                 // Refresh available missions list
@@ -337,6 +359,7 @@ export class UserAdministrationDialogComponent {
         this.missionsSaving.set(true);
         this.userService.removeMissionFromUser(user.auth.email, missionName).subscribe({
             next: (result: any) => {
+                this.auth.refreshSession().subscribe();
                 this.missionsSaving.set(false);
                 this.userMissions.set(result.missions || []);
             },
@@ -362,6 +385,7 @@ export class UserAdministrationDialogComponent {
             this.missionsSaving.set(true);
             this.userService.addMissionToUser(user.auth.email, missionName).subscribe({
                 next: () => {
+                    this.auth.refreshSession().subscribe();
                     this.missionsSaving.set(false);
                     this.loadUserMissions(user.auth.email);
                 },

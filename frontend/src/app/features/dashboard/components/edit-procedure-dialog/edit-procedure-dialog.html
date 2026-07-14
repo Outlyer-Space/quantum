@@ -6,22 +6,33 @@
 <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="edit-procedure-title">
     <!-- Header -->
     <div class="dialog-header">
-        <h2 id="edit-procedure-title">Edit Procedure Name</h2>
+        <h2 id="edit-procedure-title">Edit Procedure</h2>
     </div>
 
     <!-- Body -->
     <div class="dialog-body">
         <div class="form-group">
             <label for="procedure-index">Index</label>
-            <input id="procedure-index" type="text" [(ngModel)]="id" />
+            <input id="procedure-index" type="text" [(ngModel)]="id" placeholder="e.g. 500.2" />
         </div>
+
         <div class="form-group">
-            <label for="procedure-group">Mission Name</label>
-            <input id="procedure-group" type="text" [(ngModel)]="groupName" />
+            <label for="procedure-mission">Mission</label>
+            <select id="procedure-mission"
+                [ngModel]="groupName()"
+                (ngModelChange)="groupName.set($event)">
+                @for (m of userMissions(); track m) {
+                    <option [value]="m">{{ m }}</option>
+                }
+            </select>
         </div>
+
         <div class="form-group">
             <label for="procedure-title">Title</label>
-            <input id="procedure-title" type="text" [(ngModel)]="title" />
+            <input id="procedure-title" type="text"
+                [ngModel]="title()"
+                (ngModelChange)="title.set($event)"
+                placeholder="Procedure title" />
         </div>
     </div>
 

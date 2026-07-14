@@ -144,6 +144,30 @@ export class ViewProcedureComponent implements OnDestroy {
     private pendingUpdates = new Set<number>();
 
     /**
+     * Data lock to prevent stale background polls from overwriting local optimistic
+     * state. Unlike pendingUpdates, this lock is only released when the server poll
+     * returns a value that matches our optimistic state.
+     */
+    private optimisticLocks = new Set<number>();
+
+    /**
+     * Exposes the pending updates set reactively to the template.
+     * Evaluates whenever localCacheVersion increments.
+     */
+    protected pendingUpdatesSignal = computed(() => {
+        this.localCacheVersion();
+        return new Set(this.pendingUpdates);
+    });
+
+    /**
+     * Incremented after every optimistic mutation (checkbox, input set/clear,
+     * parent auto-complete). Reading this inside computed() means Angular
+     * immediately re-evaluates steps and canEditStep on the same tick as the
+     * user interaction — no waiting for the next 5-second poll tick.
+     */
+    private localCacheVersion = signal(0);
+
+    /**
      * The step tree exposed to the template.
      *
      * First load or procedure change → replace cache wholesale.
@@ -154,12 +178,17 @@ export class ViewProcedureComponent implements OnDestroy {
     protected steps = computed(() => {
         const data = this.procedureResource.value();
         const id = this.id();
+        // Reading localCacheVersion establishes a reactive dependency so that
+        // optimistic mutations (which increment it) trigger an immediate re-render
+        // without waiting for the next poll tick.
+        this.localCacheVersion();
         if (!data?.steps?.length) return this.localStepsCache ?? [];
 
         if (!this.localStepsCache || this.lastRenderedProcId !== id) {
             // First load or navigated to a different procedure — replace cache
             // and clear any pending guards from a previous procedure session.
             this.pendingUpdates.clear();
+            this.optimisticLocks.clear();
             this.localStepsCache = data.steps;
             this.lastRenderedProcId = id;
             return this.localStepsCache;
@@ -194,9 +223,10 @@ export class ViewProcedureComponent implements OnDestroy {
                 continue;
             }
 
-            if (this.pendingUpdates.has(t.flatIndex)) {
+            if (this.optimisticLocks.has(t.flatIndex)) {
+                // If the server data finally caught up with our optimistic state, release the lock.
                 if (s.recordedValue === t.recordedValue) {
-                    this.pendingUpdates.delete(t.flatIndex);
+                    this.optimisticLocks.delete(t.flatIndex);
                 }
                 continue;
             }
@@ -227,23 +257,33 @@ export class ViewProcedureComponent implements OnDestroy {
         return actionable.every(s => s.recordedValue && s.recordedValue.trim().length > 0);
     });
 
-    protected canEditStep = (step: ProcedureStep): boolean => {
-        const callsign = this.getUserCallsign();
-        if (callsign && !this.LEAD_ROLES.includes(callsign.toUpperCase())) {
-            const allowedRoles = step.role.split(',').map(r => r.trim().toUpperCase());
-            if (!allowedRoles.includes(callsign.toUpperCase())) {
-                return false;
+    /**
+     * Wrapped in computed() so that a new function reference is produced
+     * whenever steps() changes. This causes Angular to push a new value to
+     * the child's canEdit input signal, forcing the child (OnPush) to
+     * re-evaluate the locked/unlocked state of every step immediately after
+     * an optimistic update — not just on the next poll tick.
+     */
+    protected canEditStep = computed(() => {
+        const allSteps = this.steps(); // establishes reactive dependency
+        return (step: ProcedureStep): boolean => {
+            const callsign = this.getUserCallsign();
+            if (callsign && !this.LEAD_ROLES.includes(callsign.toUpperCase())) {
+                const allowedRoles = step.role.split(',').map(r => r.trim().toUpperCase());
+                if (!allowedRoles.includes(callsign.toUpperCase())) {
+                    return false;
+                }
             }
-        }
-        const all = getAllActionableSteps(this.steps());
-        const idx = all.findIndex(s => s.flatIndex === step.flatIndex);
-        if (idx === -1) return false;
-        if (!step.recordedValue || step.recordedValue.trim().length === 0) {
-            return all.slice(0, idx).every(s => s.recordedValue && s.recordedValue.trim().length > 0);
-        }
-        if (idx === all.length - 1) return true;
-        return !all.slice(idx + 1).some(s => s.recordedValue && s.recordedValue.trim().length > 0);
-    };
+            const all = getAllActionableSteps(allSteps);
+            const idx = all.findIndex(s => s.flatIndex === step.flatIndex);
+            if (idx === -1) return false;
+            if (!step.recordedValue || step.recordedValue.trim().length === 0) {
+                return all.slice(0, idx).every(s => s.recordedValue && s.recordedValue.trim().length > 0);
+            }
+            if (idx === all.length - 1) return true;
+            return !all.slice(idx + 1).some(s => s.recordedValue && s.recordedValue.trim().length > 0);
+        };
+    });
 
     // ── Effects ───────────────────────────────────────────────────────────
 
@@ -371,7 +411,7 @@ export class ViewProcedureComponent implements OnDestroy {
     // ── Step interaction handlers ─────────────────────────────────────────
 
     protected onInputSet(step: ProcedureStep): void {
-        if (this.isArchived() || !this.canEditStep(step)) return;
+        if (this.isArchived() || !this.canEditStep()(step)) return;
         const ctrl = this.inputForm.controls[step.id] as FormControl<string>;
         if (!ctrl) return;
         const val = ctrl.value;
@@ -381,48 +421,64 @@ export class ViewProcedureComponent implements OnDestroy {
         step.recordedValue = val;
         ctrl.reset('');
 
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.pendingUpdates.add(step.flatIndex);
+        this.optimisticLocks.add(step.flatIndex);
+        this.localCacheVersion.update(v => v + 1);
+        this.autoCompleteParents();
+
+        const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.procedureService.setStepValue(
             this.id(), this.revision()!, step.flatIndex, val, step.type, username
         ).subscribe({
+            next: () => {
+                this.pendingUpdates.delete(step.flatIndex);
+                this.localCacheVersion.update(v => v + 1);
+            },
             error: (err) => {
                 this.pendingUpdates.delete(step.flatIndex);
+                this.optimisticLocks.delete(step.flatIndex);
                 console.error('Failed to save step value:', err);
                 step.recordedValue = previous;
+                this.localCacheVersion.update(v => v + 1);
             },
         });
-        this.autoCompleteParents();
     }
 
     protected onInputCleared(step: ProcedureStep): void {
-        if (this.isArchived() || !this.canEditStep(step) || !step.recordedValue) return;
+        if (this.isArchived() || !this.canEditStep()(step) || !step.recordedValue) return;
         const previous = step.recordedValue;
         step.recordedValue = '';
 
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.pendingUpdates.add(step.flatIndex);
+        this.optimisticLocks.add(step.flatIndex);
+        this.localCacheVersion.update(v => v + 1);
+        this.autoCompleteParents();
+
+        const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.procedureService.setStepValue(
             this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
         ).subscribe({
+            next: () => {
+                this.pendingUpdates.delete(step.flatIndex);
+                this.localCacheVersion.update(v => v + 1);
+            },
             error: (err) => {
                 this.pendingUpdates.delete(step.flatIndex);
+                this.optimisticLocks.delete(step.flatIndex);
                 console.error('Failed to clear input value:', err);
                 step.recordedValue = previous;
+                this.localCacheVersion.update(v => v + 1);
             },
         });
-        this.autoCompleteParents();
     }
 
-    protected onStepChecked({ step, event }: StepCheckEvent): void {
-        if (!this.canEditStep(step)) {
-            (event.target as HTMLInputElement).checked = !!step.recordedValue;
+    protected onStepChecked({ step, action }: StepCheckEvent): void {
+        if (!this.canEditStep()(step)) {
             return;
         }
-        const checkbox = event.target as HTMLInputElement;
         const username = this.authService.user()?.auth?.name || 'Unknown User';
 
-        if (checkbox.checked) {
+        if (action === 'complete') {
             const now = new Date();
             const dayOfYear = this.getDayOfYear(now);
             const h = String(now.getUTCHours()).padStart(2, '0');
@@ -432,35 +488,49 @@ export class ViewProcedureComponent implements OnDestroy {
 
             const previous = step.recordedValue;
             step.recordedValue = timestamp;
-            this.autoCompleteParents();
 
             this.pendingUpdates.add(step.flatIndex);
+            this.optimisticLocks.add(step.flatIndex);
+            this.localCacheVersion.update(v => v + 1);
+            this.autoCompleteParents();
 
             this.procedureService.setStepValue(
                 this.id(), this.revision()!, step.flatIndex, '', step.type, username, timestamp
             ).subscribe({
+                next: () => {
+                    this.pendingUpdates.delete(step.flatIndex);
+                    this.localCacheVersion.update(v => v + 1);
+                },
                 error: (err) => {
                     this.pendingUpdates.delete(step.flatIndex);
+                    this.optimisticLocks.delete(step.flatIndex);
                     console.error('Failed to save step completion:', err);
                     step.recordedValue = previous;
-                    checkbox.checked = false;
+                    this.localCacheVersion.update(v => v + 1);
                 },
             });
-        } else {
+        } else if (action === 'rewind') {
             const previous = step.recordedValue;
             step.recordedValue = '';
-            this.autoCompleteParents();
 
             this.pendingUpdates.add(step.flatIndex);
+            this.optimisticLocks.add(step.flatIndex);
+            this.localCacheVersion.update(v => v + 1);
+            this.autoCompleteParents();
 
             this.procedureService.setStepValue(
                 this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
             ).subscribe({
+                next: () => {
+                    this.pendingUpdates.delete(step.flatIndex);
+                    this.localCacheVersion.update(v => v + 1);
+                },
                 error: (err) => {
                     this.pendingUpdates.delete(step.flatIndex);
+                    this.optimisticLocks.delete(step.flatIndex);
                     console.error('Failed to rewind step:', err);
                     step.recordedValue = previous;
-                    checkbox.checked = true;
+                    this.localCacheVersion.update(v => v + 1);
                 },
             });
         }
@@ -542,8 +612,8 @@ export class ViewProcedureComponent implements OnDestroy {
     private autoCompleteParents(): void {
         const steps = this.localStepsCache ?? [];
         
-        const newlyCompleted: any[] = [];
-        const newlyUncompleted: any[] = [];
+        const newlyCompleted: { index: number, parent: any }[] = [];
+        const newlyUncompleted: { index: number, parent: any, prevValue: string }[] = [];
         
         const now = new Date();
         const utcClock = `${this.getDayOfYear(now)}.${
@@ -561,14 +631,23 @@ export class ViewProcedureComponent implements OnDestroy {
                     if (allDone && !step.recordedValue) {
                         step.recordedValue = utcClock;
                         newlyCompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' } });
+                        this.pendingUpdates.add(step.flatIndex);
+                        this.optimisticLocks.add(step.flatIndex);
                     } else if (!allDone && step.recordedValue) {
+                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, prevValue: step.recordedValue });
                         step.recordedValue = '';
-                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' } });
+                        this.pendingUpdates.add(step.flatIndex);
+                        this.optimisticLocks.add(step.flatIndex);
                     }
                 }
             }
         };
         markParents(steps);
+
+        // Signal Angular to re-render immediately so parent heading rows
+        // reflect their new completed/incomplete state without waiting for
+        // the next poll tick.
+        this.localCacheVersion.update(v => v + 1);
         
         const id = this.id();
         const revision = this.revision();
@@ -578,11 +657,53 @@ export class ViewProcedureComponent implements OnDestroy {
         const username = user.auth?.name || 'Unknown User';
 
         if (newlyCompleted.length > 0) {
-            this.procedureService.setParentsInfo(id, revision, newlyCompleted, utcClock, username).subscribe();
+            this.procedureService.setParentsInfo(id, revision, newlyCompleted, utcClock, username).subscribe({
+                next: () => {
+                    for (const p of newlyCompleted) this.pendingUpdates.delete(p.index);
+                    this.localCacheVersion.update(v => v + 1);
+                },
+                error: (err) => {
+                    console.error('Failed to save parent completions:', err);
+                    for (const p of newlyCompleted) {
+                        this.pendingUpdates.delete(p.index);
+                        this.optimisticLocks.delete(p.index);
+                        const step = this.findStepByFlatIndex(this.localStepsCache, p.index);
+                        if (step) step.recordedValue = ''; // revert
+                    }
+                    this.localCacheVersion.update(v => v + 1);
+                }
+            });
         }
         if (newlyUncompleted.length > 0) {
-            this.procedureService.setParentsInfo(id, revision, newlyUncompleted, '', username).subscribe();
+            this.procedureService.setParentsInfo(id, revision, newlyUncompleted, '', username).subscribe({
+                next: () => {
+                    for (const p of newlyUncompleted) this.pendingUpdates.delete(p.index);
+                    this.localCacheVersion.update(v => v + 1);
+                },
+                error: (err) => {
+                    console.error('Failed to save parent rewinds:', err);
+                    for (const p of newlyUncompleted) {
+                        this.pendingUpdates.delete(p.index);
+                        this.optimisticLocks.delete(p.index);
+                        const step = this.findStepByFlatIndex(this.localStepsCache, p.index);
+                        if (step) step.recordedValue = p.prevValue; // revert
+                    }
+                    this.localCacheVersion.update(v => v + 1);
+                }
+            });
         }
+    }
+
+    private findStepByFlatIndex(list: ProcedureStep[] | null | undefined, index: number): ProcedureStep | null {
+        if (!list) return null;
+        for (const step of list) {
+            if (step.flatIndex === index) return step;
+            if (step.children && step.children.length > 0) {
+                const found = this.findStepByFlatIndex(step.children, index);
+                if (found) return found;
+            }
+        }
+        return null;
     }
 
     private getDayOfYear(date: Date): string {

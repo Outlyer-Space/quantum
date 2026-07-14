@@ -109,6 +109,8 @@ module.exports = {
             console.error(err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
+    },
+
     // NOTE: getLiveInstanceData was superseded by getSingleProcedure (/api/procedures/single)
     // and has no registered route. Kept here for reference in case a dedicated lightweight
     // instance-by-revision endpoint is needed in the future.
@@ -134,6 +136,7 @@ module.exports = {
     //         return res.status(500).json({ error: 'Internal Server Error' });
     //     }
     // },
+
 
     /**
      * Lightweight endpoint: returns only the users array for a specific instance revision.
@@ -364,31 +367,31 @@ module.exports = {
             // All validations passed — save to database
             const procs = await ProcedureModel.findOne({ 'procedureID': filename[0] });
 
-            if (procs) { // Update a procedure
+            if (procs) { // Update an existing procedure
                 // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
                 var titlePart = filename.length >= 3 ? filename[2] : filename[1];
                 var ptitle = titlePart.split(".");
-                procs.procedureID = filename[0].trim();
-                procs.title = ptitle[0].trim();
-                procs.eventname = missionName;
 
-                if (procs.versions && procs.versions.length > 0) {
-                    procs.versions.push(sheet1);
-                } else if (procs.versions && procs.versions.length === 0) {
-                    procs.versions = [];
-                    procs.versions.push(procs.sections);
-                    procs.versions.push(sheet1);
-                } else if (!procs.versions) {
-                    procs.versions = [];
-                    procs.versions.push(procs.sections);
-                    procs.versions.push(sheet1);
-                }
-                procs.sections = [];
-                for (var i = 0; i < sheet1.length; i++) {
-                    procs.sections.push(sheet1[i]);
-                }
-                procs.updatedBy = userdetails;
-                await procs.save();
+                // If versions array already has entries, just push the new sheet.
+                // Otherwise, bootstrap it with the current sections first.
+                const versionsToPush = (procs.versions && procs.versions.length > 0)
+                    ? [sheet1]
+                    : [procs.sections, sheet1];
+
+                // Atomically replace sections + push new version — no save() race condition.
+                await ProcedureModel.updateOne(
+                    { _id: procs._id },
+                    {
+                        $set: {
+                            procedureID: filename[0].trim(),
+                            title: ptitle[0].trim(),
+                            eventname: missionName,
+                            sections: sheet1,
+                            updatedBy: userdetails
+                        },
+                        $push: { versions: { $each: versionsToPush } }
+                    }
+                );
                 console.log('procedure data updated successfully!');
                 return res.json({ error_code: 0, err_desc: "file updated" });
 
@@ -431,6 +434,8 @@ module.exports = {
             var useremail = req.body.email;
             var userrole = req.body.role;
 
+            // Use findOneAndUpdate to atomically increment the counter AND fetch the doc.
+            // We need sections/versions to build instancesteps, so we fetch first then push atomically.
             const procs = await ProcedureModel.findOneAndUpdate(
                 { 'procedureID': procid },
                 { $inc: { instanceCounter: 1 } },
@@ -448,7 +453,7 @@ module.exports = {
             var revision = procs.instanceCounter;
             var versionNum = procs.versions.length;
 
-            procs.instances.push({
+            const newInstance = {
                 "openedBy": usernamerole,
                 "Steps": instancesteps,
                 "closedBy": "",
@@ -456,17 +461,20 @@ module.exports = {
                 "completedAt": "",
                 "revision": revision,
                 "running": true,
-                users: [{
+                "users": [{
                     "name": username,
                     "email": useremail,
                     "role": userrole,
                     "isOnline": true
                 }],
                 "version": versionNum
-            });
+            };
 
-            procs.lastuse = lastuse;
-            await procs.save();
+            // Atomically push the new instance — safe even if two users start simultaneously.
+            await ProcedureModel.updateOne(
+                { _id: procs._id },
+                { $push: { instances: newInstance }, $set: { lastuse: lastuse } }
+            );
             return res.json({ "revision": revision });
         } catch (err) {
             console.error(err);
@@ -533,22 +541,13 @@ module.exports = {
             }
             // === END RBAC ===
 
-            // Set info for the step of that revision
-            for (var j = 0; j < instance.length; j++) {
-                if (j === step) {
-                    instance[j].info = info;
-                    if (steptype === 'Input') {
-                        instance[j].recordedValue = recordedValue;
-                    }
-                    break;
-                }
+            const updateObj = { $set: { lastuse: lastuse } };
+            updateObj.$set[`instances.${instanceid}.Steps.${step}.info`] = info;
+            if (steptype === 'Input') {
+                updateObj.$set[`instances.${instanceid}.Steps.${step}.recordedValue`] = recordedValue;
             }
 
-            procs.instances[instanceid].Steps = instance;
-            procs.lastuse = lastuse;
-            procs.markModified('procedure');
-            procs.markModified('instances');
-            await procs.save();
+            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -571,11 +570,10 @@ module.exports = {
 
             // get procedure instance with the revision num
             var instanceFound = false;
+            var instanceid;
             for (var i = 0; i < procs.instances.length; i++) {
                 if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
-                    procs.instances[i].closedBy = usernamerole;
-                    procs.instances[i].completedAt = lastuse;
-                    procs.instances[i].running = false;
+                    instanceid = i;
                     instanceFound = true;
                     break;
                 }
@@ -586,10 +584,15 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
-            procs.lastuse = lastuse;
-            procs.markModified('procedure');
-            procs.markModified('instances');
-            await procs.save();
+            const updateObj = { 
+                $set: { 
+                    lastuse: lastuse,
+                    [`instances.${instanceid}.closedBy`]: usernamerole,
+                    [`instances.${instanceid}.completedAt`]: lastuse,
+                    [`instances.${instanceid}.running`]: false
+                } 
+            };
+            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -626,19 +629,10 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
-            // Set info for the step of that revision
-            for (var j = 0; j < instance.length; j++) {
-                if (j === step) {
-                    instance[j].comments = comments;
-                    break;
-                }
-            }
+            const updateObj = { $set: { lastuse: lastuse } };
+            updateObj.$set[`instances.${instanceid}.Steps.${step}.comments`] = comments;
 
-            procs.instances[instanceid].Steps = instance;
-            procs.lastuse = lastuse;
-            procs.markModified('procedure');
-            procs.markModified('instances');
-            await procs.save();
+            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -669,46 +663,34 @@ module.exports = {
             }
 
             if (liveinstanceID !== "") {
-                if (procs.instances[liveinstanceID].users && procs.instances[liveinstanceID].users.length > 0) {
-                    var len = procs.instances[liveinstanceID].users.length;
-                    for (var i = 0; i < len; i++) {
-                        if (procs.instances[liveinstanceID].users[i].email === email) {
-                            // when the user object exists already
-                            procs.instances[liveinstanceID].users[i].isOnline = isOnline;
-                            break;
-                        } else if (i === len - 1) {
-                            procs.instances[liveinstanceID].users.push({
-                                'name': username,
-                                'email': email,
-                                'role': procs.instances[liveinstanceID].users[0]?.role || '',
-                                'isOnline': isOnline
-                            });
-                        }
-                    }
+                // Check if the user already exists in this instance's users array
+                const instance = procs.instances[liveinstanceID];
+                const userExists = instance.users && instance.users.some(u => u.email === email);
+
+                if (userExists) {
+                    // Atomically update the specific user's isOnline field using arrayFilters
+                    await ProcedureModel.updateOne(
+                        { _id: procs._id },
+                        { $set: { [`instances.${liveinstanceID}.users.$[u].isOnline`]: isOnline } },
+                        { arrayFilters: [{ 'u.email': email }] }
+                    );
                 } else {
-                    procs.instances[liveinstanceID].users = [];
-                    procs.instances[liveinstanceID].users.push({
-                        'name': username,
-                        'email': email,
-                        'role': '',
-                        'isOnline': isOnline
-                    });
+                    // Atomically add the user to the instance's users array
+                    const role = (instance.users && instance.users[0]?.role) || '';
+                    await ProcedureModel.updateOne(
+                        { _id: procs._id },
+                        { $push: { [`instances.${liveinstanceID}.users`]: { name: username, email, role, isOnline } } }
+                    );
                 }
             } else {
-                // when in dashboard page or any other index page; there exists no revision num.
-                // Set the status of user as false for all the revisions available in the procedure.
-                for (var i = 0; i < procs.instances.length; i++) {
-                    for (var j = 0; j < procs.instances[i].users.length; j++) {
-                        if (procs.instances[i].users[j].email === email) {
-                            // when the user object exists already
-                            procs.instances[i].users[j].isOnline = isOnline;
-                        }
-                    }
-                }
+                // No revision — set the user offline across all running instances atomically.
+                await ProcedureModel.updateOne(
+                    { 'procedureID': procid },
+                    { $set: { 'instances.$[].users.$[u].isOnline': isOnline } },
+                    { arrayFilters: [{ 'u.email': email }] }
+                );
             }
 
-            procs.markModified('instances');
-            await procs.save();
             return res.json({ isOnline: isOnline });
         } catch (err) {
             console.error(err);
@@ -720,7 +702,12 @@ module.exports = {
             var newprocedurename = req.body.newprocedurename;
             var prevProcId = req.body.procId;
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': prevProcId });
+            // Fetch only the eventname field — needed to fall back to the existing
+            // mission name if the caller didn't supply one.
+            const procs = await ProcedureModel.findOne(
+                { 'procedureID': prevProcId },
+                { eventname: 1 }
+            ).lean();
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
@@ -730,10 +717,11 @@ module.exports = {
             if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === newMission; })) {
                 return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to the target mission' });
             }
-            procs.procedureID = newprocedurename.id;
-            procs.eventname = newMission;
-            procs.title = newprocedurename.title;
-            await procs.save();
+            // Filter directly on procedureID — no need for _id after converting to lean()
+            await ProcedureModel.updateOne(
+                { 'procedureID': prevProcId },
+                { $set: { procedureID: newprocedurename.id, eventname: newMission, title: newprocedurename.title } }
+            );
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -787,24 +775,20 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
-            // Set info for the step of that revision
+            const updateObj = { $set: { lastuse: lastuse } };
             for (var a = 0; a < parentsArray.length; a++) {
                 const idx = parentsArray[a].index;
                 // Security: bounds-check index before using it as an array subscript
                 if (idx >= instance.length) {
                     return res.status(400).json({ error: 'Bad Request', message: 'Step index out of bounds' });
                 }
-                instance[idx].info = info;
+                updateObj.$set[`instances.${instanceid}.Steps.${idx}.info`] = info;
                 if (parentsArray[a].parent.contenttype === 'Input') {
-                    instance[idx].recordedValue = inputStepValues[idx].ivalue;
+                    updateObj.$set[`instances.${instanceid}.Steps.${idx}.recordedValue`] = inputStepValues[idx].ivalue;
                 }
             }
 
-            procs.instances[instanceid].Steps = instance;
-            procs.lastuse = lastuse;
-            procs.markModified('procedure');
-            procs.markModified('instances');
-            await procs.save();
+            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
             return res.json({ success: true });
         } catch (err) {
             console.error(err);

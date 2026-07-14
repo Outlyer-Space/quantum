@@ -114,13 +114,28 @@
 
                 <div class="form-group mt-2">
                     <div class="form-label">New Mission</div>
-                    <div class="form-control add-mission-row">
-                        <input type="text" class="mission-input" placeholder="Enter new mission name"
-                            [ngModel]="newMission()" (ngModelChange)="newMission.set($event)" />
+                    <div class="form-control add-mission-row" style="flex-wrap: wrap;">
+                        <select class="mission-input" 
+                            [value]="useCustomNewMission() ? '__custom__' : newMission()"
+                            (change)="onNewMissionSelect($any($event.target).value)"
+                            style="flex-grow: 1;">
+                            <option value="" disabled>Select a mission</option>
+                            @for (m of unassignedMissions(); track m) {
+                                <option [value]="m">{{ m }}</option>
+                            }
+                            <option value="__custom__">— Type a custom name —</option>
+                        </select>
+                        
                         <button class="btn-add" (click)="addMission()"
                             [disabled]="!newMission().trim() || missionsSaving()">
                             {{ missionsSaving() ? '...' : 'Add' }}
                         </button>
+
+                        @if (useCustomNewMission()) {
+                            <input type="text" class="mission-input mt-2" placeholder="Enter new mission name"
+                                style="width: 100%;"
+                                [ngModel]="newMission()" (ngModelChange)="newMission.set($event)" />
+                        }
                     </div>
                 </div>
                 }

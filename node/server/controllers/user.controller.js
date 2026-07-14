@@ -193,26 +193,17 @@ module.exports = {
                 return res.status(400).json({ error: 'Email and mission are required' });
             }
 
-            const missionLower = mission.toLowerCase();
-            const user = await User.findOne({ 'auth.email': email });
+            const escapedMission = mission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const result = await User.findOneAndUpdate(
+                { 'auth.email': email },
+                { $pull: { missions: { name: { $regex: `^${escapedMission}$`, $options: 'i' } } } },
+                { new: true }
+            );
 
-            if (!user) {
+            if (!result) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            if (!user.missions || user.missions.length === 0) {
-                return res.status(400).json({ error: 'User has no missions' });
-            }
-
-            const idx = user.missions.findIndex(m => m.name && m.name.toLowerCase() === missionLower);
-            if (idx === -1) {
-                return res.status(404).json({ error: 'User does not belong to this mission' });
-            }
-
-            user.missions.splice(idx, 1);
-            user.markModified('missions');
-
-            const result = await user.save();
             return res.status(200).json({ missions: result.missions.filter(m => m.name).map(m => m.name) });
         } catch (error) {
             console.error('Error in removeMissionFromUser:', error);
@@ -274,32 +265,36 @@ module.exports = {
                     'currentRole': userRole,
                     'allowedRoles': [defaultRole, userRole]
                 };
-                user.missions.push(missionObj);
             } else {
-                // Check if the mission exists in the user's mission list
-                for (var i = 0; i < user.missions.length; i++) {
-                    if (user.missions[i].name && user.missions[i].name.toLowerCase() === missionLower) {
-                        if (!containsObject(user.missions[i].currentRole, user.missions[i].allowedRoles)) {
-                            user.missions[i].currentRole = defaultRole;
-                        }
-                        missionObj = user.missions[i];
-                        missionCount++;
+                // Not the first user — check if they already have this mission
+                const existing = user.missions.find(m => m.name && m.name.toLowerCase() === missionLower);
+                if (existing) {
+                    // Already assigned — ensure currentRole is valid
+                    const currentRoleValid = existing.allowedRoles && existing.allowedRoles.some(r => r.callsign === existing.currentRole?.callsign);
+                    missionObj = existing;
+                    if (!currentRoleValid) {
+                        // Fix the currentRole atomically
+                        await User.updateOne(
+                            { 'auth.email': email, 'missions.name': { $regex: `^${escapedMission}$`, $options: 'i' } },
+                            { $set: { 'missions.$.currentRole': defaultRole } }
+                        );
+                        missionObj.currentRole = defaultRole;
                     }
-                }
-
-                // Mission does not exist for this user, assign default VIP role
-                if (missionCount === 0) {
+                    return res.json(missionObj);
+                } else {
                     missionObj = {
                         'name': finalMissionName,
                         'currentRole': defaultRole,
                         'allowedRoles': [defaultRole]
                     };
-                    user.missions.push(missionObj);
                 }
             }
 
-            user.markModified('missions');
-            await user.save();
+            // Atomically add the mission to the user's missions array
+            await User.updateOne(
+                { 'auth.email': email },
+                { $push: { missions: missionObj } }
+            );
             return res.json(missionObj);
         } catch (error) {
             console.error('Error in setMissionForUser:', error);
@@ -331,19 +326,17 @@ module.exports = {
                 return res.status(400).send([]);
             }
 
-            const allowed = user.missions[missionIndex].allowedRoles || [];
-            const isAllowed = allowed.some(function (r) {
-                return r.callsign === role.callsign;
-            });
-            if (!isAllowed) {
+            // Atomically update only the currentRole of the specific mission
+            const result = await User.findOneAndUpdate(
+                { 'auth.email': email, [`missions.${missionIndex}.allowedRoles.callsign`]: role.callsign },
+                { $set: { [`missions.${missionIndex}.currentRole`]: role } },
+                { new: true }
+            );
+
+            if (!result) {
                 return res.status(403).json({ error: 'Forbidden', message: 'Role not in your allowed roles' });
             }
 
-            user.missions[missionIndex].currentRole = role;
-            user.markModified('missions');
-
-            const result = await user.save();
-            // Security: return only missions data, not the full document with auth credentials
             return res.status(200).json({ missions: result.missions });
 
         } catch (error) {
@@ -370,20 +363,26 @@ module.exports = {
                 ? user.missions.findIndex(m => m.name && m.name.toLowerCase() === mission)
                 : -1;
 
+            let result;
             if (missionIndex !== -1) {
-                user.missions[missionIndex].allowedRoles = roles;
+                // Atomically set allowedRoles for the specific mission
+                result = await User.findOneAndUpdate(
+                    { 'auth.email': email },
+                    { $set: { [`missions.${missionIndex}.allowedRoles`]: roles } },
+                    { new: true }
+                );
             } else {
                 if (user.missions.length === 0) {
                     return res.status(404).send([]);
                 }
-                user.missions.forEach(m => {
-                    m.allowedRoles = roles;
-                });
+                // Atomically set allowedRoles across all missions using arrayFilters
+                result = await User.findOneAndUpdate(
+                    { 'auth.email': email },
+                    { $set: { 'missions.$[].allowedRoles': roles } },
+                    { new: true }
+                );
             }
 
-            user.markModified('missions');
-
-            const result = await user.save();
             // Security: return only missions data, not the full document with auth credentials
             return res.status(200).json({ missions: result.missions });
 
