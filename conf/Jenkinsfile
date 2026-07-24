@@ -60,6 +60,7 @@ pipeline {
                         .
                 """
                 sh "docker tag quantum_azure:latest ${ACR_URL}/quantum:latest"
+                sh "docker tag quantum_azure:latest ${ACR_URL}/quantum:${env.SHORT_COMMIT}"
 
                 echo 'Applying VERSION tag'
                 sh """
@@ -77,6 +78,7 @@ pipeline {
                 sh """
                     docker login ${ACR_URL} -u ${ACR_CRED_USR} -p ${ACR_CRED_PSW}
                     docker push ${ACR_URL}/quantum:latest
+                    docker push ${ACR_URL}/quantum:${env.SHORT_COMMIT}
 
                     TAG=\$(<VERSION tr -d '[:space:]')
                     docker push ${ACR_URL}/quantum:\${TAG}
@@ -108,7 +110,7 @@ pipeline {
                         az containerapp update \
                             --resource-group ${AZ_RGROUP} \
                             --name ${AZ_APP} \
-                            --image ${ACR_URL}/quantum:latest \
+                            --image ${ACR_URL}/quantum:${env.SHORT_COMMIT} \
                             --output none   # suppress JSON payload
 
                         az containerapp show \
@@ -145,7 +147,7 @@ pipeline {
                         az containerapp update \
                             --resource-group ${AZ_RGROUP} \
                             --name ${AZ_DEMO} \
-                            --image ${ACR_URL}/quantum:latest \
+                            --image ${ACR_URL}/quantum:${env.SHORT_COMMIT} \
                             --output none   # suppress JSON payload
 
                         az containerapp show \
