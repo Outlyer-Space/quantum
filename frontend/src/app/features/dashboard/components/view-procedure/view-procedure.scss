@@ -37,29 +37,116 @@ $cyan-primary: #07d1ea;
     overflow: hidden;
 }
 
-/* ── Complete button ── */
+/* ── Completion & Comments (Dynamic Island Style) ── */
 .completion-container {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    max-width: 600px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 8px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    
+    &:hover {
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+    }
+}
+
+.closing-comment-input {
     width: 100%;
     display: flex;
-    justify-content: center;
-    padding: 1.5rem 0;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+
+    label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        font-family: inherit;
+        border: 2px solid #eaeaea;
+        border-radius: 12px;
+        resize: vertical;
+        min-height: 80px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: #fafafa;
+        color: #333;
+
+        &:focus {
+            outline: none;
+            border-color: $cyan-primary;
+            box-shadow: 0 0 0 3px rgba($cyan-primary, 0.15);
+            background-color: #ffffff;
+        }
+
+        &::placeholder {
+            color: #aaa;
+        }
+    }
 }
 
 .btn-complete-modern {
-    background: $primary;
+    background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
     color: #fff;
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 10px 32px;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 32px;
     border: none;
-    border-radius: 4px;
+    border-radius: 50px;
     cursor: pointer;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: background-color 0.15s ease;
+    letter-spacing: 1px;
+    width: 100%;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba($primary, 0.3);
 
-    &:hover { background: color.adjust($primary, $lightness: -8%); }
-    &:active { background: color.adjust($primary, $lightness: -12%); }
+    &:hover { 
+        transform: scale(1.02);
+        box-shadow: 0 6px 20px rgba($primary, 0.4);
+    }
+    &:active { 
+        transform: scale(0.98);
+        box-shadow: 0 2px 10px rgba($primary, 0.3);
+    }
+}
+
+.archive-comment {
+    align-items: flex-start;
+    
+    h4 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        color: #555;
+        letter-spacing: 0.5px;
+    }
+
+    .comment-text {
+        margin: 0;
+        color: #333;
+        font-size: 1rem;
+        line-height: 1.5;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 12px;
+        width: 100%;
+        border-left: 4px solid $cyan-primary;
+    }
 }
 
 /* ── Sidebar Toggle Button ── */

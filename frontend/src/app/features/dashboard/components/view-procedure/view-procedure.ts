@@ -257,6 +257,13 @@ export class ViewProcedureComponent implements OnDestroy {
         return actionable.every(s => s.recordedValue && s.recordedValue.trim().length > 0);
     });
 
+    protected isLeadRole = computed(() => {
+        const callsign = this.getUserCallsign();
+        return callsign ? this.LEAD_ROLES.includes(callsign.toUpperCase()) : false;
+    });
+
+    protected closingComment = signal<string>('');
+
     /**
      * Wrapped in computed() so that a new function reference is produced
      * whenever steps() changes. This causes Angular to push a new value to
@@ -336,6 +343,10 @@ export class ViewProcedureComponent implements OnDestroy {
             // derive the correct callsign without defaulting to missions[0].
             if (data.eventname) {
                 this.nav.activeMission.set(data.eventname.toLowerCase());
+            }
+
+            if (mode === 'archived' && data.closingComment) {
+                this.closingComment.set(data.closingComment);
             }
 
             if (mode === 'archived') {
@@ -565,7 +576,9 @@ export class ViewProcedureComponent implements OnDestroy {
         if (!window.confirm('Are you sure you want to complete and archive this procedure?')) return;
 
         const username = this.authService.user()?.auth?.name || 'Unknown User';
-        this.procedureService.completeInstance(id, revision, username).subscribe({
+        const comment = this.closingComment();
+
+        this.procedureService.completeInstance(id, revision, username, comment).subscribe({
             next: () => {
                 this.procedureService.requestRefresh();
                 this.router.navigate(['/dashboard/archived', id]);

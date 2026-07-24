@@ -39,6 +39,7 @@ export interface RawInstance {
     revision: number;
     running: boolean;
     version: number;
+    closingComment?: string;
     Steps: { step: string; info: string; recordedValue?: string; comments?: string }[];
     users: { name: string; email: string; role: string; isOnline: boolean }[];
 }
@@ -83,6 +84,7 @@ export interface ProcedureInstance {
 export interface ArchivedInstance extends ProcedureInstance {
     closedBy: string;
     completedAt: string;
+    closingComment?: string;
 }
 
 /** Frontend-friendly procedure summary for the dashboard table */
@@ -102,6 +104,7 @@ export interface ProcedureData {
     title: string;
     steps: ProcedureStep[];
     eventname?: string;
+    closingComment?: string;
     activeUsers?: ActiveUser[];
 }
 

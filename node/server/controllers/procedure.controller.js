@@ -196,6 +196,7 @@ module.exports = {
                 'instances.startedAt': 1,
                 'instances.closedBy': 1,
                 'instances.completedAt': 1,
+                'instances.closingComment': 1,
                 'instances.running': 1
             }).lean();
 
@@ -584,11 +585,14 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
+            var closingComment = req.body.closingComment || '';
+
             const updateObj = { 
                 $set: { 
                     lastuse: lastuse,
                     [`instances.${instanceid}.closedBy`]: usernamerole,
                     [`instances.${instanceid}.completedAt`]: lastuse,
+                    [`instances.${instanceid}.closingComment`]: closingComment,
                     [`instances.${instanceid}.running`]: false
                 } 
             };

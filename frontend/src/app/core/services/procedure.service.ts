@@ -98,6 +98,7 @@ export class ProcedureService {
                     title: proc.title,
                     steps: this.transformSections(proc.sections, instance?.Steps),
                     eventname: proc.eventname || '',
+                    closingComment: instance?.closingComment || '',
                     activeUsers: instance?.users || []
                 };
             })
@@ -160,7 +161,8 @@ export class ProcedureService {
                                 openedBy: inst.openedBy,
                                 startedAt: inst.startedAt,
                                 closedBy: inst.closedBy,
-                                completedAt: inst.completedAt
+                                completedAt: inst.completedAt,
+                                closingComment: inst.closingComment || ''
                             });
                         }
                     }
@@ -221,11 +223,12 @@ export class ProcedureService {
     }
 
     /** Set an entire procedure instance to the Completed/Archived status */
-    completeInstance(id: string, revision: string, username: string): Observable<any> {
+    completeInstance(id: string, revision: string, username: string, closingComment?: string): Observable<any> {
         const payload = {
             id,
             revision: parseInt(revision, 10),
             usernamerole: username,
+            closingComment: closingComment || '',
             lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances/complete', payload);

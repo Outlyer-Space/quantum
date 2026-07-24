@@ -16,8 +16,19 @@
                 (controlBlurred)="onControlBlurred()" />
         </div>
 
-        @if (isRunningInstance() && allActionableStepsCompleted()) {
+        @if (isArchived() && closingComment()) {
+        <div class="completion-container archive-comment">
+            <h4>Closing Comment</h4>
+            <p class="comment-text">{{ closingComment() }}</p>
+        </div>
+        }
+
+        @if (isRunningInstance() && (allActionableStepsCompleted() || isLeadRole())) {
         <div class="completion-container">
+            <div class="closing-comment-input">
+                <label for="closingComment">Closing Comment (Optional)</label>
+                <textarea id="closingComment" [value]="closingComment()" (input)="closingComment.set($any($event.target).value)" rows="3" placeholder="Enter any final comments or notes before closing..."></textarea>
+            </div>
             <button class="btn-complete-modern" (click)="completeProcedure()">
                 Close Procedure
             </button>
