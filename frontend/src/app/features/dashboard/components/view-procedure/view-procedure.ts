@@ -263,6 +263,7 @@ export class ViewProcedureComponent implements OnDestroy {
     });
 
     protected closingComment = signal<string>('');
+    private cachedEventName = signal<string>('');
 
     /**
      * Wrapped in computed() so that a new function reference is produced
@@ -343,6 +344,7 @@ export class ViewProcedureComponent implements OnDestroy {
             // derive the correct callsign without defaulting to missions[0].
             if (data.eventname) {
                 this.nav.activeMission.set(data.eventname.toLowerCase());
+                this.cachedEventName.set(data.eventname);
             }
 
             if (mode === 'archived' && data.closingComment) {
@@ -606,7 +608,7 @@ export class ViewProcedureComponent implements OnDestroy {
 
     private getUserCallsign(): string | null {
         const user = this.authService.user();
-        const mission = this.procedureResource.value()?.eventname ?? '';
+        const mission = this.cachedEventName();
         if (!user?.missions || !mission) return null;
         const userMission = user.missions.find(m => m.name?.toLowerCase() === mission.toLowerCase());
         return userMission?.currentRole?.callsign || null;
