@@ -274,14 +274,28 @@ export class ViewProcedureComponent implements OnDestroy {
                     return false;
                 }
             }
-            const all = getAllActionableSteps(allSteps);
-            const idx = all.findIndex(s => s.flatIndex === step.flatIndex);
-            if (idx === -1) return false;
-            if (!step.recordedValue || step.recordedValue.trim().length === 0) {
-                return all.slice(0, idx).every(s => s.recordedValue && s.recordedValue.trim().length > 0);
+
+            // Find the top-level section that contains this step
+            let sectionSteps: ProcedureStep[] = [];
+            for (const section of allSteps) {
+                const actionableInSection = getAllActionableSteps([section]);
+                if (actionableInSection.some(s => s.flatIndex === step.flatIndex)) {
+                    sectionSteps = actionableInSection;
+                    break;
+                }
             }
-            if (idx === all.length - 1) return true;
-            return !all.slice(idx + 1).some(s => s.recordedValue && s.recordedValue.trim().length > 0);
+            
+            if (sectionSteps.length === 0) return false;
+
+            const idx = sectionSteps.findIndex(s => s.flatIndex === step.flatIndex);
+            if (idx === -1) return false;
+
+            if (!step.recordedValue || step.recordedValue.trim().length === 0) {
+                return sectionSteps.slice(0, idx).every(s => s.recordedValue && s.recordedValue.trim().length > 0);
+            }
+            
+            if (idx === sectionSteps.length - 1) return true;
+            return !sectionSteps.slice(idx + 1).some(s => s.recordedValue && s.recordedValue.trim().length > 0);
         };
     });
 
