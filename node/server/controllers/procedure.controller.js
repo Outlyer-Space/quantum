@@ -97,9 +97,27 @@ module.exports = {
                 { header: "Reference", key: "Reference" }
             ];
             
-            // Add rows
+            // Add rows — write Reference as a proper clickable hyperlink when it looks like a URL,
+            // otherwise fall back to plain text so non-URL reference values are preserved correctly.
+            function looksLikeUrl(value) {
+                return typeof value === 'string' && /^https?:\/\//i.test(value.trim());
+            }
+
             sections.forEach(function(section) {
-                ws.addRow(section);
+                var row = ws.addRow({
+                    Step: section.Step,
+                    Role: section.Role,
+                    Type: section.Type,
+                    Content: section.Content,
+                    Reference: looksLikeUrl(section.Reference) ? '' : (section.Reference || '')
+                });
+
+                // If a valid URL exists, overwrite the Reference cell as a real hyperlink
+                if (looksLikeUrl(section.Reference)) {
+                    var refCell = row.getCell('Reference');
+                    refCell.value = { text: section.Reference, hyperlink: section.Reference };
+                    refCell.font = { color: { argb: 'FF0563C1' }, underline: true };
+                }
             });
             
             // Write to buffer and send
@@ -235,6 +253,10 @@ module.exports = {
                 if (typeof cellValue === 'object' && cellValue.richText) {
                     // RichText: [{text: '...', font: {...}}, ...]
                     return cellValue.richText.map(function(r) { return r.text || ''; }).join('');
+                }
+                if (typeof cellValue === 'object' && cellValue.hyperlink) {
+                    // Hyperlink cell: return the link URL
+                    return cellValue.hyperlink;
                 }
                 if (typeof cellValue === 'object' && cellValue.result !== undefined) {
                     // Formula cell: use the cached result
