@@ -46,9 +46,9 @@
                     @if (!readonly()) {
                     <div class="enter-value">
                         <label>Enter Value:</label>
-                        <input type="text" [formControl]="getControl(step.id)"
+                        <textarea [formControl]="getControl(step.id)"
                             [attr.disabled]="!canEdit()(step) ? true : null"
-                            (focus)="onFocus(step.id)" (blur)="onBlur()" />
+                            (focus)="onFocus(step.id)" (blur)="onBlur()"></textarea>
                         <button class="btn-set" [disabled]="!canEdit()(step)"
                             (click)="onInputSet(step)">Set</button>
                         @if (step.recordedValue) {
