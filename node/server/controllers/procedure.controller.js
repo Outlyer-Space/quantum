@@ -248,19 +248,32 @@ module.exports = {
             
             // ExcelJS cells can be RichText objects, formula results, dates, etc.
             // This helper safely extracts a plain string from any cell value.
+            // ExcelJS cells can be RichText objects, formula results, dates, hyperlinks, etc.
+            // This helper safely extracts a plain string from ANY cell value type.
             function getCellString(cellValue) {
                 if (cellValue === null || cellValue === undefined) return '';
-                if (typeof cellValue === 'object' && cellValue.richText) {
-                    // RichText: [{text: '...', font: {...}}, ...]
-                    return cellValue.richText.map(function(r) { return r.text || ''; }).join('');
-                }
-                if (typeof cellValue === 'object' && cellValue.hyperlink) {
-                    // Hyperlink cell: return the link URL
-                    return cellValue.hyperlink;
-                }
-                if (typeof cellValue === 'object' && cellValue.result !== undefined) {
-                    // Formula cell: use the cached result
-                    return String(cellValue.result);
+                if (typeof cellValue === 'object') {
+                    if (cellValue instanceof Date) {
+                        return cellValue.toISOString();
+                    }
+                    if (cellValue.richText) {
+                        return cellValue.richText.map(function(r) { return r.text || ''; }).join('');
+                    }
+                    if (cellValue.hyperlink) {
+                        return cellValue.hyperlink;
+                    }
+                    if (cellValue.text) {
+                        return String(cellValue.text);
+                    }
+                    if (cellValue.result !== undefined) {
+                        return String(cellValue.result);
+                    }
+                    try {
+                        // Fallback for any unknown object to avoid [object Object]
+                        return JSON.stringify(cellValue);
+                    } catch (e) {
+                        return String(cellValue);
+                    }
                 }
                 return String(cellValue);
             }
@@ -276,6 +289,7 @@ module.exports = {
                         var obj = {};
                         row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
                             if (headers[colNumber]) {
+                                // Extract the string safely using our robust helper
                                 obj[headers[colNumber]] = getCellString(cell.value);
                             }
                         });
