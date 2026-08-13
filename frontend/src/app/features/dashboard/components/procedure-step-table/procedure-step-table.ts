@@ -104,4 +104,19 @@ export class ProcedureStepTableComponent {
     onBlur(): void {
         this.controlBlurred.emit();
     }
+
+    getReadableTimestamp(raw?: string): string {
+        if (!raw) return '';
+        const match = raw.match(/^(\d{4}) - (\d{1,3})\.(\d{2}):(\d{2}):(\d{2}) UTC (.*)$/);
+        if (!match) return raw;
+        
+        const [_, year, doy, h, m, s, username] = match;
+        const date = new Date(Date.UTC(parseInt(year, 10), 0, parseInt(doy, 10), parseInt(h, 10), parseInt(m, 10), parseInt(s, 10)));
+        
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const localDate = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        const localTime = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        
+        return `${localDate} ${localTime} Local Time (${username})`;
+    }
 }

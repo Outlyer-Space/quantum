@@ -37,7 +37,7 @@
             <!-- Main Content Column -->
             <td class="col-content">
                 @if (step.type === 'input') {
-                <p>{{ step.content }}</p>
+                <p [class.pre-wrap]="step.content.includes('\n')">{{ step.content }}</p>
                 <div class="input-block" [class.input-block-disabled]="readonly()">
                     <div class="recorded-value">
                         <label>TLM Recorded Value:</label>
@@ -94,8 +94,10 @@
 
             <!-- Timestamp Column -->
             <td class="col-timestamp">
-                @if ((!step.children || step.children.length === 0) && step.recordedValue) {
-                <span class="timestamp-value">{{ step.recordedValue }}</span>
+                @if ((!step.children || step.children.length === 0) && step.type === 'input' && step.stepInfo) {
+                <span class="timestamp-value" [title]="getReadableTimestamp(step.stepInfo)">{{ step.stepInfo }}</span>
+                } @else if ((!step.children || step.children.length === 0) && step.recordedValue && step.type !== 'input') {
+                <span class="timestamp-value" [title]="getReadableTimestamp(step.recordedValue)">{{ step.recordedValue }}</span>
                 }
             </td>
         </tr>

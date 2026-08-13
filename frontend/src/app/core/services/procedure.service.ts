@@ -279,21 +279,27 @@ export class ProcedureService {
 
         const allSteps: ProcedureStep[] = sections.map((s, index) => {
             const liveData = liveSteps ? liveSteps[index] : null;
+            const sType = this.mapType(s.Type);
 
-            // Extract completion note or recorded value. Backend uses 'Info' or 'info' for checkboxes.
-            const recordedValue = liveData?.recordedValue || liveData?.info || liveData?.Info || '';
+            // For input steps: recordedValue = user's typed text, stepInfo = submission timestamp/user.
+            // For all other steps: recordedValue = the info timestamp string (existing behaviour).
+            const recordedValue = sType === 'input'
+                ? (liveData?.recordedValue || '')
+                : (liveData?.info || liveData?.Info || liveData?.recordedValue || '');
+            const stepInfo = sType === 'input' ? (liveData?.info || '') : '';
 
             return {
                 id: s.Step,
                 level: this.getLevel(s.Step),
                 role: s.Role,
-                type: this.mapType(s.Type),
+                type: sType,
                 content: s.Content,
                 flatIndex: index,
                 referenceUrl: s.Reference,
                 isOpen: true,
                 children: [],
-                recordedValue: recordedValue
+                recordedValue: recordedValue,
+                stepInfo: stepInfo
             };
         });
 

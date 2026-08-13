@@ -18,6 +18,8 @@ export interface ProcedureStep {
 
     /** Only applicable when type === 'input' */
     recordedValue?: string;
+    /** Submission timestamp + username for input steps (mirrors 'info' for regular steps) */
+    stepInfo?: string;
     inputValue?: string;
 }
 

@@ -234,6 +234,9 @@ export class ViewProcedureComponent implements OnDestroy {
             if (t.recordedValue !== s.recordedValue) {
                 t.recordedValue = s.recordedValue;
             }
+            if (t.stepInfo !== s.stepInfo) {
+                t.stepInfo = s.stepInfo;
+            }
         }
     }
 
@@ -445,17 +448,27 @@ export class ViewProcedureComponent implements OnDestroy {
         if (!val || val.trim().length === 0) return;
 
         const previous = step.recordedValue;
+        const previousInfo = step.stepInfo;
         step.recordedValue = val;
         ctrl.reset('');
+
+        // Build submission timestamp identical to the format used for regular step completion.
+        const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const now = new Date();
+        const dayOfYear = this.getDayOfYear(now);
+        const h = String(now.getUTCHours()).padStart(2, '0');
+        const m = String(now.getUTCMinutes()).padStart(2, '0');
+        const s = String(now.getUTCSeconds()).padStart(2, '0');
+        const timestamp = `${now.getUTCFullYear()} - ${dayOfYear}.${h}:${m}:${s} UTC ${username}`;
+        step.stepInfo = timestamp;
 
         this.pendingUpdates.add(step.flatIndex);
         this.optimisticLocks.add(step.flatIndex);
         this.localCacheVersion.update(v => v + 1);
         this.autoCompleteParents();
 
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.procedureService.setStepValue(
-            this.id(), this.revision()!, step.flatIndex, val, step.type, username
+            this.id(), this.revision()!, step.flatIndex, val, step.type, username, timestamp
         ).subscribe({
             next: () => {
                 this.pendingUpdates.delete(step.flatIndex);
@@ -466,6 +479,7 @@ export class ViewProcedureComponent implements OnDestroy {
                 this.optimisticLocks.delete(step.flatIndex);
                 console.error('Failed to save step value:', err);
                 step.recordedValue = previous;
+                step.stepInfo = previousInfo;
                 this.localCacheVersion.update(v => v + 1);
             },
         });
@@ -474,7 +488,9 @@ export class ViewProcedureComponent implements OnDestroy {
     protected onInputCleared(step: ProcedureStep): void {
         if (this.isArchived() || !this.canEditStep()(step) || !step.recordedValue) return;
         const previous = step.recordedValue;
+        const previousInfo = step.stepInfo;
         step.recordedValue = '';
+        step.stepInfo = '';
 
         this.pendingUpdates.add(step.flatIndex);
         this.optimisticLocks.add(step.flatIndex);
@@ -494,6 +510,7 @@ export class ViewProcedureComponent implements OnDestroy {
                 this.optimisticLocks.delete(step.flatIndex);
                 console.error('Failed to clear input value:', err);
                 step.recordedValue = previous;
+                step.stepInfo = previousInfo;
                 this.localCacheVersion.update(v => v + 1);
             },
         });
