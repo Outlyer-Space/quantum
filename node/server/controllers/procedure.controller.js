@@ -686,6 +686,7 @@ module.exports = {
             var procid = req.body.pid;
             var username = req.body.username;
             var revision = req.body.revision;
+            var role = req.body.role || '';
             var liveinstanceID;
 
             const procs = await ProcedureModel.findOne({ 'procedureID': procid });
@@ -715,8 +716,8 @@ module.exports = {
                         { arrayFilters: [{ 'u.email': email }] }
                     );
                 } else {
-                    // Atomically add the user to the instance's users array
-                    const role = (instance.users && instance.users[0]?.role) || '';
+                    // Atomically add the user to the instance's users array.
+                    // `role` is read from req.body above, so each user is recorded with their own callsign.
                     await ProcedureModel.updateOne(
                         { _id: procs._id },
                         { $push: { [`instances.${liveinstanceID}.users`]: { name: username, email, role, isOnline } } }

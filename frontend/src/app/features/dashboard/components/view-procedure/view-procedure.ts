@@ -400,8 +400,9 @@ export class ViewProcedureComponent implements OnDestroy {
             const user = this.authService.user();
             const username = user?.auth?.name || 'Unknown User';
             const email = user?.auth?.email || '';
+            const role = this.getUserCallsign() || '';
             this.procedureService
-                .setUserStatus(id, revision, username, email, true)
+                .setUserStatus(id, revision, username, email, true, role)
                 .subscribe({ error: err => console.warn('Could not set user presence:', err) });
         });
     }

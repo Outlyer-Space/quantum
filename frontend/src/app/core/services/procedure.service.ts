@@ -106,13 +106,14 @@ export class ProcedureService {
     }
 
     /** Send user presence heartbeat for an instance */
-    setUserStatus(id: string, revision: string, username: string, email: string, isOnline: boolean): Observable<any> {
+    setUserStatus(id: string, revision: string, username: string, email: string, isOnline: boolean, role: string = ''): Observable<any> {
         const payload = {
             pid: id,
             revision,
             username,
             email,
-            isOnline
+            isOnline,
+            role
         };
         return this.http.post('/api/procedures/instances/user-status', payload);
     }
