@@ -100,6 +100,19 @@ export interface ProcedureSummary {
     eventname: string;
 }
 
+export interface ArchiveSummary {
+    procedureId: string;
+    title: string;
+    revision: number;
+    version: number;
+    templateUploadedAt: string;
+    startedAt: string;
+    completedAt: string;
+    completedSteps: number;
+    totalSteps: number;
+    operators: { name: string; role: string; isParticipant: boolean }[];
+}
+
 /** Wrapper returned by the service for a full procedure */
 export interface ProcedureData {
     id: string;
@@ -108,6 +121,7 @@ export interface ProcedureData {
     eventname?: string;
     closingComment?: string;
     activeUsers?: ActiveUser[];
+    archiveSummary?: ArchiveSummary;
 }
 
 export interface ActiveUser {

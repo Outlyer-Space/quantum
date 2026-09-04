@@ -36,6 +36,37 @@ $cyan-primary: #07d1ea;
     border-radius: 4px;
     overflow: hidden;
 }
+/* ── Archive Header Actions ── */
+.archive-header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.btn-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #1f282e;
+    color: #fff;
+    border: 1px solid #3f4e5a;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: #2a353d;
+        border-color: #4a5d6c;
+    }
+
+    svg {
+        opacity: 0.8;
+    }
+}
 
 /* ── Completion & Comments (Dynamic Island Style) ── */
 .completion-container {

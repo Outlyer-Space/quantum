@@ -26,10 +26,12 @@ import {
     getAllActionableSteps,
 } from '../../utils/procedure-step.utils';
 import { ProcedureStepTableComponent, StepCheckEvent } from '../procedure-step-table/procedure-step-table';
+import { ArchiveSummaryDialogComponent } from '../archive-summary-dialog/archive-summary-dialog';
+import { viewChild } from '@angular/core';
 
 @Component({
     selector: 'app-view-procedure',
-    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent],
+    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent, ArchiveSummaryDialogComponent],
     templateUrl: './view-procedure.html',
     styleUrl: './view-procedure.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -268,6 +270,16 @@ export class ViewProcedureComponent implements OnDestroy {
     protected closingComment = signal<string>('');
     private cachedEventName = signal<string>('');
 
+    protected archiveSummary = computed(() => this.procedureResource.value()?.archiveSummary ?? null);
+    protected summaryDialog = viewChild(ArchiveSummaryDialogComponent);
+
+    protected openSummary(): void {
+        const summary = this.archiveSummary();
+        if (summary) {
+            this.summaryDialog()?.open(summary);
+        }
+    }
+
     /**
      * Wrapped in computed() so that a new function reference is produced
      * whenever steps() changes. This causes Angular to push a new value to
@@ -455,12 +467,10 @@ export class ViewProcedureComponent implements OnDestroy {
 
         // Build submission timestamp identical to the format used for regular step completion.
         const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const role = this.getUserCallsign();
+        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
         const now = new Date();
-        const dayOfYear = this.getDayOfYear(now);
-        const h = String(now.getUTCHours()).padStart(2, '0');
-        const m = String(now.getUTCMinutes()).padStart(2, '0');
-        const s = String(now.getUTCSeconds()).padStart(2, '0');
-        const timestamp = `${now.getUTCFullYear()} - ${dayOfYear}.${h}:${m}:${s} UTC ${username}`;
+        const timestamp = `${now.toISOString()} ${username}${displayRole}`;
         step.stepInfo = timestamp;
 
         this.pendingUpdates.add(step.flatIndex);
@@ -522,14 +532,12 @@ export class ViewProcedureComponent implements OnDestroy {
             return;
         }
         const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const role = this.getUserCallsign();
+        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
 
         if (action === 'complete') {
             const now = new Date();
-            const dayOfYear = this.getDayOfYear(now);
-            const h = String(now.getUTCHours()).padStart(2, '0');
-            const m = String(now.getUTCMinutes()).padStart(2, '0');
-            const s = String(now.getUTCSeconds()).padStart(2, '0');
-            const timestamp = `${now.getUTCFullYear()} - ${dayOfYear}.${h}:${m}:${s} UTC ${username}`;
+            const timestamp = `${now.toISOString()} ${username}${displayRole}`;
 
             const previous = step.recordedValue;
             step.recordedValue = timestamp;
@@ -596,9 +604,10 @@ export class ViewProcedureComponent implements OnDestroy {
         if (!window.confirm('Are you sure you want to complete and archive this procedure?')) return;
 
         const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const role = this.getUserCallsign() || '';
         const comment = this.closingComment();
 
-        this.procedureService.completeInstance(id, revision, username, comment).subscribe({
+        this.procedureService.completeInstance(id, revision, username, role, comment).subscribe({
             next: () => {
                 this.procedureService.requestRefresh();
                 this.router.navigate(['/dashboard/archived', id]);

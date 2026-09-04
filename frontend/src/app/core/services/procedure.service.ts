@@ -93,13 +93,55 @@ export class ProcedureService {
                     return { id, title: 'Unknown Procedure', steps: [] };
                 }
                 const instance = proc.instances?.find(i => i.revision.toString() === revision);
+                
+                let completedActionable = 0;
+                let totalActionable = 0;
+                if (instance) {
+                    const stepDefinitions = (instance.version && proc.versions && proc.versions[instance.version - 1])
+                        ? proc.versions[instance.version - 1]
+                        : proc.sections;
+                    (instance.Steps || []).forEach((s: any, index: number) => {
+                        const def = stepDefinitions[index];
+                        if (def && def.Type && def.Type.trim().toUpperCase() !== 'HEADING') {
+                            totalActionable++;
+                            if (s.info && s.info.trim().length > 0) {
+                                completedActionable++;
+                            }
+                        }
+                    });
+                }
+
                 return {
                     id: proc.procedureID,
                     title: proc.title,
                     steps: this.transformSections(proc.sections, instance?.Steps),
                     eventname: proc.eventname || '',
                     closingComment: instance?.closingComment || '',
-                    activeUsers: instance?.users || []
+                    activeUsers: instance?.users || [],
+                    archiveSummary: instance && !instance.running ? {
+                        procedureId: proc.procedureID,
+                        title: proc.title,
+                        revision: instance.revision,
+                        version: instance.version || 1,
+                        templateUploadedAt: new Date(parseInt(proc._id.substring(0, 8), 16) * 1000).toISOString(),
+                        startedAt: instance.startedAt,
+                        completedAt: instance.completedAt,
+                        completedSteps: completedActionable,
+                        totalSteps: totalActionable,
+                        operators: (instance.users || []).map((u: any) => {
+                            const usedRoles = new Set<string>();
+                            let isParticipant = false;
+                            (instance.Steps || []).forEach((s: any) => {
+                                if (s.info && s.info.includes(u.name)) {
+                                    isParticipant = true;
+                                    const match = s.info.match(/\(([^)]+)\)$/);
+                                    if (match) usedRoles.add(match[1]);
+                                }
+                            });
+                            const displayRole = usedRoles.size > 0 ? Array.from(usedRoles).join(', ') : u.role;
+                            return { name: u.name, role: displayRole, isParticipant };
+                        })
+                    } : undefined
                 };
             })
         );
@@ -178,20 +220,18 @@ export class ProcedureService {
     //  Execution (Run Action)
     // ───────────────────────────────────────────────
 
-    /** 
-     * Create a new running instance of a procedure.
-     * Returns an object containing the new `revision` number.
-     */
-    createInstance(id: string, username: string, email: string, role: string): Observable<{ revision: number }> {
+    createInstance(id: string, username: string, email: string, role: string): Observable<any> {
+        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
+        const usernamerole = username + displayRole;
         const payload = {
             id,
-            usernamerole: role ? `${username} - ${role}` : username,
-            lastuse: new Date().toISOString(),
+            usernamerole,
             username,
             email,
-            role
+            role,
+            lastuse: new Date().toISOString()
         };
-        return this.http.post<{ revision: number }>('/api/procedures/instances', payload);
+        return this.http.post('/api/procedures/instances', payload);
     }
 
     /** Complete a specific step, submitting the recorded value to the backend */
@@ -224,11 +264,13 @@ export class ProcedureService {
     }
 
     /** Set an entire procedure instance to the Completed/Archived status */
-    completeInstance(id: string, revision: string, username: string, closingComment?: string): Observable<any> {
+    completeInstance(id: string, revision: string, username: string, role: string, closingComment?: string): Observable<any> {
+        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
+        const usernamerole = username + displayRole;
         const payload = {
             id,
             revision: parseInt(revision, 10),
-            usernamerole: username,
+            usernamerole,
             closingComment: closingComment || '',
             lastuse: new Date().toISOString()
         };

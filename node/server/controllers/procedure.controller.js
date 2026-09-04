@@ -709,10 +709,14 @@ module.exports = {
                 const userExists = instance.users && instance.users.some(u => u.email === email);
 
                 if (userExists) {
-                    // Atomically update the specific user's isOnline field using arrayFilters
+                    // Atomically update the specific user's isOnline field, role, and name using arrayFilters
                     await ProcedureModel.updateOne(
                         { _id: procs._id },
-                        { $set: { [`instances.${liveinstanceID}.users.$[u].isOnline`]: isOnline } },
+                        { $set: { 
+                            [`instances.${liveinstanceID}.users.$[u].isOnline`]: isOnline,
+                            [`instances.${liveinstanceID}.users.$[u].role`]: role,
+                            [`instances.${liveinstanceID}.users.$[u].name`]: username 
+                        } },
                         { arrayFilters: [{ 'u.email': email }] }
                     );
                 } else {

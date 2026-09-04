@@ -1,0 +1,87 @@
+@if (isOpen() && summary()) {
+<!-- Backdrop -->
+<div class="dialog-backdrop" (click)="close()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="summary-title">Archived Procedure Summary</h2>
+        <button class="close-btn" (click)="close()" aria-label="Close summary dialog">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        <!-- Main details -->
+        <div class="summary-section">
+            <div class="info-row">
+                <span class="info-label">Procedure</span>
+                <span class="info-value">{{ summary()!.procedureId }} - {{ summary()!.title }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Revision</span>
+                <span class="info-value">v{{ summary()!.version }} (Rev {{ summary()!.revision }})</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Template Uploaded</span>
+                <span class="info-value">{{ summary()!.templateUploadedAt }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Started</span>
+                <span class="info-value">{{ summary()!.startedAt }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Closed</span>
+                <span class="info-value">{{ summary()!.completedAt }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Completed</span>
+                <span class="info-value">{{ summary()!.completedSteps }} of {{ summary()!.totalSteps }} steps ({{ summary()!.totalSteps ? (summary()!.completedSteps / summary()!.totalSteps * 100).toFixed(0) : 0 }}%)</span>
+            </div>
+        </div>
+
+        <hr class="section-divider" />
+
+        <!-- Participants Section -->
+        <div class="summary-section">
+            <h3>Participants</h3>
+            @if (participants().length > 0) {
+                <ul class="user-list">
+                @for (user of participants(); track user.name) {
+                    <li>
+                        <span class="user-name">{{ user.name }}</span>
+                        <span class="user-role">{{ user.role }}</span>
+                    </li>
+                }
+                </ul>
+            } @else {
+                <p class="empty-list">No active participants</p>
+            }
+        </div>
+
+        <hr class="section-divider" />
+
+        <!-- Observers Section -->
+        <div class="summary-section">
+            <h3>Observers</h3>
+            @if (observers().length > 0) {
+                <ul class="user-list">
+                @for (user of observers(); track user.name) {
+                    <li>
+                        <span class="user-name">{{ user.name }}</span>
+                        <span class="user-role">{{ user.role }}</span>
+                    </li>
+                }
+                </ul>
+            } @else {
+                <p class="empty-list">No observers</p>
+            }
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        <button class="btn btn-close" (click)="close()">Close</button>
+    </div>
+</div>
+}
