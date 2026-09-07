@@ -639,6 +639,13 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
+            // === ROLE-BASED ACCESS CONTROL (RBAC) ===
+            // Enforce that only lead roles can close procedures
+            const { userHasLeadRole } = require('../lib/ensureMissionAccess');
+            if (!userHasLeadRole(req.user)) {
+                return res.status(403).json({ error: 'Forbidden', message: 'Only lead roles (FLIGHT, MD, TD) are authorized to close procedures.' });
+            }
+
             var closingComment = req.body.closingComment || '';
 
             const updateObj = { 
@@ -853,19 +860,33 @@ module.exports = {
             }
 
             const updateObj = { $set: { lastuse: lastuse } };
+            const writeFilter = { _id: procs._id };
+
             for (var a = 0; a < parentsArray.length; a++) {
                 const idx = parentsArray[a].index;
                 // Security: bounds-check index before using it as an array subscript
                 if (idx >= instance.length) {
                     return res.status(400).json({ error: 'Bad Request', message: 'Step index out of bounds' });
                 }
+
+                // Optimistic locking: attach each parent's previousInfo to the filter
+                if (typeof parentsArray[a].previousInfo === 'string') {
+                    writeFilter[`instances.${instanceid}.Steps.${idx}.info`] = parentsArray[a].previousInfo;
+                }
+
                 updateObj.$set[`instances.${instanceid}.Steps.${idx}.info`] = info;
                 if (parentsArray[a].parent.contenttype === 'Input') {
                     updateObj.$set[`instances.${instanceid}.Steps.${idx}.recordedValue`] = inputStepValues[idx].ivalue;
                 }
             }
 
-            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
+            const result = await ProcedureModel.updateOne(writeFilter, updateObj);
+            if (result.matchedCount === 0) {
+                return res.status(409).json({
+                    error: 'Conflict',
+                    message: 'One or more parent steps were already modified by another user.'
+                });
+            }
             return res.json({ success: true });
         } catch (err) {
             console.error(err);

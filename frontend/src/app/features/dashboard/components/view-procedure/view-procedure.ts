@@ -685,12 +685,14 @@ export class ViewProcedureComponent implements OnDestroy {
                         c => c.recordedValue && c.recordedValue.trim().length > 0
                     );
                     if (allDone && !step.recordedValue) {
+                        const prevInfo = step.recordedValue || '';
                         step.recordedValue = utcClock;
-                        newlyCompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' } });
+                        newlyCompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, previousInfo: prevInfo });
                         this.pendingUpdates.add(step.flatIndex);
                         this.optimisticLocks.add(step.flatIndex);
                     } else if (!allDone && step.recordedValue) {
-                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, prevValue: step.recordedValue });
+                        const prevInfo = step.recordedValue;
+                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, prevValue: step.recordedValue, previousInfo: prevInfo });
                         step.recordedValue = '';
                         this.pendingUpdates.add(step.flatIndex);
                         this.optimisticLocks.add(step.flatIndex);
