@@ -235,7 +235,7 @@ export class ProcedureService {
     }
 
     /** Complete a specific step, submitting the recorded value to the backend */
-    setStepValue(id: string, revision: string, flatIndex: number, recordedValue: string, steptype: string, username: string, info: string = ''): Observable<any> {
+    setStepValue(id: string, revision: string, flatIndex: number, recordedValue: string, steptype: string, username: string, info: string = '', previousInfo: string = ''): Observable<any> {
         // Must match what `procedure.controller.js` `setInfo` expects
         const payload = {
             id,
@@ -244,6 +244,9 @@ export class ProcedureService {
             recordedValue,
             steptype: steptype === 'input' ? 'Input' : steptype,
             info: info,
+            // Optimistic lock token: the info value the client read before mutating.
+            // The backend filters on this field so concurrent writes are detected.
+            previousInfo: previousInfo,
             usernamerole: username, // Fallback format used on the backend
             lastuse: new Date().toISOString()
         };

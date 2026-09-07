@@ -479,7 +479,7 @@ export class ViewProcedureComponent implements OnDestroy {
         this.autoCompleteParents();
 
         this.procedureService.setStepValue(
-            this.id(), this.revision()!, step.flatIndex, val, step.type, username, timestamp
+            this.id(), this.revision()!, step.flatIndex, val, step.type, username, timestamp, previousInfo
         ).subscribe({
             next: () => {
                 this.pendingUpdates.delete(step.flatIndex);
@@ -510,7 +510,7 @@ export class ViewProcedureComponent implements OnDestroy {
 
         const username = this.authService.user()?.auth?.name || 'Unknown User';
         this.procedureService.setStepValue(
-            this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
+            this.id(), this.revision()!, step.flatIndex, '', step.type, username, '', previousInfo
         ).subscribe({
             next: () => {
                 this.pendingUpdates.delete(step.flatIndex);
@@ -548,7 +548,7 @@ export class ViewProcedureComponent implements OnDestroy {
             this.autoCompleteParents();
 
             this.procedureService.setStepValue(
-                this.id(), this.revision()!, step.flatIndex, '', step.type, username, timestamp
+                this.id(), this.revision()!, step.flatIndex, '', step.type, username, timestamp, previous
             ).subscribe({
                 next: () => {
                     this.pendingUpdates.delete(step.flatIndex);
@@ -572,7 +572,7 @@ export class ViewProcedureComponent implements OnDestroy {
             this.autoCompleteParents();
 
             this.procedureService.setStepValue(
-                this.id(), this.revision()!, step.flatIndex, '', step.type, username, ''
+                this.id(), this.revision()!, step.flatIndex, '', step.type, username, '', previous
             ).subscribe({
                 next: () => {
                     this.pendingUpdates.delete(step.flatIndex);

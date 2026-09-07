@@ -528,6 +528,9 @@ module.exports = {
             var lastuse = req.body.lastuse; // time when the step was completed
             var recordedValue = req.body.recordedValue;
             var steptype = req.body.steptype;
+            // Optimistic locking: the client sends the value it read before mutating.
+            // If present, we use it as a filter condition so concurrent writes are detected.
+            var previousInfo = req.body.previousInfo;
 
             const procs = await ProcedureModel.findOne({ 'procedureID': procid });
             if (!procs) {
@@ -584,7 +587,22 @@ module.exports = {
                 updateObj.$set[`instances.${instanceid}.Steps.${step}.recordedValue`] = recordedValue;
             }
 
-            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
+            // Build the write filter. When the client sends the value it read
+            // before acting (previousInfo), add it to the filter so the write
+            // only succeeds if no concurrent request has changed that field in
+            // the meantime. matchedCount === 0 means the step was already
+            // modified — return 409 so the frontend can notify the user.
+            const writeFilter = { _id: procs._id };
+            if (typeof previousInfo === 'string') {
+                writeFilter[`instances.${instanceid}.Steps.${step}.info`] = previousInfo;
+            }
+            const result = await ProcedureModel.updateOne(writeFilter, updateObj);
+            if (result.matchedCount === 0) {
+                return res.status(409).json({
+                    error: 'Conflict',
+                    message: 'This step was already modified by another user. Your change was not saved.'
+                });
+            }
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -632,7 +650,21 @@ module.exports = {
                     [`instances.${instanceid}.running`]: false
                 } 
             };
-            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
+            // Optimistic locking: include running: true in the filter so this
+            // write only succeeds once. If another user (or a duplicate request)
+            // already completed the instance, matchedCount will be 0 and we
+            // return 409 instead of silently overwriting the first closer's data.
+            const completeFilter = {
+                _id: procs._id,
+                [`instances.${instanceid}.running`]: true
+            };
+            const completeResult = await ProcedureModel.updateOne(completeFilter, updateObj);
+            if (completeResult.matchedCount === 0) {
+                return res.status(409).json({
+                    error: 'Conflict',
+                    message: 'This procedure was already completed by another user.'
+                });
+            }
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
