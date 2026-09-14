@@ -18,7 +18,7 @@ import { timer } from 'rxjs';
 import { NavbarService } from '../../services/navbar.service';
 import { ProcedureService } from '../../../../core/services/procedure.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { ActiveUser, ProcedureData, ProcedureStep } from '../../../../core/models/procedure.model';
+import { ActiveUser, ProcedureData, ProcedureStep, StepEntityMap } from '../../../../core/models/procedure.model';
 import {
     flattenSteps,
     buildInputFormControls,
@@ -27,11 +27,13 @@ import {
 } from '../../utils/procedure-step.utils';
 import { ProcedureStepTableComponent, StepCheckEvent } from '../procedure-step-table/procedure-step-table';
 import { ArchiveSummaryDialogComponent } from '../archive-summary-dialog/archive-summary-dialog';
+import { ProcedureUneditableDialogComponent } from '../procedure-uneditable-dialog/procedure-uneditable-dialog';
+import { ProcedureErrorDialogComponent } from '../procedure-error-dialog/procedure-error-dialog';
 import { viewChild } from '@angular/core';
 
 @Component({
     selector: 'app-view-procedure',
-    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent, ArchiveSummaryDialogComponent],
+    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent, ArchiveSummaryDialogComponent, ProcedureUneditableDialogComponent, ProcedureErrorDialogComponent],
     templateUrl: './view-procedure.html',
     styleUrl: './view-procedure.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -118,141 +120,69 @@ export class ViewProcedureComponent implements OnDestroy {
         stream: ({ params }) => this.procedureService.getActiveUsers(params.id, params.revision),
     });
 
-    // ── Local cache for stable step identity across polls ─────────────────
+    // ── Entity-based step state ───────────────────────────────────────────
 
     /**
-     * Holds the step tree that the template renders.
-     * Populated on first load; mutated in-place on subsequent polls.
+     * Immutable step tree structure loaded from the server on procedure load.
+     * Contains id, role, type, content, flatIndex, children — everything except
+     * mutable runtime values. Replaced wholesale on procedure navigation.
      */
-    private localStepsCache: ProcedureStep[] | null = null;
+    private stepShapes = signal<ProcedureStep[]>([]);
 
     /**
-     * Plain class property (NOT a signal) that records which procedure ID was
-     * last used to populate `localStepsCache`.
-     *
-     * Why not a signal?
-     * Writing to a signal inside a computed() causes Angular 21 to throw a
-     * reactive cycle error. Since `lastRenderedProcId` is only ever read inside
-     * this same computed (not in the template or any other reactive context), a
-     * plain property is both correct and simpler.
+     * Mutable per-step state keyed by flatIndex.
+     * Contains recordedValue, stepInfo, isPending, isLocked.
+     * Being a signal, every write is immediately visible to Angular's reactivity
+     * system — no manual bump counter required.
      */
-    private lastRenderedProcId: string | null = null;
+    private stepState = signal<StepEntityMap>({});
+    protected actionError = signal<{title: string, message: string} | null>(null);
 
     /**
-     * Tracks the flatIndex of steps that have an optimistic UI update currently
-     * in-flight to the server. Prevents background polls from overriding the
-     * optimistic value before the server resolves the update.
+     * Plain class property tracking which procedure was last loaded into the
+     * entity state. Read inside effects via untracked() to avoid reactive cycles.
      */
-    private pendingUpdates = new Set<number>();
+    private _lastLoadedProcId: string | null = null;
 
     /**
-     * Data lock to prevent stale background polls from overwriting local optimistic
-     * state. Unlike pendingUpdates, this lock is only released when the server poll
-     * returns a value that matches our optimistic state.
+     * Flat indices updated by a remote poll (another client changed this step).
+     * Drives the green flash animation on the row.
      */
-    private optimisticLocks = new Set<number>();
+    protected remotelyUpdatedSteps = signal<Set<number>>(new Set());
 
     /**
-     * Exposes the pending updates set reactively to the template.
-     * Evaluates whenever localCacheVersion increments.
+     * Flat indices whose write was explicitly rejected (409 Conflict).
+     * Drives the yellow pulse animation on the row.
      */
-    protected pendingUpdatesSignal = computed(() => {
-        this.localCacheVersion();
-        return new Set(this.pendingUpdates);
+    protected rejectedSteps = signal<Set<number>>(new Set());
+
+    /**
+     * Exposes pending step indices reactively to the template.
+     * Derived directly from the entity map — no manual bump counter needed.
+     */
+    protected pendingUpdatesSignal = computed<Set<number>>(() => {
+        const state = this.stepState();
+        const pending = new Set<number>();
+        for (const key of Object.keys(state)) {
+            if (state[+key].isPending) pending.add(+key);
+        }
+        return pending;
     });
-
-    /**
-     * Incremented after every optimistic mutation (checkbox, input set/clear,
-     * parent auto-complete). Reading this inside computed() means Angular
-     * immediately re-evaluates steps and canEditStep on the same tick as the
-     * user interaction — no waiting for the next 5-second poll tick.
-     */
-    private localCacheVersion = signal(0);
 
     /**
      * The step tree exposed to the template.
-     *
-     * First load or procedure change → replace cache wholesale.
-     * Poll tick for the same procedure → sync only changed `recordedValue`
-     * fields, return a shallow copy of the same cached array so OnPush
-     * re-evaluates bindings without destroying DOM nodes.
+     * A pure merge of the immutable shape tree and the mutable entity state.
+     * Re-evaluates automatically whenever either signal changes — no side-effects,
+     * no mutation, no bump counter.
      */
-    protected steps = computed(() => {
-        const data = this.procedureResource.value();
-        const id = this.id();
-        // Reading localCacheVersion establishes a reactive dependency so that
-        // optimistic mutations (which increment it) trigger an immediate re-render
-        // without waiting for the next poll tick.
-        this.localCacheVersion();
-        if (!data?.steps?.length) return this.localStepsCache ?? [];
-
-        if (!this.localStepsCache || this.lastRenderedProcId !== id) {
-            // First load or navigated to a different procedure — replace cache
-            // and clear any pending guards from a previous procedure session.
-            this.pendingUpdates.clear();
-            this.optimisticLocks.clear();
-            this.localStepsCache = data.steps;
-            this.lastRenderedProcId = id;
-            return this.localStepsCache;
-        }
-
-        // Background poll for the same procedure — sync only what changed.
-        // Object references in localStepsCache are preserved; Angular's
-        // @for + trackBy treats mutated rows as the same DOM node.
-        this.syncStepValues(this.localStepsCache, data.steps);
-
-        // Shallow copy signals a value change to computed consumers (so Angular
-        // marks the view dirty) without creating new child objects.
-        return [...this.localStepsCache];
-    });
-
-    /**
-     * Recursively walks the stable cache tree and copies `recordedValue`
-     * from the fresh server tree whenever it has changed.
-     * Steps are matched by array index and id — if the structure has shifted
-     * (shouldn't happen mid-session) the sync is skipped for safety.
-     */
-    private syncStepValues(target: ProcedureStep[], source: ProcedureStep[]): void {
-        for (let i = 0; i < target.length; i++) {
-            const t = target[i];
-            const s = source[i];
-            if (!t || !s || t.id !== s.id) continue;
-
-            if (t.children && t.children.length > 0) {
-                if (s.children && s.children.length === t.children.length) {
-                    this.syncStepValues(t.children, s.children);
-                }
-                continue;
-            }
-
-            if (this.optimisticLocks.has(t.flatIndex)) {
-                // If the server data finally caught up with our optimistic state, release the lock.
-                if (s.recordedValue === t.recordedValue) {
-                    this.optimisticLocks.delete(t.flatIndex);
-                }
-                continue;
-            }
-
-            if (t.recordedValue !== s.recordedValue) {
-                t.recordedValue = s.recordedValue;
-            }
-            if (t.stepInfo !== s.stepInfo) {
-                t.stepInfo = s.stepInfo;
-            }
-        }
-    }
+    protected steps = computed(() =>
+        this.mergeStepsWithState(this.stepShapes(), this.stepState())
+    );
 
     // ── Derived from steps ────────────────────────────────────────────────
 
-    private stepsStructureKey = computed(() => {
-        const ids = flattenSteps(this.steps()).map(s => s.id).join(',');
-        const closed = [...this.closedSectionIds()].join(',');
-        return ids + '|' + closed;
-    });
-
     protected flattenedSteps = computed(() => {
-        this.stepsStructureKey(); // read to establish dependency
-        return untracked(() => flattenSteps(this.steps(), this.closedSectionIds()));
+        return flattenSteps(this.steps(), this.closedSectionIds());
     });
 
     protected allActionableStepsCompleted = computed(() => {
@@ -273,11 +203,40 @@ export class ViewProcedureComponent implements OnDestroy {
     protected archiveSummary = computed(() => this.procedureResource.value()?.archiveSummary ?? null);
     protected summaryDialog = viewChild(ArchiveSummaryDialogComponent);
 
+    /** Show the uneditable dialog if the mode is 'running' but the server says it's archived */
+    protected showUneditableDialog = computed(() => {
+        return this.mode() === 'running' && this.archiveSummary() !== null;
+    });
+
     protected openSummary(): void {
         const summary = this.archiveSummary();
         if (summary) {
             this.summaryDialog()?.open(summary);
         }
+    }
+
+    private handleError(err: any, defaultTitle: string, defaultMessage: string) {
+        let title = defaultTitle;
+        let message = defaultMessage;
+        
+        if (err?.error?.message) {
+            message = err.error.message;
+            if (err.status === 403) title = 'Permission Denied';
+            else if (err.status === 409) title = 'Conflict';
+            else if (err.status === 401) title = 'Unauthorized';
+        } else if (err?.message) {
+            message = err.message;
+        }
+
+        this.actionError.set({ title, message });
+    }
+
+    protected navigateToArchive() {
+        this.router.navigate(['/dashboard/archived', this.id()]);
+    }
+
+    protected navigateToDashboard() {
+        this.router.navigate(['/dashboard']);
     }
 
     /**
@@ -402,19 +361,69 @@ export class ViewProcedureComponent implements OnDestroy {
             }
         });
 
-        // Effect 6: Send user-presence heartbeat for running instances.
+        // Effect 6: Sync server poll data into the entity state.
+        // On first load for a procedure: build the entity map from scratch.
+        // On subsequent polls: diff only changed non-locked entries and update the map.
+        // stepState is read with untracked() so this effect is only triggered by
+        // the resource changing, not by our own writes to stepState.
+        effect(() => {
+            const data = this.procedureResource.value();
+            const id = this.id();
+            if (!data?.steps?.length) return;
+
+            if (this._lastLoadedProcId !== id) {
+                // New procedure — build entity state from scratch
+                this._lastLoadedProcId = id;
+                this.stepShapes.set(data.steps);
+                this.stepState.set(this.buildEntityMap(data.steps));
+                this.remotelyUpdatedSteps.set(new Set());
+                this.rejectedSteps.set(new Set());
+                return;
+            }
+
+            // Same procedure poll — sync only changed, non-locked entries
+            const currentState = untracked(() => this.stepState());
+            const { map, changed } = this.syncEntityMap(currentState, data.steps);
+
+            if (changed.size > 0) {
+                this.stepState.set(map);
+                this.remotelyUpdatedSteps.update(prev => {
+                    const next = new Set(prev);
+                    changed.forEach(i => next.add(i));
+                    return next;
+                });
+                // Clear yellow conflict pulses for remotely-updated steps
+                this.rejectedSteps.update(prev => {
+                    const next = new Set(prev);
+                    let modified = false;
+                    changed.forEach(i => { if (next.has(i)) { next.delete(i); modified = true; } });
+                    return modified ? next : prev;
+                });
+                // Auto-fade green pulse after 100ms
+                changed.forEach(i => {
+                    setTimeout(() => {
+                        this.remotelyUpdatedSteps.update(prev => {
+                            const next = new Set(prev);
+                            next.delete(i);
+                            return next;
+                        });
+                    }, 100);
+                });
+            } else if (map !== currentState) {
+                // Lock releases only — no visual change, but state needs updating
+                this.stepState.set(map);
+            }
+        });
+
+        // Effect 7: Send user-presence heartbeat for running instances.
         effect(() => {
             if (!this.isRunningInstance()) return;
             const id = this.id();
             const revision = this.revision();
             if (!id || !revision) return;
 
-            const user = this.authService.user();
-            const username = user?.auth?.name || 'Unknown User';
-            const email = user?.auth?.email || '';
-            const role = this.getUserCallsign() || '';
             this.procedureService
-                .setUserStatus(id, revision, username, email, true, role)
+                .setUserStatus(id, revision, true)
                 .subscribe({ error: err => console.warn('Could not set user presence:', err) });
         });
     }
@@ -455,135 +464,194 @@ export class ViewProcedureComponent implements OnDestroy {
 
     protected onInputSet(step: ProcedureStep): void {
         if (this.isArchived() || !this.canEditStep()(step)) return;
+
+        const user = this.authService.user();
+        if (!user || !user.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
+            return;
+        }
+
         const ctrl = this.inputForm.controls[step.id] as FormControl<string>;
         if (!ctrl) return;
         const val = ctrl.value;
         if (!val || val.trim().length === 0) return;
 
-        const previous = step.recordedValue;
-        const previousInfo = step.stepInfo;
-        step.recordedValue = val;
-        ctrl.reset('');
-
-        // Build submission timestamp identical to the format used for regular step completion.
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const previousInfo = step.stepInfo ?? '';
         const role = this.getUserCallsign();
         const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
-        const now = new Date();
-        const timestamp = `${now.toISOString()} ${username}${displayRole}`;
-        step.stepInfo = timestamp;
+        const timestamp = `${new Date().toISOString()} ${user.auth.name}${displayRole}`;
+        const flatIndex = step.flatIndex;
 
-        this.pendingUpdates.add(step.flatIndex);
-        this.optimisticLocks.add(step.flatIndex);
-        this.localCacheVersion.update(v => v + 1);
-        this.autoCompleteParents();
+        // Pessimistic: only mark as pending — do NOT change the displayed value yet.
+        this.stepState.update(map => ({
+            ...map,
+            [flatIndex]: { ...map[flatIndex], isPending: true, isLocked: true },
+        }));
 
         this.procedureService.setStepValue(
-            this.id(), this.revision()!, step.flatIndex, val, step.type, username, timestamp, previousInfo
+            this.id(), this.revision()!, flatIndex, val, step.type, timestamp, previousInfo
         ).subscribe({
             next: () => {
-                this.pendingUpdates.delete(step.flatIndex);
-                this.localCacheVersion.update(v => v + 1);
+                // Server confirmed — now apply the value and clear the textarea.
+                this.stepState.update(map => ({
+                    ...map,
+                    [flatIndex]: { recordedValue: val, stepInfo: timestamp, isPending: false, isLocked: false },
+                }));
+                ctrl.reset('');
+                this.autoCompleteParents();
             },
             error: (err) => {
-                this.pendingUpdates.delete(step.flatIndex);
-                this.optimisticLocks.delete(step.flatIndex);
-                console.error('Failed to save step value:', err);
-                step.recordedValue = previous;
-                step.stepInfo = previousInfo;
-                this.localCacheVersion.update(v => v + 1);
+                // Nothing to revert — just clear the pending state.
+                this.stepState.update(map => ({
+                    ...map,
+                    [flatIndex]: { ...map[flatIndex], isPending: false, isLocked: false },
+                }));
+                if (err?.status === 409) {
+                    this.rejectedSteps.update(prev => { const s = new Set(prev); s.add(flatIndex); return s; });
+                    setTimeout(() => {
+                        this.rejectedSteps.update(prev => { const s = new Set(prev); s.delete(flatIndex); return s; });
+                    }, 100);
+                    this.procedureService.requestRefresh();
+                }
+                this.handleError(err, 'Error', 'Failed to save step value.');
             },
         });
     }
 
     protected onInputCleared(step: ProcedureStep): void {
-        if (this.isArchived() || !this.canEditStep()(step) || !step.recordedValue) return;
-        const previous = step.recordedValue;
-        const previousInfo = step.stepInfo;
-        step.recordedValue = '';
-        step.stepInfo = '';
+        if (this.isArchived() || !this.canEditStep()(step)) return;
 
-        this.pendingUpdates.add(step.flatIndex);
-        this.optimisticLocks.add(step.flatIndex);
-        this.localCacheVersion.update(v => v + 1);
-        this.autoCompleteParents();
+        const user = this.authService.user();
+        if (!user || !user.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
+            return;
+        }
 
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
+        if (!step.recordedValue) return;
+
+        const previousInfo = step.stepInfo ?? '';
+        const flatIndex = step.flatIndex;
+
+        // Pessimistic: only mark as pending — do NOT clear the displayed value yet.
+        this.stepState.update(map => ({
+            ...map,
+            [flatIndex]: { ...map[flatIndex], isPending: true, isLocked: true },
+        }));
+
         this.procedureService.setStepValue(
-            this.id(), this.revision()!, step.flatIndex, '', step.type, username, '', previousInfo
+            this.id(), this.revision()!, flatIndex, '', step.type, '', previousInfo
         ).subscribe({
             next: () => {
-                this.pendingUpdates.delete(step.flatIndex);
-                this.localCacheVersion.update(v => v + 1);
+                // Server confirmed — now clear the value.
+                this.stepState.update(map => ({
+                    ...map,
+                    [flatIndex]: { recordedValue: '', stepInfo: '', isPending: false, isLocked: false },
+                }));
+                this.autoCompleteParents();
             },
             error: (err) => {
-                this.pendingUpdates.delete(step.flatIndex);
-                this.optimisticLocks.delete(step.flatIndex);
-                console.error('Failed to clear input value:', err);
-                step.recordedValue = previous;
-                step.stepInfo = previousInfo;
-                this.localCacheVersion.update(v => v + 1);
+                // Nothing to revert — just clear the pending state.
+                this.stepState.update(map => ({
+                    ...map,
+                    [flatIndex]: { ...map[flatIndex], isPending: false, isLocked: false },
+                }));
+                if (err?.status === 409) {
+                    this.rejectedSteps.update(prev => { const s = new Set(prev); s.add(flatIndex); return s; });
+                    setTimeout(() => {
+                        this.rejectedSteps.update(prev => { const s = new Set(prev); s.delete(flatIndex); return s; });
+                    }, 100);
+                    this.procedureService.requestRefresh();
+                }
+                this.handleError(err, 'Error', 'Failed to clear input value.');
             },
         });
     }
 
     protected onStepChecked({ step, action }: StepCheckEvent): void {
-        if (!this.canEditStep()(step)) {
+        if (!this.canEditStep()(step)) return;
+
+        const user = this.authService.user();
+        if (!user || !user.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
             return;
         }
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
+
         const role = this.getUserCallsign();
         const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
+        const flatIndex = step.flatIndex;
+        const previousValue = step.recordedValue ?? '';
 
         if (action === 'complete') {
-            const now = new Date();
-            const timestamp = `${now.toISOString()} ${username}${displayRole}`;
+            const timestamp = `${new Date().toISOString()} ${user.auth.name}${displayRole}`;
 
-            const previous = step.recordedValue;
-            step.recordedValue = timestamp;
-
-            this.pendingUpdates.add(step.flatIndex);
-            this.optimisticLocks.add(step.flatIndex);
-            this.localCacheVersion.update(v => v + 1);
-            this.autoCompleteParents();
+            // Pessimistic: only mark as pending — do NOT apply the timestamp yet.
+            this.stepState.update(map => ({
+                ...map,
+                [flatIndex]: { ...map[flatIndex], isPending: true, isLocked: true },
+            }));
 
             this.procedureService.setStepValue(
-                this.id(), this.revision()!, step.flatIndex, '', step.type, username, timestamp, previous
+                this.id(), this.revision()!, flatIndex, '', step.type, timestamp, previousValue
             ).subscribe({
                 next: () => {
-                    this.pendingUpdates.delete(step.flatIndex);
-                    this.localCacheVersion.update(v => v + 1);
+                    // Server confirmed — now apply the completion timestamp.
+                    this.stepState.update(map => ({
+                        ...map,
+                        [flatIndex]: { recordedValue: timestamp, stepInfo: '', isPending: false, isLocked: false },
+                    }));
+                    this.autoCompleteParents();
                 },
                 error: (err) => {
-                    this.pendingUpdates.delete(step.flatIndex);
-                    this.optimisticLocks.delete(step.flatIndex);
-                    console.error('Failed to save step completion:', err);
-                    step.recordedValue = previous;
-                    this.localCacheVersion.update(v => v + 1);
+                    // Nothing to revert — just clear the pending state.
+                    this.stepState.update(map => ({
+                        ...map,
+                        [flatIndex]: { ...map[flatIndex], isPending: false, isLocked: false },
+                    }));
+                    if (err?.status === 409) {
+                        this.rejectedSteps.update(prev => { const s = new Set(prev); s.add(flatIndex); return s; });
+                        setTimeout(() => {
+                            this.rejectedSteps.update(prev => { const s = new Set(prev); s.delete(flatIndex); return s; });
+                        }, 100);
+                        this.procedureService.requestRefresh();
+                    }
+                    this.handleError(err, 'Error', 'Failed to save step interaction.');
                 },
             });
         } else if (action === 'rewind') {
-            const previous = step.recordedValue;
-            step.recordedValue = '';
-
-            this.pendingUpdates.add(step.flatIndex);
-            this.optimisticLocks.add(step.flatIndex);
-            this.localCacheVersion.update(v => v + 1);
-            this.autoCompleteParents();
+            // Pessimistic: only mark as pending — do NOT clear the value yet.
+            this.stepState.update(map => ({
+                ...map,
+                [flatIndex]: { ...map[flatIndex], isPending: true, isLocked: true },
+            }));
 
             this.procedureService.setStepValue(
-                this.id(), this.revision()!, step.flatIndex, '', step.type, username, '', previous
+                this.id(), this.revision()!, flatIndex, '', step.type, '', previousValue
             ).subscribe({
                 next: () => {
-                    this.pendingUpdates.delete(step.flatIndex);
-                    this.localCacheVersion.update(v => v + 1);
+                    // Server confirmed — now clear the completion value.
+                    this.stepState.update(map => ({
+                        ...map,
+                        [flatIndex]: { recordedValue: '', stepInfo: '', isPending: false, isLocked: false },
+                    }));
+                    this.autoCompleteParents();
                 },
                 error: (err) => {
-                    this.pendingUpdates.delete(step.flatIndex);
-                    this.optimisticLocks.delete(step.flatIndex);
-                    console.error('Failed to rewind step:', err);
-                    step.recordedValue = previous;
-                    this.localCacheVersion.update(v => v + 1);
+                    // Nothing to revert — just clear the pending state.
+                    this.stepState.update(map => ({
+                        ...map,
+                        [flatIndex]: { ...map[flatIndex], isPending: false, isLocked: false },
+                    }));
+                    if (err?.status === 409) {
+                        this.rejectedSteps.update(prev => { const s = new Set(prev); s.add(flatIndex); return s; });
+                        setTimeout(() => {
+                            this.rejectedSteps.update(prev => { const s = new Set(prev); s.delete(flatIndex); return s; });
+                        }, 100);
+                        this.procedureService.requestRefresh();
+                    }
+                    this.handleError(err, 'Error', 'Failed to rewind step.');
                 },
             });
         }
@@ -603,18 +671,23 @@ export class ViewProcedureComponent implements OnDestroy {
         if (!id || !revision) return;
         if (!window.confirm('Are you sure you want to complete and archive this procedure?')) return;
 
-        const username = this.authService.user()?.auth?.name || 'Unknown User';
+        const user = this.authService.user();
+        if (!user || !user.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
+            return;
+        }
+
         const role = this.getUserCallsign() || '';
         const comment = this.closingComment();
 
-        this.procedureService.completeInstance(id, revision, username, role, comment).subscribe({
+        this.procedureService.completeInstance(id, revision, comment).subscribe({
             next: () => {
                 this.procedureService.requestRefresh();
                 this.router.navigate(['/dashboard/archived', id]);
             },
             error: (err) => {
-                console.error('Failed to complete procedure:', err);
-                alert('An error occurred while trying to complete the procedure.');
+                this.handleError(err, 'Error', 'An error occurred while trying to complete the procedure.');
             },
         });
     }
@@ -646,31 +719,25 @@ export class ViewProcedureComponent implements OnDestroy {
         const revision = this.revision();
         if (!id || !revision || !this.isRunningInstance()) return;
 
-        const user = this.authService.user();
-        const username = user?.auth?.name || 'Unknown User';
-        const email = user?.auth?.email || '';
-
         // Use sendBeacon for reliable delivery during page unload.
         // Wrap in a Blob with application/json so Express body-parser picks it up!
-        const payload = { pid: id, revision: parseInt(revision, 10), username, email, isOnline: false };
+        const payload = { pid: id, revision: parseInt(revision, 10), isOnline: false };
         const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
         navigator.sendBeacon('/api/procedures/instances/user-status', blob);
     }
 
     /**
-     * Walks the CACHE tree (not the raw resource value) and marks parent steps
-     * as completed or incomplete based on their children's state.
-     *
-     * Operating on `localStepsCache` is critical: it is what the template
-     * renders, so mutations here are visible immediately without waiting for
-     * the next poll tick to sync from the server.
+     * Walks the immutable shape tree to find parent heading steps that should be
+     * automatically completed or un-completed based on their children's entity state.
+     * Applies all changes atomically to stepState in a single signal write.
      */
     private autoCompleteParents(): void {
-        const steps = this.localStepsCache ?? [];
-        
-        const newlyCompleted: { index: number, parent: any }[] = [];
-        const newlyUncompleted: { index: number, parent: any, prevValue: string }[] = [];
-        
+        const shapes = this.stepShapes();
+        const currentState = this.stepState();
+
+        const toComplete: { index: number; parent: any; previousInfo: string }[] = [];
+        const toUncomplete: { index: number; parent: any; prevValue: string; previousInfo: string }[] = [];
+
         const now = new Date();
         const utcClock = `${this.getDayOfYear(now)}.${
             String(now.getUTCHours()).padStart(2, '0')}:${
@@ -681,87 +748,187 @@ export class ViewProcedureComponent implements OnDestroy {
             for (const step of list) {
                 if (step.children && step.children.length > 0) {
                     markParents(step.children);
-                    const allDone = step.children.every(
-                        c => c.recordedValue && c.recordedValue.trim().length > 0
-                    );
-                    if (allDone && !step.recordedValue) {
-                        const prevInfo = step.recordedValue || '';
-                        step.recordedValue = utcClock;
-                        newlyCompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, previousInfo: prevInfo });
-                        this.pendingUpdates.add(step.flatIndex);
-                        this.optimisticLocks.add(step.flatIndex);
-                    } else if (!allDone && step.recordedValue) {
-                        const prevInfo = step.recordedValue;
-                        newlyUncompleted.push({ index: step.flatIndex, parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' }, prevValue: step.recordedValue, previousInfo: prevInfo });
-                        step.recordedValue = '';
-                        this.pendingUpdates.add(step.flatIndex);
-                        this.optimisticLocks.add(step.flatIndex);
+                    const allDone = step.children.every(c => {
+                        const s = currentState[c.flatIndex];
+                        return s?.recordedValue && s.recordedValue.trim().length > 0;
+                    });
+                    const parentState = currentState[step.flatIndex];
+                    const isCurrentlyDone = !!(parentState?.recordedValue && parentState.recordedValue.trim().length > 0);
+
+                    if (allDone && !isCurrentlyDone) {
+                        const prevInfo = parentState?.recordedValue || '';
+                        toComplete.push({
+                            index: step.flatIndex,
+                            parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' },
+                            previousInfo: prevInfo,
+                        });
+                    } else if (!allDone && isCurrentlyDone) {
+                        const prevValue = parentState?.recordedValue || '';
+                        toUncomplete.push({
+                            index: step.flatIndex,
+                            parent: { contenttype: step.type === 'command' ? 'Command' : 'HEADING' },
+                            prevValue,
+                            previousInfo: prevValue,
+                        });
                     }
                 }
             }
         };
-        markParents(steps);
+        markParents(shapes);
 
-        // Signal Angular to re-render immediately so parent heading rows
-        // reflect their new completed/incomplete state without waiting for
-        // the next poll tick.
-        this.localCacheVersion.update(v => v + 1);
-        
+        if (toComplete.length === 0 && toUncomplete.length === 0) return;
+
+        // Pessimistic: mark parents as pending without changing their value yet.
+        this.stepState.update(map => {
+            const next = { ...map };
+            for (const p of toComplete) {
+                next[p.index] = { ...next[p.index], isPending: true, isLocked: true };
+            }
+            for (const p of toUncomplete) {
+                next[p.index] = { ...next[p.index], isPending: true, isLocked: true };
+            }
+            return next;
+        });
+
         const id = this.id();
         const revision = this.revision();
         const user = this.authService.user();
         if (!id || !revision || !user || !this.isRunningInstance()) return;
-        
-        const username = user.auth?.name || 'Unknown User';
 
-        if (newlyCompleted.length > 0) {
-            this.procedureService.setParentsInfo(id, revision, newlyCompleted, utcClock, username).subscribe({
+        if (toComplete.length > 0) {
+            this.procedureService.setParentsInfo(id, revision, toComplete, utcClock).subscribe({
                 next: () => {
-                    for (const p of newlyCompleted) this.pendingUpdates.delete(p.index);
-                    this.localCacheVersion.update(v => v + 1);
+                    // Server confirmed — now apply the completion timestamps.
+                    this.stepState.update(map => {
+                        const next = { ...map };
+                        for (const p of toComplete) {
+                            next[p.index] = { ...next[p.index], recordedValue: utcClock, isPending: false, isLocked: false };
+                        }
+                        return next;
+                    });
                 },
                 error: (err) => {
-                    console.error('Failed to save parent completions:', err);
-                    for (const p of newlyCompleted) {
-                        this.pendingUpdates.delete(p.index);
-                        this.optimisticLocks.delete(p.index);
-                        const step = this.findStepByFlatIndex(this.localStepsCache, p.index);
-                        if (step) step.recordedValue = ''; // revert
-                    }
-                    this.localCacheVersion.update(v => v + 1);
-                }
+                    this.handleError(err, 'Error', 'Failed to save parent completions.');
+                    // Nothing to revert — just release pending.
+                    this.stepState.update(map => {
+                        const next = { ...map };
+                        for (const p of toComplete) {
+                            next[p.index] = { ...next[p.index], isPending: false, isLocked: false };
+                        }
+                        return next;
+                    });
+                },
             });
         }
-        if (newlyUncompleted.length > 0) {
-            this.procedureService.setParentsInfo(id, revision, newlyUncompleted, '', username).subscribe({
+
+        if (toUncomplete.length > 0) {
+            this.procedureService.setParentsInfo(id, revision, toUncomplete, '').subscribe({
                 next: () => {
-                    for (const p of newlyUncompleted) this.pendingUpdates.delete(p.index);
-                    this.localCacheVersion.update(v => v + 1);
+                    // Server confirmed — now clear the parent values.
+                    this.stepState.update(map => {
+                        const next = { ...map };
+                        for (const p of toUncomplete) {
+                            next[p.index] = { ...next[p.index], recordedValue: '', isPending: false, isLocked: false };
+                        }
+                        return next;
+                    });
                 },
                 error: (err) => {
-                    console.error('Failed to save parent rewinds:', err);
-                    for (const p of newlyUncompleted) {
-                        this.pendingUpdates.delete(p.index);
-                        this.optimisticLocks.delete(p.index);
-                        const step = this.findStepByFlatIndex(this.localStepsCache, p.index);
-                        if (step) step.recordedValue = p.prevValue; // revert
-                    }
-                    this.localCacheVersion.update(v => v + 1);
-                }
+                    this.handleError(err, 'Error', 'Failed to save parent rewinds.');
+                    // Nothing to revert — just release pending.
+                    this.stepState.update(map => {
+                        const next = { ...map };
+                        for (const p of toUncomplete) {
+                            next[p.index] = { ...next[p.index], isPending: false, isLocked: false };
+                        }
+                        return next;
+                    });
+                },
             });
         }
     }
 
-    private findStepByFlatIndex(list: ProcedureStep[] | null | undefined, index: number): ProcedureStep | null {
-        if (!list) return null;
-        for (const step of list) {
-            if (step.flatIndex === index) return step;
-            if (step.children && step.children.length > 0) {
-                const found = this.findStepByFlatIndex(step.children, index);
-                if (found) return found;
+    // ── Entity helpers ────────────────────────────────────────────────────
+
+    /**
+     * Builds the initial entity map from a step tree loaded from the server.
+     * Walks all nodes recursively to capture every step's flatIndex.
+     */
+    private buildEntityMap(steps: ProcedureStep[]): StepEntityMap {
+        const map: StepEntityMap = {};
+        const walk = (list: ProcedureStep[]): void => {
+            for (const step of list) {
+                map[step.flatIndex] = {
+                    recordedValue: step.recordedValue ?? '',
+                    stepInfo: step.stepInfo ?? '',
+                    isPending: false,
+                    isLocked: false,
+                };
+                if (step.children?.length) walk(step.children);
             }
-        }
-        return null;
+        };
+        walk(steps);
+        return map;
+    }
+
+    /**
+     * Pure function: merges the immutable shape tree with the mutable entity state
+     * to produce the ProcedureStep[] the template renders. No mutations, no side-effects.
+     */
+    private mergeStepsWithState(shapes: ProcedureStep[], state: StepEntityMap): ProcedureStep[] {
+        const merge = (list: ProcedureStep[]): ProcedureStep[] =>
+            list.map(step => {
+                const s = state[step.flatIndex];
+                return {
+                    ...step,
+                    recordedValue: s?.recordedValue ?? step.recordedValue ?? '',
+                    stepInfo: s?.stepInfo ?? step.stepInfo ?? '',
+                    children: step.children?.length ? merge(step.children) : step.children,
+                };
+            });
+        return merge(shapes);
+    }
+
+    /**
+     * Compares the current entity map against a fresh server snapshot.
+     * Skips locked entries (optimistic writes in-flight) and releases locks
+     * once the server confirms our optimistic value.
+     * Returns the updated map and a set of changed flatIndices for UI animations.
+     * Uses copy-on-write — if nothing changed, returns the same map reference.
+     */
+    private syncEntityMap(
+        current: StepEntityMap,
+        serverSteps: ProcedureStep[]
+    ): { map: StepEntityMap; changed: Set<number> } {
+        let map = current; // start with same reference; only copy if needed
+        const changed = new Set<number>();
+
+        const walk = (list: ProcedureStep[]): void => {
+            for (const step of list) {
+                if (step.children?.length) walk(step.children);
+                const existing = current[step.flatIndex];
+                if (!existing) continue;
+
+                if (existing.isLocked) {
+                    // Release lock once the server echoes back our optimistic value
+                    if ((step.recordedValue ?? '') === existing.recordedValue) {
+                        if (map === current) map = { ...current };
+                        map[step.flatIndex] = { ...existing, isLocked: false };
+                    }
+                    continue;
+                }
+
+                const serverValue = step.recordedValue ?? '';
+                const serverInfo = step.stepInfo ?? '';
+                if (existing.recordedValue !== serverValue || existing.stepInfo !== serverInfo) {
+                    if (map === current) map = { ...current };
+                    map[step.flatIndex] = { ...existing, recordedValue: serverValue, stepInfo: serverInfo };
+                    changed.add(step.flatIndex);
+                }
+            }
+        };
+        walk(serverSteps);
+        return { map, changed };
     }
 
     private getDayOfYear(date: Date): string {

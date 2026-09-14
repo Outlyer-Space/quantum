@@ -465,11 +465,20 @@ module.exports = {
     saveProcedureInstance: async function (req, res) {
         try {
             var procid = req.body.id;
-            var usernamerole = req.body.usernamerole;
             var lastuse = req.body.lastuse; // start time
-            var username = req.body.username;
-            var useremail = req.body.email;
-            var userrole = req.body.role;
+
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+            const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+            const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
+            
+            if (!req.user || !req.user.auth || !req.user.auth.name || !req.user.auth.email || !userCallsign) {
+                return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
+            }
+
+            var usernamerole = `${req.user.auth.name}${roleStr}`;
+            var username = req.user.auth.name;
+            var useremail = req.user.auth.email;
+            var userrole = userCallsign;
 
             // Use findOneAndUpdate to atomically increment the counter AND fetch the doc.
             // We need sections/versions to build instancesteps, so we fetch first then push atomically.
@@ -582,8 +591,23 @@ module.exports = {
             // === END RBAC ===
 
             const updateObj = { $set: { lastuse: lastuse } };
-            updateObj.$set[`instances.${instanceid}.Steps.${step}.info`] = info;
-            if (steptype === 'Input') {
+            
+            if (info) {
+                if (!req.user || !req.user.auth || !req.user.auth.name) {
+                    return res.status(400).json({ error: 'Bad Request', message: 'User details missing from request context' });
+                }
+                const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+                const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+                if (!userCallsign) {
+                    return res.status(400).json({ error: 'Bad Request', message: 'User role missing from request context' });
+                }
+                const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
+                const secureInfo = `${new Date().toISOString()} ${req.user.auth.name}${roleStr}`;
+                updateObj.$set[`instances.${instanceid}.Steps.${step}.info`] = secureInfo;
+            } else {
+                updateObj.$set[`instances.${instanceid}.Steps.${step}.info`] = '';
+            }
+            if (steptype && steptype.toLowerCase() === 'input') {
                 updateObj.$set[`instances.${instanceid}.Steps.${step}.recordedValue`] = recordedValue;
             }
 
@@ -614,9 +638,18 @@ module.exports = {
             var info = req.body.info;
             var procid = req.body.id;
             var step = req.body.step;
-            var usernamerole = req.body.usernamerole;
             var procrevision = req.body.revision;
             var lastuse = req.body.lastuse; // time when the procedure instance is completed
+
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+            const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+            
+            if (!req.user || !req.user.auth || !req.user.auth.name || !userCallsign) {
+                return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
+            }
+            
+            const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
+            var usernamerole = `${req.user.auth.name}${roleStr}`;
 
             const procs = await ProcedureModel.findOne({ 'procedureID': procid });
             if (!procs) {
@@ -720,12 +753,20 @@ module.exports = {
     },
     setUserStatus: async function (req, res) {
         try {
-            var email = req.body.email;
             var isOnline = req.body.isOnline;
             var procid = req.body.pid;
-            var username = req.body.username;
             var revision = req.body.revision;
-            var role = req.body.role || '';
+            
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+            const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+            
+            if (!req.user || !req.user.auth || !req.user.auth.name || !req.user.auth.email || !userCallsign) {
+                return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
+            }
+            
+            var email = req.user.auth.email;
+            var username = req.user.auth.name;
+            var role = userCallsign;
             var liveinstanceID;
 
             const procs = await ProcedureModel.findOne({ 'procedureID': procid });
@@ -874,8 +915,22 @@ module.exports = {
                     writeFilter[`instances.${instanceid}.Steps.${idx}.info`] = parentsArray[a].previousInfo;
                 }
 
-                updateObj.$set[`instances.${instanceid}.Steps.${idx}.info`] = info;
-                if (parentsArray[a].parent.contenttype === 'Input') {
+                if (info) {
+                    if (!req.user || !req.user.auth || !req.user.auth.name) {
+                        return res.status(400).json({ error: 'Bad Request', message: 'User details missing from request context' });
+                    }
+                    const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+                    const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
+                    if (!userCallsign) {
+                        return res.status(400).json({ error: 'Bad Request', message: 'User role missing from request context' });
+                    }
+                    const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
+                    const secureInfo = `${new Date().toISOString()} ${req.user.auth.name}${roleStr}`;
+                    updateObj.$set[`instances.${instanceid}.Steps.${idx}.info`] = secureInfo;
+                } else {
+                    updateObj.$set[`instances.${instanceid}.Steps.${idx}.info`] = '';
+                }
+                if (parentsArray[a].parent.contenttype && parentsArray[a].parent.contenttype.toLowerCase() === 'input') {
                     updateObj.$set[`instances.${instanceid}.Steps.${idx}.recordedValue`] = inputStepValues[idx].ivalue;
                 }
             }

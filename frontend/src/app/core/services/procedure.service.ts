@@ -126,6 +126,7 @@ export class ProcedureService {
                         templateUploadedAt: new Date(parseInt(proc._id.substring(0, 8), 16) * 1000).toISOString(),
                         startedAt: instance.startedAt,
                         completedAt: instance.completedAt,
+                        closedBy: instance.closedBy || '',
                         completedSteps: completedActionable,
                         totalSteps: totalActionable,
                         operators: (instance.users || []).map((u: any) => {
@@ -148,14 +149,11 @@ export class ProcedureService {
     }
 
     /** Send user presence heartbeat for an instance */
-    setUserStatus(id: string, revision: string, username: string, email: string, isOnline: boolean, role: string = ''): Observable<any> {
+    setUserStatus(id: string, revision: string, isOnline: boolean): Observable<any> {
         const payload = {
             pid: id,
             revision,
-            username,
-            email,
-            isOnline,
-            role
+            isOnline
         };
         return this.http.post('/api/procedures/instances/user-status', payload);
     }
@@ -220,22 +218,16 @@ export class ProcedureService {
     //  Execution (Run Action)
     // ───────────────────────────────────────────────
 
-    createInstance(id: string, username: string, email: string, role: string): Observable<any> {
-        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
-        const usernamerole = username + displayRole;
+    createInstance(id: string): Observable<any> {
         const payload = {
             id,
-            usernamerole,
-            username,
-            email,
-            role,
             lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances', payload);
     }
 
     /** Complete a specific step, submitting the recorded value to the backend */
-    setStepValue(id: string, revision: string, flatIndex: number, recordedValue: string, steptype: string, username: string, info: string = '', previousInfo: string = ''): Observable<any> {
+    setStepValue(id: string, revision: string, flatIndex: number, recordedValue: string, steptype: string, info: string = '', previousInfo: string = ''): Observable<any> {
         // Must match what `procedure.controller.js` `setInfo` expects
         const payload = {
             id,
@@ -247,33 +239,28 @@ export class ProcedureService {
             // Optimistic lock token: the info value the client read before mutating.
             // The backend filters on this field so concurrent writes are detected.
             previousInfo: previousInfo,
-            usernamerole: username, // Fallback format used on the backend
             lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances/steps', payload);
     }
 
     /** Set completion info for multiple parent heading steps at once */
-    setParentsInfo(id: string, revision: string, parentsArray: { index: number, parent: any }[], info: string, username: string): Observable<any> {
+    setParentsInfo(id: string, revision: string, parentsArray: { index: number, parent: any, previousInfo?: string }[], info: string): Observable<any> {
         const payload = {
             id,
             revision: parseInt(revision, 10),
             parentsArray,
             info,
-            usernamerole: username,
             lastuse: new Date().toISOString()
         };
         return this.http.post('/api/procedures/instances/parent-steps', payload);
     }
 
     /** Set an entire procedure instance to the Completed/Archived status */
-    completeInstance(id: string, revision: string, username: string, role: string, closingComment?: string): Observable<any> {
-        const displayRole = role && role !== 'VIP' ? ` (${role})` : (role === 'VIP' ? ' (VIP)' : '');
-        const usernamerole = username + displayRole;
+    completeInstance(id: string, revision: string, closingComment?: string): Observable<any> {
         const payload = {
             id,
             revision: parseInt(revision, 10),
-            usernamerole,
             closingComment: closingComment || '',
             lastuse: new Date().toISOString()
         };
@@ -283,10 +270,9 @@ export class ProcedureService {
     // ───────────────────────────────────────────────
 
     /** Upload an xlsx procedure file */
-    uploadProcedure(file: File, userdetails: string, mission: string): Observable<any> {
+    uploadProcedure(file: File, mission: string): Observable<any> {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('userdetails', userdetails);
         formData.append('mission', mission);
         return this.http.post('/api/procedures/upload', formData);
     }

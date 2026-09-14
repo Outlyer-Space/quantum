@@ -79,9 +79,21 @@ async function ensureProcedureMissionAccess(req, res, next) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User is not authenticated' });
     }
 
-    // Lead roles bypass
+    // Lead roles bypass mission access check but still need procMissionName
+    // populated so controllers can resolve the user's callsign for this procedure.
     if (userHasLeadRole(req.user)) {
         req.userMissionNames = null; // null = no filtering
+        // Still resolve procMissionName so callsign lookup works in controllers
+        try {
+            const ProcedureModel = require('mongoose').model('procedure');
+            const procedureID = req.query.id || req.query.procedureID || req.body.id || req.body.pid || req.body.procId;
+            if (procedureID) {
+                const proc = await ProcedureModel.findOne({ procedureID }, 'eventname').lean();
+                if (proc && proc.eventname) {
+                    req.procMissionName = proc.eventname.toLowerCase();
+                }
+            }
+        } catch (_) { /* non-fatal — controller will handle missing callsign */ }
         return next();
     }
 

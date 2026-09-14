@@ -111,15 +111,18 @@ export class UploadProcedureDialogComponent {
             return;
         }
 
-        // Get the current user's name for the upload metadata
         const user = this.authService.user();
-        const username = user?.auth?.name || 'Unknown';
+        if (!user || !user.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
+            return;
+        }
 
         this.uploading.set(true);
         this.toastType.set('info');
         this.toastMessage.set('Uploading...');
 
-        this.procedureService.uploadProcedure(file, username, mission).subscribe({
+        this.procedureService.uploadProcedure(file, mission).subscribe({
             next: (response) => {
                 this.uploading.set(false);
                 if (response.err_desc && response.err_desc !== null && response.error_code !== 0) {

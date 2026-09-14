@@ -1,0 +1,29 @@
+@if (isOpen()) {
+<div class="dialog-backdrop" (click)="close.emit()"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="error-title">
+    
+    <div class="dialog-header">
+        <h2 id="error-title">{{ errorTitle() }}</h2>
+        <button class="close-btn" (click)="close.emit()" aria-label="Close error dialog">×</button>
+    </div>
+
+    <!-- Content -->
+    <div class="dialog-body">
+        <div class="warning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <p>{{ errorMessage() }}</p>
+    </div>
+
+    <!-- Footer actions -->
+    <div class="dialog-footer">
+        <button class="btn btn-primary" (click)="close.emit()" autofocus>Dismiss</button>
+    </div>
+</div>
+}

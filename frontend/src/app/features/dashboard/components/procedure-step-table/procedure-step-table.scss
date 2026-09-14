@@ -4,40 +4,64 @@
 
 $primary: #337ab7;
 
+// --- Brand & Semantic Colors ---
+$text-main: #333;
+$text-muted: #555;
+$text-disabled: #888;
+$border-light: #eee;
+$border-input: #ccc;
+
+// Row Default Backgrounds (Blue Theme)
+$row-level-1: #BBE1EF;
+$row-level-2: #E2F2F9;
+$row-level-3: #F8FBFD;
+
+// Row Completed Backgrounds (Completion Green)
+$completion-green-1: #c6ecc6;
+$completion-green-2: #d9f2d9;
+$completion-green-3: #ebf7eb;
+
+// Pulse / Feedback Animation Base Colors
+$pulse-green: #28a745;
+$pulse-yellow: #ffc107;
+$alert-red: #d9534f;
+
 /* ── Table ── */
 .preview-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
-    color: #333;
+    color: $text-main;
 
     tbody {
         tr {
-            border-bottom: 1px solid #eee;
-            transition: background-color 0.15s ease;
+            border-bottom: 1px solid $border-light;
+            // 1.5s ease-out: gives the pulse a smooth fade-back to the natural
+            // row color (completion green or default blue) after the class drops.
+            transition: background-color 1.5s ease-out;
 
-            &.level-1 {
-                background-color: #BBE1EF;
-            }
-
-            &.level-2 {
-                background-color: #E2F2F9;
-            }
-
-            &.level-3 {
-                background-color: #F8FBFD;
-            }
+            &.level-1 { background-color: $row-level-1; }
+            &.level-2 { background-color: $row-level-2; }
+            &.level-3 { background-color: $row-level-3; }
 
             &.step-completed {
-                &.level-1 { background-color: #c6ecc6; }
-                &.level-2 { background-color: #d9f2d9; }
-                &.level-3 { background-color: #ebf7eb; }
+                &.level-1 { background-color: $completion-green-1; }
+                &.level-2 { background-color: $completion-green-2; }
+                &.level-3 { background-color: $completion-green-3; }
+
+                &:hover {
+                    transition: background-color 0.1s ease; // snappy on hover
+                    &.level-1 { background-color: color.adjust($completion-green-1, $lightness: -3%); }
+                    &.level-2 { background-color: color.adjust($completion-green-2, $lightness: -3%); }
+                    &.level-3 { background-color: color.adjust($completion-green-3, $lightness: -3%); }
+                }
             }
 
-            &:hover {
-                &.level-1 { background-color: color.adjust(#BBE1EF, $lightness: -3%); }
-                &.level-2 { background-color: color.adjust(#E2F2F9, $lightness: -3%); }
-                &.level-3 { background-color: color.adjust(#F8FBFD, $lightness: -3%); }
+            &:hover:not(.step-completed) {
+                transition: background-color 0.1s ease; // snappy on hover
+                &.level-1 { background-color: color.adjust($row-level-1, $lightness: -3%); }
+                &.level-2 { background-color: color.adjust($row-level-2, $lightness: -3%); }
+                &.level-3 { background-color: color.adjust($row-level-3, $lightness: -3%); }
             }
         }
 
@@ -99,13 +123,13 @@ $primary: #337ab7;
 }
 
 /* ── Helpers ── */
-.text-danger { color: #d9534f; font-weight: bold; }
+.text-danger { color: $alert-red; font-weight: bold; }
 
 .toggle-btn {
     background: none;
     border: none;
     padding: 4px;
-    color: #555;
+    color: $text-muted;
     font-size: 16px;
     border-radius: 50%;
     margin-top: 2px;
@@ -132,14 +156,14 @@ $primary: #337ab7;
         justify-content: center;
         gap: 6px;
         padding: 6px 12px;
-        border: 1px solid #ccc;
+        border: 1px solid $border-input;
         border-radius: 4px;
         background: #fff;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.15s ease;
-        color: #555;
+        color: $text-muted;
         font-family: 'Inter', sans-serif;
 
         &:focus { outline: none; box-shadow: 0 0 0 2px rgba($primary, 0.2); }
@@ -150,7 +174,7 @@ $primary: #337ab7;
             padding: 4px;
             border: none;
             background: transparent;
-            color: #ccc;
+            color: $border-input;
             box-shadow: none;
 
             &.empty {
@@ -160,7 +184,7 @@ $primary: #337ab7;
 
             &.checked {
                 color: $primary;
-                &:hover:not(:disabled) { color: #d9534f; } /* Hovering a checked box hints at deletion/undo */
+                &:hover:not(:disabled) { color: $alert-red; } /* Hovering a checked box hints at deletion/undo */
             }
 
             &:active:not(:disabled) { transform: scale(0.9); }
@@ -185,14 +209,14 @@ $primary: #337ab7;
         margin-bottom: 8px;
         display: flex;
         align-items: flex-start;
-        label { font-weight: 600; font-size: 13px; margin-right: 8px; color: #555; margin-top: 2px; }
+        label { font-weight: 600; font-size: 13px; margin-right: 8px; color: $text-muted; margin-top: 2px; }
         strong { font-weight: 700; font-size: 13px; color: #222; white-space: pre-wrap; }
     }
     .enter-value { margin-bottom: 0; }
 
     textarea {
         padding: 8px 12px;
-        border: 1px solid #ccc;
+        border: 1px solid $border-input;
         border-radius: 4px;
         font-size: 13px;
         width: 55ch;
@@ -204,7 +228,7 @@ $primary: #337ab7;
         font-family: 'Inter', sans-serif;
         transition: border-color 0.15s ease;
         &:focus { outline: none; border-color: $primary; }
-        &:disabled { background-color: #f5f5f5; color: #888; }
+        &:disabled { background-color: #f5f5f5; color: $text-disabled; }
     }
 
     .btn-set {
@@ -214,22 +238,37 @@ $primary: #337ab7;
         transition: background-color 0.15s ease;
         &:hover { background: color.adjust($primary, $lightness: -8%); }
         &:active { background: color.adjust($primary, $lightness: -12%); }
-        &:disabled { background: #ccc; cursor: not-allowed; color: #888; }
+        &:disabled { background: $border-input; cursor: not-allowed; color: $text-disabled; }
     }
 
     .btn-remove {
-        background: #d9534f; color: #fff; border: none; border-radius: 4px;
+        background: $alert-red; color: #fff; border: none; border-radius: 4px;
         padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
         margin-left: 8px; text-transform: uppercase; letter-spacing: 0.5px;
         transition: background-color 0.15s ease;
-        &:hover { background: color.adjust(#d9534f, $lightness: -8%); }
-        &:active { background: color.adjust(#d9534f, $lightness: -12%); }
-        &:disabled { background: #ccc; cursor: not-allowed; color: #888; }
+        &:hover { background: color.adjust($alert-red, $lightness: -8%); }
+        &:active { background: color.adjust($alert-red, $lightness: -12%); }
+        &:disabled { background: $border-input; cursor: not-allowed; color: $text-disabled; }
     }
 }
 
 .input-block-disabled {
     background: rgba(240, 240, 240, 0.6);
     .recorded-value label { color: #777; }
-    .recorded-value strong { color: #555; }
+    .recorded-value strong { color: $text-muted; }
+}
+
+/* ── Feedback Animations ── */
+// Pulse lives on the <tr> so that when the class is removed, CSS transitions
+// from the pulse color back to the tr's own background-color (completion green
+// for completed rows, the default level color for incomplete ones).
+// No td transparent layer needed — that was causing the white-flash.
+tr.pulse-green {
+    background-color: rgba($pulse-green, 0.55) !important;
+    transition: none !important; // Snap to pulse color instantly
+}
+
+tr.pulse-yellow {
+    background-color: rgba($pulse-yellow, 0.65) !important;
+    transition: none !important; // Snap to pulse color instantly
 }

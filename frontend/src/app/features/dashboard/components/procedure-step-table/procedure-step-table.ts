@@ -45,6 +45,12 @@ export class ProcedureStepTableComponent {
     /** Flat indices of steps that currently have an in-flight network request. */
     pendingUpdates = input<Set<number>>(new Set());
 
+    /** Flat indices of steps that were remotely updated (green flash). */
+    remotelyUpdatedSteps = input<Set<number>>(new Set());
+
+    /** Flat indices of steps that were rejected (yellow pulse). */
+    rejectedSteps = input<Set<number>>(new Set());
+
     /**
      * Gating predicate injected from the parent.
      * Returns true if the given step may currently be edited.
@@ -80,7 +86,6 @@ export class ProcedureStepTableComponent {
 
     onToggle(step: ProcedureStep): void {
         if (step.children && step.children.length > 0) {
-            step.isOpen = !step.isOpen;
             this.stepToggled.emit(step);
         }
     }

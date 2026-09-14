@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
+let isLoggingOut = false;
+
 /**
  * Intercepts every HTTP response. On a 401, clears the user session and
  * redirects to the login page so the user is never left on a broken dashboard.
@@ -22,8 +24,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 error.status === 401 &&
                 !req.url.includes('/api/auth/me')
             ) {
-                authService.user.set(null);
-                router.navigate(['/']);
+                if (!isLoggingOut) {
+                    isLoggingOut = true;
+                    console.error('Session expired. Redirecting to login...');
+                    authService.user.set(null);
+                    router.navigate(['/']);
+                    setTimeout(() => isLoggingOut = false, 5000); // Allow re-trigger after 5s
+                }
             }
             return throwError(() => error);
         })

@@ -291,19 +291,13 @@ export class ProcedureTableComponent implements OnDestroy {
         this.triggerAction(proc.id, 'start');
 
         const currentUser = this.authService.user();
-        const username = currentUser?.auth.name || 'Unknown User';
-        const email = currentUser?.auth.email || 'unknown@example.com';
-
-        let role = 'VIP';
-        const activeMission = this.authService.globalActiveMission();
-        if (currentUser?.missions && activeMission) {
-            const m = currentUser.missions.find(m => m.name === activeMission);
-            if (m && m.currentRole) {
-                role = m.currentRole.callsign || 'VIP';
-            }
+        if (!currentUser || !currentUser.auth?.name) {
+            alert('Your session appears to be invalid or expired. Please log in again to continue.');
+            this.authService.logout();
+            return;
         }
 
-        this.procedureService.createInstance(proc.id, username, email, role).subscribe({
+        this.procedureService.createInstance(proc.id).subscribe({
             next: (response) => {
                 this.router.navigate([
                     '/dashboard/procedure/runninginstance',

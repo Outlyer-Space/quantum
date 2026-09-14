@@ -108,9 +108,14 @@ export interface ArchiveSummary {
     templateUploadedAt: string;
     startedAt: string;
     completedAt: string;
+    closedBy: string;
     completedSteps: number;
     totalSteps: number;
-    operators: { name: string; role: string; isParticipant: boolean }[];
+    operators: {
+        name: string;
+        role: string;
+        isParticipant: boolean;
+    }[];
 }
 
 /** Wrapper returned by the service for a full procedure */
@@ -130,3 +135,23 @@ export interface ActiveUser {
     role: string;
     isOnline: boolean;
 }
+
+/**
+ * Mutable runtime state for a single procedure step.
+ * Stored in the entity map keyed by flatIndex, separate from
+ * the immutable step shape (id, role, type, content, children).
+ */
+export interface StepEntityState {
+    recordedValue: string;
+    stepInfo: string;
+    /** True while an HTTP write is in-flight for this step. */
+    isPending: boolean;
+    /**
+     * True while we are waiting for the server to confirm our optimistic value.
+     * Prevents background polls from overwriting an optimistic update.
+     */
+    isLocked: boolean;
+}
+
+/** Flat dictionary of per-step mutable state, keyed by flatIndex. */
+export type StepEntityMap = Record<number, StepEntityState>;

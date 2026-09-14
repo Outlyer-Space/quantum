@@ -1,0 +1,30 @@
+@if (isOpen()) {
+<div class="dialog-backdrop"></div>
+
+<!-- Dialog -->
+<div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="uneditable-title">
+    
+    <div class="dialog-header">
+        <h2 id="uneditable-title">Procedure Uneditable</h2>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="dialog-body">
+        <div class="warning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+        </div>
+        <p>This procedure is no longer editable.</p>
+        <p>It was archived by <strong>{{ archivedBy() || 'Unknown User' }}</strong> at <strong>{{ archivedAt() | date:'medium' }}</strong>.</p>
+    </div>
+
+    <!-- Footer actions -->
+    <div class="dialog-footer">
+        <button class="btn btn-secondary" (click)="goToArchive.emit()">Go to Archive</button>
+        <button class="btn btn-primary" (click)="goToDashboard.emit()" autofocus>Back to Dashboard</button>
+    </div>
+</div>
+}

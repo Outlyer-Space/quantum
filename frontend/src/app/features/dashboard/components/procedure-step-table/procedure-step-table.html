@@ -3,7 +3,9 @@
         @for (step of steps(); track step.id) {
         <tr class="level-{{ step.level }}"
             [class.is-expandable]="step.children && step.children.length > 0"
-            [class.step-completed]="!!step.recordedValue && (!step.children || step.children.length === 0)">
+            [class.step-completed]="!!step.recordedValue && (!step.children || step.children.length === 0)"
+            [class.pulse-green]="remotelyUpdatedSteps().has(step.flatIndex)"
+            [class.pulse-yellow]="rejectedSteps().has(step.flatIndex)">
 
             <td class="col-icon">
                 @if (step.children && step.children.length > 0) {
@@ -47,13 +49,25 @@
                     <div class="enter-value">
                         <label>Enter Value:</label>
                         <textarea [formControl]="getControl(step.id)"
-                            [attr.disabled]="!canEdit()(step) ? true : null"
+                            [attr.disabled]="(!canEdit()(step) || pendingUpdates().has(step.flatIndex)) ? true : null"
                             (focus)="onFocus(step.id)" (blur)="onBlur()"></textarea>
-                        <button class="btn-set" [disabled]="!canEdit()(step)"
-                            (click)="onInputSet(step)">Set</button>
+                        <button class="btn-set" [disabled]="!canEdit()(step) || pendingUpdates().has(step.flatIndex)"
+                            (click)="onInputSet(step)">
+                            @if (pendingUpdates().has(step.flatIndex)) {
+                            <span class="fa fa-spinner fa-spin"></span>
+                            } @else {
+                            Set
+                            }
+                        </button>
                         @if (step.recordedValue) {
-                        <button class="btn-remove" [disabled]="!canEdit()(step)"
-                            (click)="onInputCleared(step)">Remove</button>
+                        <button class="btn-remove" [disabled]="!canEdit()(step) || pendingUpdates().has(step.flatIndex)"
+                            (click)="onInputCleared(step)">
+                            @if (pendingUpdates().has(step.flatIndex)) {
+                            <span class="fa fa-spinner fa-spin"></span>
+                            } @else {
+                            Remove
+                            }
+                        </button>
                         }
                     </div>
                     }
