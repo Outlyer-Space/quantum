@@ -433,22 +433,3 @@ module.exports = {
         }
     }
 };
-
-// Equality of Objects
-function isEquivalent (a, b) {
-    var propA = Object.getOwnPropertyNames(a);
-    var propB = Object.getOwnPropertyNames(b);
-
-    if (propA.length != propB.length) {
-        return false;
-    }
-
-    for (var i = 0; i < propA.length; i++) {
-        var property = propA[i];
-        if (a[property] !== b[property]) {
-            return false;
-        }
-    }
-
-    return true;
-}

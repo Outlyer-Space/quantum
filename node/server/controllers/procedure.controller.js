@@ -549,7 +549,6 @@ module.exports = {
             // get procedure instance with the revision num
             for (var i = 0; i < procs.instances.length; i++) {
                 if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
-                    procs.instances[i].Steps;
                     instanceid = i;
                     instanceFound = true;
                     break;
@@ -726,7 +725,6 @@ module.exports = {
             var instanceFound = false;
             for (var i = 0; i < procs.instances.length; i++) {
                 if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
-                    procs.instances[i].Steps;
                     instanceid = i;
                     instanceFound = true;
                     break;
