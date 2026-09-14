@@ -54,17 +54,10 @@
         }
     </main>
     <app-archive-summary-dialog />
-    <app-procedure-uneditable-dialog
-        [isOpen]="showUneditableDialog()"
-        [archivedBy]="archiveSummary()?.closedBy || 'Unknown User'"
-        [archivedAt]="archiveSummary()?.completedAt || ''"
-        (goToDashboard)="navigateToDashboard()"
+    <app-procedure-status-dialog
+        [state]="dialogState()"
+        (dismiss)="actionError.set(null)"
         (goToArchive)="navigateToArchive()"
-    />
-    <app-procedure-error-dialog
-        [isOpen]="actionError() !== null"
-        [errorTitle]="actionError()?.title || 'Error'"
-        [errorMessage]="actionError()?.message || 'An unknown error occurred.'"
-        (close)="actionError.set(null)"
+        (goToDashboard)="navigateToDashboard()"
     />
 </div>

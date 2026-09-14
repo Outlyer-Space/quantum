@@ -607,17 +607,28 @@ module.exports = {
                 updateObj.$set[`instances.${instanceid}.Steps.${step}.recordedValue`] = recordedValue;
             }
 
-            // Build the write filter. When the client sends the value it read
-            // before acting (previousInfo), add it to the filter so the write
-            // only succeeds if no concurrent request has changed that field in
-            // the meantime. matchedCount === 0 means the step was already
-            // modified — return 409 so the frontend can notify the user.
-            const writeFilter = { _id: procs._id };
+            // Build the write filter.
+            // 1. instances.N.running: true  — reject writes to already-closed instances (423).
+            // 2. previousInfo optimistic lock — reject writes that would clobber a concurrent
+            //    edit from another user (409).
+            const writeFilter = {
+                _id: procs._id,
+                [`instances.${instanceid}.running`]: true
+            };
             if (typeof previousInfo === 'string') {
                 writeFilter[`instances.${instanceid}.Steps.${step}.info`] = previousInfo;
             }
             const result = await ProcedureModel.updateOne(writeFilter, updateObj);
             if (result.matchedCount === 0) {
+                // Distinguish between "instance closed" and "concurrent edit conflict".
+                const fresh = await ProcedureModel.findOne({ _id: procs._id }, { [`instances.${instanceid}.running`]: 1 }).lean();
+                const stillRunning = fresh && fresh.instances && fresh.instances[instanceid] && fresh.instances[instanceid].running;
+                if (!stillRunning) {
+                    return res.status(423).json({
+                        error: 'Locked',
+                        message: 'This procedure was closed by another user. Your change was not saved.'
+                    });
+                }
                 return res.status(409).json({
                     error: 'Conflict',
                     message: 'This step was already modified by another user. Your change was not saved.'
@@ -738,7 +749,18 @@ module.exports = {
             const updateObj = { $set: { lastuse } };
             updateObj.$set[`instances.${instanceid}.Steps.${step}.comments`] = comments;
 
-            await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
+            // Guard: only write to running instances — reject if already closed (423).
+            const commentFilter = {
+                _id: procs._id,
+                [`instances.${instanceid}.running`]: true
+            };
+            const commentResult = await ProcedureModel.updateOne(commentFilter, updateObj);
+            if (commentResult.matchedCount === 0) {
+                return res.status(423).json({
+                    error: 'Locked',
+                    message: 'This procedure was closed by another user. Your change was not saved.'
+                });
+            }
             return res.json({ success: true });
         } catch (err) {
             console.error(err);
@@ -896,8 +918,14 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
+            // Build the write filter.
+            // 1. instances.N.running: true  — reject writes to already-closed instances (423).
+            // 2. Per-step previousInfo fields — reject concurrent-edit conflicts (409).
             const updateObj = { $set: { lastuse } };
-            const writeFilter = { _id: procs._id };
+            const writeFilter = {
+                _id: procs._id,
+                [`instances.${instanceid}.running`]: true
+            };
 
             for (var a = 0; a < parentsArray.length; a++) {
                 const idx = parentsArray[a].index;
@@ -933,6 +961,15 @@ module.exports = {
 
             const result = await ProcedureModel.updateOne(writeFilter, updateObj);
             if (result.matchedCount === 0) {
+                // Distinguish between "instance closed" and "concurrent edit conflict".
+                const fresh = await ProcedureModel.findOne({ _id: procs._id }, { [`instances.${instanceid}.running`]: 1 }).lean();
+                const stillRunning = fresh && fresh.instances && fresh.instances[instanceid] && fresh.instances[instanceid].running;
+                if (!stillRunning) {
+                    return res.status(423).json({
+                        error: 'Locked',
+                        message: 'This procedure was closed by another user. Your change was not saved.'
+                    });
+                }
                 return res.status(409).json({
                     error: 'Conflict',
                     message: 'One or more parent steps were already modified by another user.'

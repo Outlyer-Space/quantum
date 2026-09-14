@@ -27,13 +27,12 @@ import {
 } from '../../utils/procedure-step.utils';
 import { ProcedureStepTableComponent, StepCheckEvent } from '../procedure-step-table/procedure-step-table';
 import { ArchiveSummaryDialogComponent } from '../archive-summary-dialog/archive-summary-dialog';
-import { ProcedureUneditableDialogComponent } from '../procedure-uneditable-dialog/procedure-uneditable-dialog';
-import { ProcedureErrorDialogComponent } from '../procedure-error-dialog/procedure-error-dialog';
+import { ProcedureStatusDialogComponent, DialogState } from '../procedure-status-dialog/procedure-status-dialog';
 import { viewChild } from '@angular/core';
 
 @Component({
     selector: 'app-view-procedure',
-    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent, ArchiveSummaryDialogComponent, ProcedureUneditableDialogComponent, ProcedureErrorDialogComponent],
+    imports: [CommonModule, ReactiveFormsModule, ProcedureStepTableComponent, ArchiveSummaryDialogComponent, ProcedureStatusDialogComponent],
     templateUrl: './view-procedure.html',
     styleUrl: './view-procedure.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +78,16 @@ export class ViewProcedureComponent implements OnDestroy {
     private readonly usersPollTick = toSignal(timer(0, 20000), { initialValue: 0 });
 
     // ── Resources ─────────────────────────────────────────────────────────
+
+    /**
+     * Frozen to the last pollTick value once the procedure is discovered to be
+     * closed — either via a 423 response (mid-edit) or via the poller finding
+     * archiveSummary non-null. Prevents further 5-second refetches once the
+     * procedure is no longer live.
+     */
+    private pollingFrozen = signal<boolean>(false);
+    private frozenPollValue = signal<number>(0);
+
     protected procedureResource = rxResource<ProcedureData, {
         id: string;
         revision: string | null;
@@ -89,12 +98,19 @@ export class ViewProcedureComponent implements OnDestroy {
         params: () => {
             const id = this.id();
             if (!id) return undefined as any;
+            const live = this.isRunningInstance();
+            // Once pollingFrozen, keep _poll at its last seen value so the
+            // resource never re-fetches on a timer tick. _refresh is intentionally
+            // left open — requestRefresh() still works for the one archive detail fetch.
+            const pollValue = live
+                ? (this.pollingFrozen() ? this.frozenPollValue() : this.pollTick())
+                : 0;
             return {
                 id,
                 revision: this.revision(),
                 mode: this.mode(),
-                _poll: this.isRunningInstance() ? this.pollTick() : 0,
-                _refresh: this.isRunningInstance() ? this.procedureService.refreshTick() : 0,
+                _poll: pollValue,
+                _refresh: live ? this.procedureService.refreshTick() : 0,
             };
         },
         stream: ({ params }) => {
@@ -136,7 +152,25 @@ export class ViewProcedureComponent implements OnDestroy {
      * system — no manual bump counter required.
      */
     private stepState = signal<StepEntityMap>({});
-    protected actionError = signal<{title: string, message: string} | null>(null);
+
+    /**
+     * Set to true the moment a 423 is received so the status dialog
+     * opens immediately — before the re-fetch confirms the closed state.
+     * Cleared on component destroy (navigation away).
+     */
+    private isLockedByClose = signal<boolean>(false);
+
+    /**
+     * Carries the server's message from the 423 response so the dialog
+     * body reflects the real reason, not a hard-coded fallback.
+     */
+    private lockedMessage = signal<string>('');
+
+    /**
+     * Generic action error for non-423 failures (403, 409, network, etc.).
+     * Kept separate so 423s can be promoted to the higher-priority 'locked' variant.
+     */
+    protected actionError = signal<{ title: string; message: string } | null>(null);
 
     /**
      * Plain class property tracking which procedure was last loaded into the
@@ -203,9 +237,50 @@ export class ViewProcedureComponent implements OnDestroy {
     protected archiveSummary = computed(() => this.procedureResource.value()?.archiveSummary ?? null);
     protected summaryDialog = viewChild(ArchiveSummaryDialogComponent);
 
-    /** Show the uneditable dialog if the mode is 'running' but the server says it's archived */
-    protected showUneditableDialog = computed(() => {
-        return this.mode() === 'running' && this.archiveSummary() !== null;
+    /**
+     * Single source of truth for the status dialog.
+     *
+     * Priority (highest → lowest):
+     *   1. 'locked'     — 423 received mid-edit; shown immediately, even before the
+     *                     re-fetch confirms the closed state.
+     *   2. 'uneditable' — poll discovered the procedure is no longer running.
+     *   3. 'error'      — any other action failure (403, 409, network …).
+     *   4. null         — dialog hidden.
+     *
+     * Because exactly one signal drives visibility, stacking is impossible by design.
+     */
+    protected dialogState = computed<DialogState | null>(() => {
+        // Priority 1 — procedure was closed while this user was editing
+        if (this.isLockedByClose()) {
+            const summary = this.archiveSummary();
+            return {
+                variant: 'locked',
+                title: 'Procedure Closed',
+                message: this.lockedMessage() || 'This procedure was closed by another user. Your change was not saved.',
+                archivedBy: summary?.closedBy || '',
+                archivedAt: summary?.completedAt || '',
+            };
+        }
+
+        // Priority 2 — poll discovered the procedure is no longer running
+        if (this.mode() === 'running' && this.archiveSummary() !== null) {
+            const summary = this.archiveSummary()!;
+            return {
+                variant: 'uneditable',
+                title: 'Procedure No Longer Editable',
+                message: 'This procedure has been closed and is now read-only.',
+                archivedBy: summary.closedBy || 'Unknown User',
+                archivedAt: summary.completedAt || '',
+            };
+        }
+
+        // Priority 3 — generic action error
+        const err = this.actionError();
+        if (err) {
+            return { variant: 'error', title: err.title, message: err.message };
+        }
+
+        return null;
     });
 
     protected openSummary(): void {
@@ -216,17 +291,33 @@ export class ViewProcedureComponent implements OnDestroy {
     }
 
     private handleError(err: any, defaultTitle: string, defaultMessage: string) {
-        let title = defaultTitle;
-        let message = defaultMessage;
-        
-        if (err?.error?.message) {
-            message = err.error.message;
-            if (err.status === 403) title = 'Permission Denied';
-            else if (err.status === 409) title = 'Conflict';
-            else if (err.status === 401) title = 'Unauthorized';
-        } else if (err?.message) {
-            message = err.message;
+        const serverMessage = err?.error?.message || err?.message || '';
+        const status: number = err?.status ?? 0;
+
+        if (status === 423) {
+            if (this.isLockedByClose()) return;
+
+            // Procedure was closed mid-edit.
+            // Promote to the 'locked' dialog variant immediately (no wait for re-fetch).
+            // Trigger a background refresh so archivedBy/archivedAt populate once available.
+            this.lockedMessage.set(serverMessage || defaultMessage);
+            this.isLockedByClose.set(true);
+
+            if (!this.pollingFrozen()) {
+                this.frozenPollValue.set(untracked(() => this.pollTick()));
+                this.pollingFrozen.set(true);
+            }
+
+            this.procedureService.requestRefresh();
+            return;
         }
+
+        // Generic error path — resolve title from status code then surface via actionError.
+        let title = defaultTitle;
+        let message = serverMessage || defaultMessage;
+        if (status === 403) title = 'Permission Denied';
+        else if (status === 409) title = 'Conflict';
+        else if (status === 401) title = 'Unauthorized';
 
         this.actionError.set({ title, message });
     }
@@ -425,6 +516,17 @@ export class ViewProcedureComponent implements OnDestroy {
             this.procedureService
                 .setUserStatus(id, revision, true)
                 .subscribe({ error: err => console.warn('Could not set user presence:', err) });
+        });
+
+        // Effect 8: Freeze the poll the moment archiveSummary becomes non-null.
+        // This covers the "uneditable" path — where the poller discovers the procedure
+        // was closed without this user triggering a 423. Once frozen, _poll stops
+        // advancing and the resource never refetches on a timer tick.
+        effect(() => {
+            if (this.archiveSummary() !== null && !this.pollingFrozen()) {
+                this.frozenPollValue.set(untracked(() => this.pollTick()));
+                this.pollingFrozen.set(true);
+            }
         });
     }
 

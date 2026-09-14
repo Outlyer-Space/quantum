@@ -1,0 +1,58 @@
+@if (state(); as s) {
+<div class="dialog-backdrop" [class.clickable]="s.variant === 'error'" (click)="s.variant === 'error' ? dismiss.emit() : null"></div>
+
+<div class="dialog-panel" [class.nav-variant]="isNavigationVariant(s.variant)"
+     role="dialog" aria-modal="true" aria-labelledby="status-dialog-title">
+
+    <!-- Header -->
+    <div class="dialog-header">
+        <h2 id="status-dialog-title">{{ s.title }}</h2>
+        @if (s.variant === 'error') {
+            <button class="close-btn" (click)="dismiss.emit()" aria-label="Close dialog">×</button>
+        }
+    </div>
+
+    <!-- Body -->
+    <div class="dialog-body">
+        <div class="status-icon" [class.icon-warning]="s.variant === 'locked' || s.variant === 'uneditable'"
+                                 [class.icon-error]="s.variant === 'error'">
+            @if (s.variant === 'locked' || s.variant === 'uneditable') {
+                <!-- Lock / warning icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            } @else {
+                <!-- Generic error icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            }
+        </div>
+
+        <p>{{ s.message }}</p>
+
+        @if (isNavigationVariant(s.variant) && s.archivedBy) {
+            <p class="meta">
+                Closed by <strong>{{ s.archivedBy }}</strong>
+                @if (s.archivedAt) { at <strong>{{ s.archivedAt | date:'medium' }}</strong> }
+            </p>
+        }
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+        @if (s.variant === 'error') {
+            <button class="btn btn-primary" (click)="dismiss.emit()" autofocus>Dismiss</button>
+        } @else {
+            <button class="btn btn-secondary" (click)="goToArchive.emit()">Go to Archive</button>
+            <button class="btn btn-primary" (click)="goToDashboard.emit()" autofocus>Back to Dashboard</button>
+        }
+    </div>
+</div>
+}

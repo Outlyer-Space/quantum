@@ -1,0 +1,152 @@
+$border-color: #e5e5e5;
+$color-error:  #d9534f;
+$color-warn:   #d9534f;
+$color-nav:    #337ab7;
+$radius: 4px;
+
+:host {
+    display: contents;
+}
+
+/* ── Backdrop ── */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.55);
+
+    &.clickable {
+        cursor: pointer;
+    }
+}
+
+/* ── Panel ── */
+.dialog-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+    width: 440px;
+    max-width: 92vw;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+}
+
+/* ── Header ── */
+.dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid $border-color;
+    background-color: #f8f9fa;
+    border-radius: 6px 6px 0 0;
+
+    h2 {
+        margin: 0;
+        flex: 1;
+        font-size: 18px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        line-height: 1;
+        color: #999;
+        cursor: pointer;
+        padding: 0 4px;
+
+        &:hover { color: #333; }
+    }
+}
+
+/* ── Body ── */
+.dialog-body {
+    padding: 24px;
+    color: #333;
+    font-size: 15px;
+    line-height: 1.5;
+
+    .status-icon {
+        margin-bottom: 16px;
+
+        svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        &.icon-error svg  { color: $color-error; }
+        &.icon-warning svg { color: $color-warn; }
+    }
+
+    p {
+        margin: 0 0 8px;
+        &:last-child { margin-bottom: 0; }
+    }
+
+    .meta {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #555;
+    }
+}
+
+/* ── Footer ── */
+.dialog-footer {
+    padding: 15px;
+    border-top: 1px solid $border-color;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* ── Buttons ── */
+.btn {
+    padding: 8px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: $radius;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:focus-visible {
+        outline: 2px solid $color-nav;
+        outline-offset: 2px;
+    }
+}
+
+.btn-primary {
+    background: $color-nav;
+    border: 1px solid darken($color-nav, 5%);
+    color: #fff;
+
+    &:hover {
+        background: darken($color-nav, 10%);
+        border-color: darken($color-nav, 15%);
+    }
+}
+
+.btn-secondary {
+    background: #fff;
+    border: 1px solid #ccc;
+    color: #333;
+
+    &:hover {
+        background: #e6e6e6;
+        border-color: #adadad;
+    }
+}
+
+/* ── Responsive ── */
+@media only screen and (max-width: 500px) {
+    .dialog-panel { width: 95vw; }
+}
