@@ -1,24 +1,24 @@
 /** Primary app entry point */
 
-process.chdir(__dirname)                                           // set working directory
+process.chdir(__dirname);                                           // set working directory
 
-const config   = require('./config/config')(__dirname)             // dynamic config
-const mongoose = require('./server/lib/mongo')(config)             // mongo connector
-const user     = require('./server/models/user')(config, mongoose) // mongoose user model
-require('./server/models/procedure')                               // register procedure model
-const passport = require('./server/lib/passport')(config, user)    // authentication
-const app      = require('./server/lib/app')(config, passport)     // quantum app
+const config   = require('./config/config')(__dirname);             // dynamic config
+const mongoose = require('./server/lib/mongo')(config);             // mongo connector
+const user     = require('./server/models/user')(config, mongoose); // mongoose user model
+require('./server/models/procedure');                               // register procedure model
+const passport = require('./server/lib/passport')(config, user);    // authentication
+const app      = require('./server/lib/app')(config, passport);     // quantum app
 
 // load routes & start server
-require('./server/routes')(config, app, passport, user)
+require('./server/routes')(config, app, passport, user);
 const server = app.listen(app.get('port'), function () {
-  console.log(`App is running port ${app.get('port')}`)
-})
+    console.log(`App is running port ${app.get('port')}`);
+});
 server.on('error', function (err) {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`ERROR: Port ${app.get('port')} is already in use. Stop the existing process first.`)
-    process.exit(1)
-  } else {
-    throw err
-  }
-})
+    if (err.code === 'EADDRINUSE') {
+        console.error(`ERROR: Port ${app.get('port')} is already in use. Stop the existing process first.`);
+        process.exit(1);
+    } else {
+        throw err;
+    }
+});

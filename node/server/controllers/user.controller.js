@@ -1,11 +1,10 @@
 var mongoose = require('mongoose');
 var User = mongoose.model('User');
-var multer = require('multer');
 
 var configRole = require('../../config/role');
 
 /** Strips sensitive auth fields before sending user data to the client */
-function safeAuth(auth) {
+function safeAuth (auth) {
     if (!auth) return {};
     return { id: auth.id, email: auth.email, name: auth.name };
 }
@@ -23,7 +22,7 @@ module.exports = {
 
             const user = await User.findOne(
                 { 'auth.email': email },
-                { 'missions': 1 }
+                { missions: 1 }
             ).lean();
 
             if (!user || !user.missions || user.missions.length === 0) {
@@ -38,7 +37,6 @@ module.exports = {
             }
 
             return res.status(200).send(userMission.currentRole);
-
         } catch (error) {
             console.error('Error in getCurrentRole:', error);
             return res.status(500).json({
@@ -59,7 +57,7 @@ module.exports = {
 
             const user = await User.findOne(
                 { 'auth.email': email },
-                { 'missions': 1 }
+                { missions: 1 }
             ).lean();
 
             if (!user || !user.missions || user.missions.length === 0) {
@@ -74,7 +72,6 @@ module.exports = {
             }
 
             return res.status(200).json(userMission.allowedRoles);
-
         } catch (error) {
             console.error('Error in getAllowedRoles:', error);
             return res.status(500).json({
@@ -93,8 +90,8 @@ module.exports = {
             }
 
             const users = await User.find(
-                { 'missions': { $exists: true, $not: { $size: 0 } } },
-                { 'auth': 1, 'missions': 1 }
+                { missions: { $exists: true, $not: { $size: 0 } } },
+                { auth: 1, missions: 1 }
             ).lean();
 
             console.log(`Found ${users ? users.length : 0} total users, filtering for mission: ${mission}`);
@@ -120,13 +117,12 @@ module.exports = {
                     // Security: strip auth.token and auth.salt — never send credentials to clients
                     auth: safeAuth(user.auth),
                     currentRole: userMission.currentRole,
-                    allowedRoles: allowedRoles
+                    allowedRoles
                 };
             }).filter(Boolean);
 
             console.log(`Successfully processed ${allUsers.length} users for mission: ${mission}`);
             return res.status(200).send(allUsers);
-
         } catch (error) {
             console.error('Error in getUsers:', error);
             return res.status(500).json({
@@ -142,7 +138,7 @@ module.exports = {
     getMissions: async function (req, res) {
         try {
             const users = await User.find(
-                { 'missions': { $exists: true, $not: { $size: 0 } } },
+                { missions: { $exists: true, $not: { $size: 0 } } },
                 { 'missions.name': 1 }
             ).lean();
 
@@ -219,8 +215,8 @@ module.exports = {
             }
             var missionLower = inputMission.toLowerCase();
             var defaultRole = {
-                'name': configRole.roles['VIP'].name,
-                'callsign': configRole.roles['VIP'].callsign
+                name: configRole.roles.VIP.name,
+                callsign: configRole.roles.VIP.callsign
             };
 
             // Use string-based $regex (not new RegExp) to avoid ReDoS.
@@ -251,19 +247,18 @@ module.exports = {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            var missionCount = 0;
             var missionObj;
 
             if (count === 0) {
                 // First user in this mission gets Mission Director role
                 var userRole = {
-                    'name': configRole.roles['MD'].name,
-                    'callsign': configRole.roles['MD'].callsign
+                    name: configRole.roles.MD.name,
+                    callsign: configRole.roles.MD.callsign
                 };
                 missionObj = {
-                    'name': finalMissionName,
-                    'currentRole': userRole,
-                    'allowedRoles': [defaultRole, userRole]
+                    name: finalMissionName,
+                    currentRole: userRole,
+                    allowedRoles: [defaultRole, userRole]
                 };
             } else {
                 // Not the first user — check if they already have this mission
@@ -283,9 +278,9 @@ module.exports = {
                     return res.json(missionObj);
                 } else {
                     missionObj = {
-                        'name': finalMissionName,
-                        'currentRole': defaultRole,
-                        'allowedRoles': [defaultRole]
+                        name: finalMissionName,
+                        currentRole: defaultRole,
+                        allowedRoles: [defaultRole]
                     };
                 }
             }
@@ -338,7 +333,6 @@ module.exports = {
             }
 
             return res.status(200).json({ missions: result.missions });
-
         } catch (error) {
             console.error('Error in setUserRole:', error);
             return res.status(500).send([]);
@@ -385,7 +379,6 @@ module.exports = {
 
             // Security: return only missions data, not the full document with auth credentials
             return res.status(200).json({ missions: result.missions });
-
         } catch (error) {
             console.error('Error in setAllowedRoles:', error);
             return res.status(500).send([]);
@@ -404,7 +397,7 @@ module.exports = {
 
             const users = await User.find(
                 { 'missions.name': mission },
-                { 'auth': 1, 'missions': 1 }
+                { auth: 1, missions: 1 }
             ).lean();
 
             if (!users || users.length === 0) {
@@ -431,7 +424,6 @@ module.exports = {
 
             console.log(`Successfully processed ${processedUsers.length} users for mission: ${mission}`);
             return res.status(200).send(processedUsers);
-
         } catch (error) {
             console.error('Error in getUsersCurrentRole:', error);
             return res.status(500).json({
@@ -442,20 +434,8 @@ module.exports = {
     }
 };
 
-//Check if an array list contains an object
-function containsObject(obj, list) {
-    var i;
-    for (i = 0; i < list.length; i++) {
-        if (isEquivalent(list[i], obj)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-//Equality of Objects
-function isEquivalent(a, b) {
+// Equality of Objects
+function isEquivalent (a, b) {
     var propA = Object.getOwnPropertyNames(a);
     var propB = Object.getOwnPropertyNames(b);
 

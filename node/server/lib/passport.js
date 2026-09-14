@@ -1,4 +1,4 @@
-const passport = require('passport')
+const passport = require('passport');
 
 /** setup authentication using passport
  *
@@ -9,11 +9,11 @@ const passport = require('passport')
  *
  */
 module.exports = function (config, User) {
-  // config passport using static methods created in user.js
+    // config passport using static methods created in user.js
 
-  passport.use(User.createStrategy(config))
-  passport.serializeUser(User.serializeUser())
-  passport.deserializeUser(User.deserializeUser())
+    passport.use(User.createStrategy(config));
+    passport.serializeUser(User.serializeUser());
+    passport.deserializeUser(User.deserializeUser());
 
-  return passport
-}
+    return passport;
+};

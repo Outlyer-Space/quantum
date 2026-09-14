@@ -31,7 +31,7 @@ module.exports = function () {
 
     // Wrapper to catch Multer errors and return as JSON
     const uploadMiddleware = upload.single('file');
-    function handleUpload(req, res, next) {
+    function handleUpload (req, res, next) {
         uploadMiddleware(req, res, function (err) {
             if (err) {
                 return res.status(400).json({ message: err.message || 'File upload error' });
@@ -50,7 +50,7 @@ module.exports = function () {
     router.get('/roles', procs.getQuantumRoles);
     router.post('/upload', ensureMissionAccess, handleUpload, ensureNotVip, procs.uploadFile);
     router.patch('/name', ensureProcedureMissionAccess, ensureNotVip, procs.updateProcedureName);
-    
+
     router.get('/instances', ensureProcedureMissionAccess, procs.getAllInstances);
     router.post('/instances', ensureProcedureMissionAccess, ensureNotVip, procs.saveProcedureInstance);
     router.post('/instances/steps', ensureProcedureMissionAccess, ensureNotVip, procs.setInfo);

@@ -10,7 +10,7 @@
 
 const LEAD_ROLES = ['FLIGHT', 'MD', 'TD'];
 
-module.exports = async function ensureLeadRole(req, res, next) {
+module.exports = async function ensureLeadRole (req, res, next) {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User is not authenticated' });
     }
@@ -51,9 +51,9 @@ module.exports = async function ensureLeadRole(req, res, next) {
 
         // 2. If not authorized yet, check if they hold a lead role in ANY mission (Global Admin Bypass)
         if (!isAuthorized) {
-            const hasAnyLeadRole = user.missions.some(m => 
-                m.currentRole && 
-                m.currentRole.callsign && 
+            const hasAnyLeadRole = user.missions.some(m =>
+                m.currentRole &&
+                m.currentRole.callsign &&
                 LEAD_ROLES.includes(m.currentRole.callsign.toUpperCase())
             );
 
@@ -75,7 +75,6 @@ module.exports = async function ensureLeadRole(req, res, next) {
                 message: `Role ${targetMission.currentRole ? targetMission.currentRole.callsign : 'Unknown'} is not authorized for this action. Lead role required.`
             });
         }
-
     } catch (error) {
         console.error('Error in ensureLeadRole middleware:', error);
         return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to authorize user role' });

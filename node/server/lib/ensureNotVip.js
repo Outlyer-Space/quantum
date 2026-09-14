@@ -1,4 +1,4 @@
-module.exports = function ensureNotVip(req, res, next) {
+module.exports = function ensureNotVip (req, res, next) {
     if (!req.user || !req.user.missions) return res.status(401).send();
 
     // 1. Procedure-specific context (populated by ensureProcedureMissionAccess)

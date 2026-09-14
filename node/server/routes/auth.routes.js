@@ -28,7 +28,7 @@ module.exports.legacyRoutes = function (passport, user) {
     // "Mongo" strategy login request (form submission)
     router.post('/login_mongo', loginLimiter,
         function (req, res, next) {
-            req.body['auth.email'] = req.body['email'];
+            req.body['auth.email'] = req.body.email;
             next();
         },
         passport.authenticate('local', {
@@ -40,7 +40,7 @@ module.exports.legacyRoutes = function (passport, user) {
                 req.user.auth.id = req.user._id;
             }
             req.user = user.findOneOrCreate(
-                { "auth.email": req.user.email },
+                { 'auth.email': req.user.email },
                 req.user
             );
             res.redirect('./dashboard');
@@ -91,7 +91,7 @@ module.exports.apiRoutes = function (config, passport, user) {
 
     router.post('/login', loginLimiter,
         function (req, res, next) {
-            req.body['auth.email'] = req.body['email'];
+            req.body['auth.email'] = req.body.email;
             next();
         },
         function (req, res, next) {
@@ -107,7 +107,7 @@ module.exports.apiRoutes = function (config, passport, user) {
                     }
 
                     user.findOneOrCreate(
-                        { "auth.email": req.user.auth.email },
+                        { 'auth.email': req.user.auth.email },
                         req.user
                     ).then(u => {
                         req.user = u;

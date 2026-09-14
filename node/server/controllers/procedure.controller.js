@@ -2,8 +2,8 @@ var mongoose = require('mongoose');
 var fs = require('fs');
 var ProcedureModel = mongoose.model('procedure');
 var ExcelJS = require('exceljs');
-var configRole = require('../../config/role')
-var configStep = require('../../config/step')
+var configRole = require('../../config/role');
+var configStep = require('../../config/step');
 var validTypes = Object.keys(configStep.types);
 
 module.exports = {
@@ -42,7 +42,7 @@ module.exports = {
             });
             return res.json(result);
         } catch (err) {
-            console.error("Error finding procedures data in DB:", err);
+            console.error('Error finding procedures data in DB:', err);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
     },
@@ -63,7 +63,7 @@ module.exports = {
                 projection.instances = { $elemMatch: { revision: parseInt(req.query.revision, 10) } };
             }
 
-            const model = await ProcedureModel.findOne({ 'procedureID': id }, projection).lean();
+            const model = await ProcedureModel.findOne({ procedureID: id }, projection).lean();
             if (!model) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
@@ -77,7 +77,7 @@ module.exports = {
         try {
             var id = req.query.id;
 
-            const model = await ProcedureModel.findOne({ 'procedureID': id }).lean();
+            const model = await ProcedureModel.findOne({ procedureID: id }).lean();
             if (!model) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
@@ -86,24 +86,24 @@ module.exports = {
 
             // Create a workbook and worksheet using exceljs
             var wb = new ExcelJS.Workbook();
-            var ws = wb.addWorksheet("Sheet1");
-            
+            var ws = wb.addWorksheet('Sheet1');
+
             // Define headers matching the original export
             ws.columns = [
-                { header: "Step", key: "Step" },
-                { header: "Role", key: "Role" },
-                { header: "Type", key: "Type" },
-                { header: "Content", key: "Content" },
-                { header: "Reference", key: "Reference" }
+                { header: 'Step', key: 'Step' },
+                { header: 'Role', key: 'Role' },
+                { header: 'Type', key: 'Type' },
+                { header: 'Content', key: 'Content' },
+                { header: 'Reference', key: 'Reference' }
             ];
-            
+
             // Add rows — write Reference as a proper clickable hyperlink when it looks like a URL,
             // otherwise fall back to plain text so non-URL reference values are preserved correctly.
-            function looksLikeUrl(value) {
+            function looksLikeUrl (value) {
                 return typeof value === 'string' && /^https?:\/\//i.test(value.trim());
             }
 
-            sections.forEach(function(section) {
+            sections.forEach(function (section) {
                 var row = ws.addRow({
                     Step: section.Step,
                     Role: section.Role,
@@ -119,7 +119,7 @@ module.exports = {
                     refCell.font = { color: { argb: 'FF0563C1' }, underline: true };
                 }
             });
-            
+
             // Write to buffer and send
             var buffer = await wb.xlsx.writeBuffer();
             return res.send(buffer);
@@ -155,7 +155,6 @@ module.exports = {
     //     }
     // },
 
-
     /**
      * Lightweight endpoint: returns only the users array for a specific instance revision.
      * Uses a MongoDB projection so the full sections/steps are never loaded from the DB.
@@ -180,8 +179,8 @@ module.exports = {
             // Projection: only load revision + users fields from each instance subdocument.
             // sections, Steps, versions are NOT loaded from MongoDB at all.
             const procs = await ProcedureModel.findOne(
-                { 'procedureID': procid },
-                { 'eventname': 1, 'instances.revision': 1, 'instances.users': 1 }
+                { procedureID: procid },
+                { eventname: 1, 'instances.revision': 1, 'instances.users': 1 }
             ).lean();
 
             if (!procs) {
@@ -196,7 +195,7 @@ module.exports = {
             // role is now stored directly on each user object in the instance,
             // so no secondary UserModel lookup is needed.
             var users = inst.users || [];
-            return res.json({ users: users });
+            return res.json({ users });
         } catch (err) {
             console.error(err);
             return res.status(500).json({ error: 'Internal Server Error' });
@@ -206,7 +205,7 @@ module.exports = {
         try {
             var id = req.query.procedureID;
 
-            const model = await ProcedureModel.findOne({ 'procedureID': id }, {
+            const model = await ProcedureModel.findOne({ procedureID: id }, {
                 title: 1,
                 'instances.revision': 1,
                 'instances.version': 1,
@@ -233,7 +232,7 @@ module.exports = {
     },
     uploadFile: async function (req, res) {
         try {
-            var filename = req.file.originalname.split(" - ");
+            var filename = req.file.originalname.split(' - ');
             var filepath = req.file.path;
             var workbook = new ExcelJS.Workbook();
             await workbook.xlsx.readFile(filepath);
@@ -241,23 +240,23 @@ module.exports = {
             fs.unlink(filepath, function (unlinkErr) {
                 if (unlinkErr) console.error('Failed to delete temp upload:', unlinkErr.message);
             });
-            
+
             var worksheet = workbook.worksheets[0];
             var sheet1 = [];
             var headers = {};
-            
+
             // ExcelJS cells can be RichText objects, formula results, dates, etc.
             // This helper safely extracts a plain string from any cell value.
             // ExcelJS cells can be RichText objects, formula results, dates, hyperlinks, etc.
             // This helper safely extracts a plain string from ANY cell value type.
-            function getCellString(cellValue) {
+            function getCellString (cellValue) {
                 if (cellValue === null || cellValue === undefined) return '';
                 if (typeof cellValue === 'object') {
                     if (cellValue instanceof Date) {
                         return cellValue.toISOString();
                     }
                     if (cellValue.richText) {
-                        return cellValue.richText.map(function(r) { return r.text || ''; }).join('');
+                        return cellValue.richText.map(function (r) { return r.text || ''; }).join('');
                     }
                     if (cellValue.hyperlink) {
                         return cellValue.hyperlink;
@@ -280,14 +279,14 @@ module.exports = {
 
             // Convert to JSON similar to sheet_to_json
             if (worksheet) {
-                worksheet.eachRow({ includeEmpty: false }, function(row, rowNumber) {
+                worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
                     if (rowNumber === 1) {
-                        row.eachCell({ includeEmpty: false }, function(cell, colNumber) {
+                        row.eachCell({ includeEmpty: false }, function (cell, colNumber) {
                             headers[colNumber] = getCellString(cell.value).trim() || null;
                         });
                     } else {
                         var obj = {};
-                        row.eachCell({ includeEmpty: true }, function(cell, colNumber) {
+                        row.eachCell({ includeEmpty: true }, function (cell, colNumber) {
                             if (headers[colNumber]) {
                                 // Extract the string safely using our robust helper
                                 obj[headers[colNumber]] = getCellString(cell.value);
@@ -310,11 +309,11 @@ module.exports = {
             if (req.userMissionNames && !req.userMissionNames.some(function (n) { return n === missionName; })) {
                 return res.status(403).json({ error_code: 0, err_desc: 'You do not have access to upload to this mission.' });
             }
-            var errordetails = ""
+            var errordetails = '';
 
             // File Upload Validations
-            console.log("Validating new file upload:")
-            var fileverify = 0
+            console.log('Validating new file upload:');
+            var fileverify = 0;
 
             // check if all steps have step, type, content
             for (var a = 0; a < sheet1.length; a++) {
@@ -324,13 +323,13 @@ module.exports = {
                     sheet1[a].Type = sheet1[a].Type.replace(/\s/g, '');
                     fileverify++;
                 } else {
-                    errordetails = "Line " + (fileverify + 2)
-                    console.log(" - ERROR: Missing field in " + errordetails)
+                    errordetails = 'Line ' + (fileverify + 2);
+                    console.log(' - ERROR: Missing field in ' + errordetails);
                 }
             }
 
             if (fileverify !== sheet1.length) {
-                return res.json({ error_code: 0, err_desc: "Missing field", err_detail: errordetails });
+                return res.json({ error_code: 0, err_desc: 'Missing field', err_detail: errordetails });
             }
 
             // Check if Type is valid
@@ -338,7 +337,7 @@ module.exports = {
             for (var b = 0; b < sheet1.length; b++) {
                 sheet1[b].Type = sheet1[b].Type.replace(/\s/g, '');
                 if (!checkTypeValidity(sheet1[b].Type)) {
-                    errorTypeSteps.push({ "Step": sheet1[b].Step, "Type": sheet1[b].Type });
+                    errorTypeSteps.push({ Step: sheet1[b].Step, Type: sheet1[b].Type });
                 }
             }
 
@@ -349,10 +348,10 @@ module.exports = {
                     if (sheet1[r].Role) {
                         sheet1[r].Role = sheet1[r].Role.replace(/\s/g, '');
                         if (!checkRoleValidity(sheet1[r].Role)) {
-                            roleErrSteps.push({ "Step": sheet1[r].Step, "Role": sheet1[r].Role });
+                            roleErrSteps.push({ Step: sheet1[r].Step, Role: sheet1[r].Role });
                         }
                     } else {
-                        roleErrSteps.push({ "Step": sheet1[r].Step, "Role": "" });
+                        roleErrSteps.push({ Step: sheet1[r].Step, Role: '' });
                     }
                 }
             }
@@ -362,19 +361,19 @@ module.exports = {
 
             // Return specific error codes for each validation failure combination
             if (errorTypeSteps.length > 0 && roleErrSteps.length > 0 && lastIsHeading) {
-                return res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ "Step": lastStep.Step, "Type": lastStep.Type }] });
+                return res.json({ error_code: 8, err_typedata: errorTypeSteps, err_roledata: roleErrSteps, err_data: [{ Step: lastStep.Step, Type: lastStep.Type }] });
             } else if (errorTypeSteps.length > 0 && roleErrSteps.length > 0) {
                 return res.json({ error_code: 9, err_typedata: errorTypeSteps, err_roledata: roleErrSteps });
             } else if (errorTypeSteps.length > 0 && lastIsHeading) {
-                return res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ "Step": lastStep.Step, "Type": lastStep.Type }] });
+                return res.json({ error_code: 10, err_typedata: errorTypeSteps, err_data: [{ Step: lastStep.Step, Type: lastStep.Type }] });
             } else if (roleErrSteps.length > 0 && lastIsHeading) {
-                return res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ "Step": lastStep.Step, "Type": lastStep.Type }] });
+                return res.json({ error_code: 11, err_roledata: roleErrSteps, err_data: [{ Step: lastStep.Step, Type: lastStep.Type }] });
             } else if (errorTypeSteps.length > 0) {
-                return res.json({ error_code: 2, err_desc: "Step Type invalid", err_data: errorTypeSteps });
+                return res.json({ error_code: 2, err_desc: 'Step Type invalid', err_data: errorTypeSteps });
             } else if (roleErrSteps.length > 0) {
-                return res.json({ error_code: 6, err_desc: "Invalid Role", err_data: roleErrSteps });
+                return res.json({ error_code: 6, err_desc: 'Invalid Role', err_data: roleErrSteps });
             } else if (lastIsHeading) {
-                return res.json({ error_code: 7, err_desc: "Last Step Invalid", err_data: [{ "Step": lastStep.Step, "Type": lastStep.Type }] });
+                return res.json({ error_code: 7, err_desc: 'Last Step Invalid', err_data: [{ Step: lastStep.Step, Type: lastStep.Type }] });
             }
 
             // Validate heading / non-heading step format
@@ -384,30 +383,30 @@ module.exports = {
                 sheet1[c].Type = sheet1[c].Type.replace(/\s/g, '');
                 if (sheet1[c].Type.toUpperCase() === 'HEADING') {
                     if (!getSteps(sheet1[c], true)) {
-                        headingErr.push({ "Step": sheet1[c].Step, "Type": sheet1[c].Type });
+                        headingErr.push({ Step: sheet1[c].Step, Type: sheet1[c].Type });
                     }
                 } else {
                     if (!getSteps(sheet1[c], false)) {
-                        nonHeadingErr.push({ "Step": sheet1[c].Step, "Type": sheet1[c].Type });
+                        nonHeadingErr.push({ Step: sheet1[c].Step, Type: sheet1[c].Type });
                     }
                 }
             }
 
             if (headingErr.length > 0 && nonHeadingErr.length > 0) {
-                return res.json({ error_code: 3, err_desc: "Not a valid Step", err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
+                return res.json({ error_code: 3, err_desc: 'Not a valid Step', err_dataHeading: headingErr, err_dataNonHeading: nonHeadingErr });
             } else if (headingErr.length > 0) {
-                return res.json({ error_code: 4, err_desc: "Invalid Heading", err_data: headingErr });
+                return res.json({ error_code: 4, err_desc: 'Invalid Heading', err_data: headingErr });
             } else if (nonHeadingErr.length > 0) {
-                return res.json({ error_code: 5, err_desc: "Invalid Other Type", err_data: nonHeadingErr });
+                return res.json({ error_code: 5, err_desc: 'Invalid Other Type', err_data: nonHeadingErr });
             }
 
             // All validations passed — save to database
-            const procs = await ProcedureModel.findOne({ 'procedureID': filename[0] });
+            const procs = await ProcedureModel.findOne({ procedureID: filename[0] });
 
             if (procs) { // Update an existing procedure
                 // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
                 var titlePart = filename.length >= 3 ? filename[2] : filename[1];
-                var ptitle = titlePart.split(".");
+                var ptitle = titlePart.split('.');
 
                 // If versions array already has entries, just push the new sheet.
                 // Otherwise, bootstrap it with the current sections first.
@@ -430,17 +429,16 @@ module.exports = {
                     }
                 );
                 console.log('procedure data updated successfully!');
-                return res.json({ error_code: 0, err_desc: "file updated" });
-
+                return res.json({ error_code: 0, err_desc: 'file updated' });
             } else { // Save a new procedure
                 var pfiles = new ProcedureModel();
                 // Support both 'index - title.xlsx' (new) and 'index - mission - title.xlsx' (legacy)
-                var titlePart = filename.length >= 3 ? filename[2] : filename[1];
-                var ptitle = titlePart.split(".");
+                titlePart = filename.length >= 3 ? filename[2] : filename[1];
+                ptitle = titlePart.split('.');
 
                 pfiles.procedureID = filename[0].trim();
                 pfiles.title = ptitle[0].trim();
-                pfiles.lastuse = "";
+                pfiles.lastuse = '';
                 pfiles.instanceCounter = 0;
                 pfiles.instances = [];
                 pfiles.versions = [];
@@ -459,7 +457,7 @@ module.exports = {
             }
         } catch (e) {
             console.error(e);
-            return res.status(500).json({ error_code: 500, err_desc: "Internal Server Error" });
+            return res.status(500).json({ error_code: 500, err_desc: 'Internal Server Error' });
         }
     },
     saveProcedureInstance: async function (req, res) {
@@ -467,10 +465,10 @@ module.exports = {
             var procid = req.body.id;
             var lastuse = req.body.lastuse; // start time
 
-            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase()) : null;
             const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
             const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
-            
+
             if (!req.user || !req.user.auth || !req.user.auth.name || !req.user.auth.email || !userCallsign) {
                 return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
             }
@@ -483,7 +481,7 @@ module.exports = {
             // Use findOneAndUpdate to atomically increment the counter AND fetch the doc.
             // We need sections/versions to build instancesteps, so we fetch first then push atomically.
             const procs = await ProcedureModel.findOneAndUpdate(
-                { 'procedureID': procid },
+                { procedureID: procid },
                 { $inc: { instanceCounter: 1 } },
                 { new: true }
             );
@@ -494,34 +492,34 @@ module.exports = {
 
             var instancesteps = [];
             for (var i = 0; i < procs.sections.length; i++) {
-                instancesteps.push({ "step": procs.sections[i].Step, "info": "" })
+                instancesteps.push({ step: procs.sections[i].Step, info: '' });
             }
             var revision = procs.instanceCounter;
             var versionNum = procs.versions.length;
 
             const newInstance = {
-                "openedBy": usernamerole,
-                "Steps": instancesteps,
-                "closedBy": "",
-                "startedAt": lastuse,
-                "completedAt": "",
-                "revision": revision,
-                "running": true,
-                "users": [{
-                    "name": username,
-                    "email": useremail,
-                    "role": userrole,
-                    "isOnline": true
+                openedBy: usernamerole,
+                Steps: instancesteps,
+                closedBy: '',
+                startedAt: lastuse,
+                completedAt: '',
+                revision,
+                running: true,
+                users: [{
+                    name: username,
+                    email: useremail,
+                    role: userrole,
+                    isOnline: true
                 }],
-                "version": versionNum
+                version: versionNum
             };
 
             // Atomically push the new instance — safe even if two users start simultaneously.
             await ProcedureModel.updateOne(
                 { _id: procs._id },
-                { $push: { instances: newInstance }, $set: { lastuse: lastuse } }
+                { $push: { instances: newInstance }, $set: { lastuse } }
             );
-            return res.json({ "revision": revision });
+            return res.json({ revision });
         } catch (err) {
             console.error(err);
             return res.status(500).json({ error: 'Internal Server Error' });
@@ -532,7 +530,7 @@ module.exports = {
             var info = req.body.info;
             var procid = req.body.id;
             var step = req.body.step;
-            var usernamerole = req.body.usernamerole;
+
             var procrevision = req.body.revision;
             var lastuse = req.body.lastuse; // time when the step was completed
             var recordedValue = req.body.recordedValue;
@@ -541,18 +539,17 @@ module.exports = {
             // If present, we use it as a filter condition so concurrent writes are detected.
             var previousInfo = req.body.previousInfo;
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': procid });
+            const procs = await ProcedureModel.findOne({ procedureID: procid });
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
-            var instance = [];
             var instanceid;
             var instanceFound = false;
             // get procedure instance with the revision num
             for (var i = 0; i < procs.instances.length; i++) {
                 if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
-                    instance = procs.instances[i].Steps;
+                    procs.instances[i].Steps;
                     instanceid = i;
                     instanceFound = true;
                     break;
@@ -568,14 +565,14 @@ module.exports = {
             if (!userHasLeadRole(req.user)) {
                 const versionNum = procs.instances[instanceid].version;
                 const stepDefinitions = (versionNum && procs.versions && procs.versions[versionNum - 1])
-                                        ? procs.versions[versionNum - 1]
-                                        : procs.sections;
+                    ? procs.versions[versionNum - 1]
+                    : procs.sections;
 
-                const requiredRoleStr = stepDefinitions[step] ? stepDefinitions[step].Role : "";
+                const requiredRoleStr = stepDefinitions[step] ? stepDefinitions[step].Role : '';
 
                 const mission = req.user && req.user.missions
-                                ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase())
-                                : null;
+                    ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase())
+                    : null;
                 const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
 
                 if (requiredRoleStr) {
@@ -590,13 +587,13 @@ module.exports = {
             }
             // === END RBAC ===
 
-            const updateObj = { $set: { lastuse: lastuse } };
-            
+            const updateObj = { $set: { lastuse } };
+
             if (info) {
                 if (!req.user || !req.user.auth || !req.user.auth.name) {
                     return res.status(400).json({ error: 'Bad Request', message: 'User details missing from request context' });
                 }
-                const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+                const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase()) : null;
                 const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
                 if (!userCallsign) {
                     return res.status(400).json({ error: 'Bad Request', message: 'User role missing from request context' });
@@ -635,23 +632,22 @@ module.exports = {
     },
     setInstanceCompleted: async function (req, res) {
         try {
-            var info = req.body.info;
             var procid = req.body.id;
-            var step = req.body.step;
+
             var procrevision = req.body.revision;
             var lastuse = req.body.lastuse; // time when the procedure instance is completed
 
-            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase()) : null;
             const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
-            
+
             if (!req.user || !req.user.auth || !req.user.auth.name || !userCallsign) {
                 return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
             }
-            
+
             const roleStr = userCallsign && userCallsign !== 'VIP' ? ` (${userCallsign})` : (userCallsign === 'VIP' ? ' (VIP)' : '');
             var usernamerole = `${req.user.auth.name}${roleStr}`;
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': procid });
+            const procs = await ProcedureModel.findOne({ procedureID: procid });
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
@@ -681,14 +677,14 @@ module.exports = {
 
             var closingComment = req.body.closingComment || '';
 
-            const updateObj = { 
-                $set: { 
-                    lastuse: lastuse,
+            const updateObj = {
+                $set: {
+                    lastuse,
                     [`instances.${instanceid}.closedBy`]: usernamerole,
                     [`instances.${instanceid}.completedAt`]: lastuse,
                     [`instances.${instanceid}.closingComment`]: closingComment,
                     [`instances.${instanceid}.running`]: false
-                } 
+                }
             };
             // Optimistic locking: include running: true in the filter so this
             // write only succeeds once. If another user (or a duplicate request)
@@ -719,18 +715,18 @@ module.exports = {
             var comments = req.body.comments;
             var lastuse = req.body.lastuse; // time when the procedure instance is completed
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': procid });
+            const procs = await ProcedureModel.findOne({ procedureID: procid });
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             // get procedure instance with the revision num
-            var instance = [];
+
             var instanceid;
             var instanceFound = false;
             for (var i = 0; i < procs.instances.length; i++) {
                 if (parseInt(procs.instances[i].revision, 10) === parseInt(procrevision, 10)) {
-                    instance = procs.instances[i].Steps;
+                    procs.instances[i].Steps;
                     instanceid = i;
                     instanceFound = true;
                     break;
@@ -741,7 +737,7 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
-            const updateObj = { $set: { lastuse: lastuse } };
+            const updateObj = { $set: { lastuse } };
             updateObj.$set[`instances.${instanceid}.Steps.${step}.comments`] = comments;
 
             await ProcedureModel.updateOne({ _id: procs._id }, updateObj);
@@ -756,34 +752,34 @@ module.exports = {
             var isOnline = req.body.isOnline;
             var procid = req.body.pid;
             var revision = req.body.revision;
-            
-            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+
+            const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase()) : null;
             const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
-            
+
             if (!req.user || !req.user.auth || !req.user.auth.name || !req.user.auth.email || !userCallsign) {
                 return res.status(400).json({ error: 'Bad Request', message: 'User details or role missing from request context' });
             }
-            
+
             var email = req.user.auth.email;
             var username = req.user.auth.name;
             var role = userCallsign;
             var liveinstanceID;
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': procid });
+            const procs = await ProcedureModel.findOne({ procedureID: procid });
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
 
             for (var i = 0; i < procs.instances.length; i++) {
-                if (parseInt(procs.instances[i].revision) === parseInt(revision) && revision !== "") {
+                if (parseInt(procs.instances[i].revision) === parseInt(revision) && revision !== '') {
                     liveinstanceID = i;
                     break;
-                } else if (revision === "") {
-                    liveinstanceID = "";
+                } else if (revision === '') {
+                    liveinstanceID = '';
                 }
             }
 
-            if (liveinstanceID !== "") {
+            if (liveinstanceID !== '') {
                 // Check if the user already exists in this instance's users array
                 const instance = procs.instances[liveinstanceID];
                 const userExists = instance.users && instance.users.some(u => u.email === email);
@@ -792,11 +788,13 @@ module.exports = {
                     // Atomically update the specific user's isOnline field, role, and name using arrayFilters
                     await ProcedureModel.updateOne(
                         { _id: procs._id },
-                        { $set: { 
-                            [`instances.${liveinstanceID}.users.$[u].isOnline`]: isOnline,
-                            [`instances.${liveinstanceID}.users.$[u].role`]: role,
-                            [`instances.${liveinstanceID}.users.$[u].name`]: username 
-                        } },
+                        {
+                            $set: {
+                                [`instances.${liveinstanceID}.users.$[u].isOnline`]: isOnline,
+                                [`instances.${liveinstanceID}.users.$[u].role`]: role,
+                                [`instances.${liveinstanceID}.users.$[u].name`]: username
+                            }
+                        },
                         { arrayFilters: [{ 'u.email': email }] }
                     );
                 } else {
@@ -810,13 +808,13 @@ module.exports = {
             } else {
                 // No revision — set the user offline across all running instances atomically.
                 await ProcedureModel.updateOne(
-                    { 'procedureID': procid },
+                    { procedureID: procid },
                     { $set: { 'instances.$[].users.$[u].isOnline': isOnline } },
                     { arrayFilters: [{ 'u.email': email }] }
                 );
             }
 
-            return res.json({ isOnline: isOnline });
+            return res.json({ isOnline });
         } catch (err) {
             console.error(err);
             return res.status(500).json({ error: 'Internal Server Error' });
@@ -830,7 +828,7 @@ module.exports = {
             // Fetch only the eventname field — needed to fall back to the existing
             // mission name if the caller didn't supply one.
             const procs = await ProcedureModel.findOne(
-                { 'procedureID': prevProcId },
+                { procedureID: prevProcId },
                 { eventname: 1 }
             ).lean();
             if (!procs) {
@@ -844,7 +842,7 @@ module.exports = {
             }
             // Filter directly on procedureID — no need for _id after converting to lean()
             await ProcedureModel.updateOne(
-                { 'procedureID': prevProcId },
+                { procedureID: prevProcId },
                 { $set: { procedureID: newprocedurename.id, eventname: newMission, title: newprocedurename.title } }
             );
             return res.json({ success: true });
@@ -862,7 +860,7 @@ module.exports = {
             var info = req.body.info;
             var parentsArray = req.body.parentsArray;
             var procid = req.body.id;
-            var usernamerole = req.body.usernamerole;
+
             var procrevision = req.body.revision;
             var lastuse = req.body.lastuse; // time when the step was completed
             var inputStepValues = req.body.inputStepValues;
@@ -878,7 +876,7 @@ module.exports = {
                 }
             }
 
-            const procs = await ProcedureModel.findOne({ 'procedureID': procid });
+            const procs = await ProcedureModel.findOne({ procedureID: procid });
             if (!procs) {
                 return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });
             }
@@ -900,7 +898,7 @@ module.exports = {
                 return res.status(404).json({ error: 'Not Found', message: 'Instance revision not found' });
             }
 
-            const updateObj = { $set: { lastuse: lastuse } };
+            const updateObj = { $set: { lastuse } };
             const writeFilter = { _id: procs._id };
 
             for (var a = 0; a < parentsArray.length; a++) {
@@ -919,7 +917,7 @@ module.exports = {
                     if (!req.user || !req.user.auth || !req.user.auth.name) {
                         return res.status(400).json({ error: 'Bad Request', message: 'User details missing from request context' });
                     }
-                    const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || "").toLowerCase()) : null;
+                    const mission = req.user && req.user.missions ? req.user.missions.find(m => m.name && m.name.toLowerCase() === (req.procMissionName || '').toLowerCase()) : null;
                     const userCallsign = mission && mission.currentRole ? mission.currentRole.callsign : null;
                     if (!userCallsign) {
                         return res.status(400).json({ error: 'Bad Request', message: 'User role missing from request context' });
@@ -950,25 +948,25 @@ module.exports = {
     }
 };
 
-function checkTypeValidity(stepType) {
+function checkTypeValidity (stepType) {
     var typeOfStep = stepType.replace(/\s/g, '');
     if (validTypes.includes(typeOfStep.toUpperCase())) {
-        return true
+        return true;
     } else {
         return false;
     }
 }
 
-function getSteps(stepNum, isHeading) {
+function getSteps (stepNum, isHeading) {
     var step = stepNum.Step.replace(/\s/g, '');
     if (isHeading === true) {
-        if (step.includes(".0") === true && step.lastIndexOf("0") === step.length - 1 && step.lastIndexOf(".") === step.length - 2) {
+        if (step.includes('.0') === true && step.lastIndexOf('0') === step.length - 1 && step.lastIndexOf('.') === step.length - 2) {
             return true;
         } else {
             return false;
         }
     } else if (isHeading === false) {
-        if (step.includes(".0") === false) {
+        if (step.includes('.0') === false) {
             return true;
         } else {
             return false;
@@ -976,7 +974,7 @@ function getSteps(stepNum, isHeading) {
     }
 }
 
-function getAllCallSigns() {
+function getAllCallSigns () {
     var callSigns = [];
     var roleKeys = Object.keys(configRole.roles);
     for (var i = 0; i < roleKeys.length; i++) {
@@ -985,11 +983,11 @@ function getAllCallSigns() {
     return callSigns;
 }
 
-function checkRoleValidity(stepRole) {
+function checkRoleValidity (stepRole) {
     var callSigns = getAllCallSigns();
     var tempRoles = [];
     var str = stepRole.replace(/\s/g, '');
-    if (stepRole.includes(",")) {
+    if (stepRole.includes(',')) {
         tempRoles = str.split(',');
     } else {
         tempRoles.push(str);

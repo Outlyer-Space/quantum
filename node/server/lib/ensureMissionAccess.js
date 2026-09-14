@@ -17,7 +17,7 @@ const LEAD_ROLES = ['FLIGHT', 'MD', 'TD'];
  * Extracts the mission names from the authenticated user's missions array.
  * Returns an array of lowercase mission name strings.
  */
-function getUserMissionNames(user) {
+function getUserMissionNames (user) {
     if (!user || !user.missions || !Array.isArray(user.missions)) {
         return [];
     }
@@ -29,7 +29,7 @@ function getUserMissionNames(user) {
 /**
  * Checks whether the user holds a lead role in any of their missions.
  */
-function userHasLeadRole(user) {
+function userHasLeadRole (user) {
     if (!user || !user.missions || !Array.isArray(user.missions)) {
         return false;
     }
@@ -43,7 +43,7 @@ function userHasLeadRole(user) {
  * Middleware that populates req.userMissionNames for list-based filtering.
  * If the user has a lead role, req.userMissionNames is set to null (no filter).
  */
-function ensureMissionAccess(req, res, next) {
+function ensureMissionAccess (req, res, next) {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User is not authenticated' });
     }
@@ -74,7 +74,7 @@ function ensureMissionAccess(req, res, next) {
  * The procedureID is read from req.query.id, req.query.procedureID,
  * req.body.id, or req.body.pid — matching the existing controller patterns.
  */
-async function ensureProcedureMissionAccess(req, res, next) {
+async function ensureProcedureMissionAccess (req, res, next) {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
         return res.status(401).json({ error: 'Unauthorized', message: 'User is not authenticated' });
     }
@@ -118,7 +118,7 @@ async function ensureProcedureMissionAccess(req, res, next) {
 
     try {
         const ProcedureModel = require('mongoose').model('procedure');
-        const proc = await ProcedureModel.findOne({ procedureID: procedureID }, 'eventname').lean();
+        const proc = await ProcedureModel.findOne({ procedureID }, 'eventname').lean();
 
         if (!proc) {
             return res.status(404).json({ error: 'Not Found', message: 'Procedure not found' });

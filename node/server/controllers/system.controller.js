@@ -6,10 +6,10 @@
 /**
  * Get application version and git information
  */
-exports.getVersion = async function(req, res) {
+exports.getVersion = async function (req, res) {
     try {
         const mongoose = require('mongoose');
-        
+
         let dbUrl = 'Unknown';
         let dbVersion = 'Unknown';
 
@@ -46,10 +46,10 @@ exports.getVersion = async function(req, res) {
             branch: process.env.GIT_BRANCH || 'unknown',
             commit: process.env.GIT_COMMIT || 'unknown',
             version: process.env.APP_VERSION || 'unknown',
-            dbUrl: dbUrl,
-            dbVersion: dbVersion
+            dbUrl,
+            dbVersion
         };
-        
+
         res.json(versionInfo);
     } catch (error) {
         console.error('Error fetching version info:', error);
@@ -62,13 +62,13 @@ exports.getVersion = async function(req, res) {
 /**
  * Get current server and database status
  */
-exports.getStatus = function(req, res) {
+exports.getStatus = function (req, res) {
     try {
         const mongoose = require('mongoose');
-        
+
         // 1 = connected, 2 = connecting. Anything else is considered offline/error for our purposes.
         const isDbConnected = mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2;
-        
+
         res.json({
             server: 'OKAY',
             database: isDbConnected ? 'OKAY' : 'OFFLINE',

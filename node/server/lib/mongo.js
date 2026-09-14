@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 /** create mongo db connector
  *
@@ -11,53 +11,52 @@ const mongoose = require('mongoose')
  *
  */
 module.exports = function (myconfig) {
-  const url = new URL(myconfig.mongo.url)
-  const options = myconfig.mongo.opt
+    const url = new URL(myconfig.mongo.url);
+    const options = myconfig.mongo.opt;
 
-  if (myconfig.mongo.usr && myconfig.mongo.pwd) {
-    url.username = myconfig.mongo.usr
-    url.password = encodeURIComponent(myconfig.mongo.pwd)
-  }
-  if (url.protocol.includes('srv')) {
-    url.search = 'retryWrites=true&w=majority'
-  }
-  if (myconfig.node.environ === 'development') {
-    console.log('MongoDB connect settings:')
-    console.log(url.href)
-    console.log(options)
-  }
+    if (myconfig.mongo.usr && myconfig.mongo.pwd) {
+        url.username = myconfig.mongo.usr;
+        url.password = encodeURIComponent(myconfig.mongo.pwd);
+    }
+    if (url.protocol.includes('srv')) {
+        url.search = 'retryWrites=true&w=majority';
+    }
+    if (myconfig.node.environ === 'development') {
+        console.log('MongoDB connect settings:');
+        console.log(url.href);
+        console.log(options);
+    }
 
-  // event listeners
-  mongoose.connection.on('connected', function () {
-    console.log('Mongoose connected succesfully')
+    // event listeners
+    mongoose.connection.on('connected', function () {
+        console.log('Mongoose connected succesfully');
 
-    console.log(`> db-host     : ${mongoose.connection.host}`)
-    console.log(`> db-port     : ${mongoose.connection.port}`)
-    console.log(`> db-name     : ${mongoose.connection.name}`)
+        console.log(`> db-host     : ${mongoose.connection.host}`);
+        console.log(`> db-port     : ${mongoose.connection.port}`);
+        console.log(`> db-name     : ${mongoose.connection.name}`);
 
-    mongoose.connection.db.listCollections().toArray()
-      .then(names => {
-        const nameList = names.map(d => String(d.name))
-        console.log(`> collections : ${nameList}`)
-      })
-      .catch(err => {
-        console.log('> collections : ERROR')
-        console.log(`> ${err}`)
-      })
-  })
-  mongoose.connection.on('error', function (err) {
-    console.log(`Mongoose connection error: ${err}`)
-  })
-  mongoose.connection.on('disconnected', function () {
-    console.log('Mongoose connection disconnected')
-  })
+        mongoose.connection.db.listCollections().toArray()
+            .then(names => {
+                const nameList = names.map(d => String(d.name));
+                console.log(`> collections : ${nameList}`);
+            })
+            .catch(err => {
+                console.log('> collections : ERROR');
+                console.log(`> ${err}`);
+            });
+    });
+    mongoose.connection.on('error', function (err) {
+        console.log(`Mongoose connection error: ${err}`);
+    });
+    mongoose.connection.on('disconnected', function () {
+        console.log('Mongoose connection disconnected');
+    });
 
-  // connect to db
-  mongoose.connect(url.href, options)
-    .catch(function (err) {
-      console.log(`ERROR (MongoDB) - ${err}`)
-    })
+    // connect to db
+    mongoose.connect(url.href, options)
+        .catch(function (err) {
+            console.log(`ERROR (MongoDB) - ${err}`);
+        });
 
-  return mongoose
-}
-
+    return mongoose;
+};

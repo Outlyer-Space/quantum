@@ -11,7 +11,10 @@ module.exports = {
     ecmaVersion: 'latest'
   },
   rules: {
-	"no-multi-spaces": "off",
-	"new-cap" : "off"
+    "no-multi-spaces": "off",
+    "new-cap": "off",
+    "indent": ["error", 4, { "SwitchCase": 1 }],
+    "semi": ["error", "always"],
+    "no-var": "off"
   }
 }
