@@ -87,15 +87,15 @@ module.exports = function (config, mongoose) {
            * @param {*} profile - obj that identifies provider strategy
            * @param {*} next    - next function in call stack (either fail or success fct)
            */
-                    function (req, res, param, profile, next) {
+                    function (req, accessToken, refreshToken, params, profile, done) {
                         // decode token and add to profile object
-                        profile = { ...profile, ...jwt.decode(res) };
+                        profile = { ...profile, ...jwt.decode(accessToken) };
 
                         // assemble user mongo document (in case of new user)
                         const userInfo = {
                             auth: {
                                 id: profile.oid,
-                                token: res,
+                                token: accessToken,
                                 email: profile.unique_name,
                                 name: `${profile.given_name} ${profile.family_name}`
                             }
@@ -111,10 +111,10 @@ module.exports = function (config, mongoose) {
                                 console.log('Quantum User found/created:');
                                 console.log(`${userInfo.auth.email} : ${userInfo._id}`);
                                 console.log('next function is');
-                                console.log(next.toString());
+                                console.log(done.toString());
                             }
                             // call next fct in stack: function(err, user, info)
-                            next(undefined, userInfo);
+                            done(undefined, userInfo);
                         });
                     }
                 );
