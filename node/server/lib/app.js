@@ -2,10 +2,6 @@
 const express = require('express');         // app framework
 const path = require('path');            // path constructor
 const morgan = require('morgan');          // request logger
-// NOTE: cookie-parser was removed — it conflicts with express-session when
-// called without a matching secret, causing session deserialization failures
-// on redirect-based SSO flows (the root cause of the production 401).
-// express-session has its own cookie parser; nothing else needs req.cookies.
 const session = require('express-session'); // session management
 const flash = require('connect-flash');   // flash messages
 const MongoStore = require('connect-mongo').default || require('connect-mongo'); // session store in MongoDB

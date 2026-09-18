@@ -79,7 +79,14 @@ module.exports.legacyRoutes = function (passport, user) {
             }
             req.logIn(user, function (err) {
                 if (err) { return next(err); }
-                return res.redirect('./dashboard');
+                // Await DB save before redirecting to prevent session race conditions
+                req.session.save(function(saveErr) {
+                    if (saveErr) {
+                        console.error('[auth] Error saving session before redirect:', saveErr);
+                        return next(saveErr);
+                    }
+                    return res.redirect('./dashboard');
+                });
             });
         })(req, res, next);
     });
