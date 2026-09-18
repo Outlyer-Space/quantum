@@ -80,13 +80,23 @@ module.exports.apiRoutes = function (config, passport, user) {
         res.json({ provider: config.auth.provider || 'Mongo' });
     });
 
+    // NOTE: this route deliberately does NOT use ensureAuth — it reports session
+    // state rather than guarding a resource, and a 401 here is a normal
+    // "not logged in yet" answer. It carries the same diagnostic code as
+    // ensureAuth so the two can be correlated; the AuthService polls it every 5s.
     router.get('/me', function (req, res) {
         if (req.isAuthenticated()) {
             var u = req.user.toObject ? req.user.toObject() : Object.assign({}, req.user);
             if (u.auth) { delete u.auth.token; delete u.auth.salt; }
             res.json(u);
         } else {
-            res.status(401).json({ message: 'Unauthorized' });
+            const cookieHeader = req.headers && req.headers.cookie;
+            console.warn('[auth] 401 session_not_authenticated ' + JSON.stringify({
+                sentSessionCookie: Boolean(cookieHeader && cookieHeader.indexOf('connect.sid') !== -1),
+                sessionRestored: Boolean(req.session && req.session.passport),
+                path: '/api/auth/me'
+            }));
+            res.status(401).json({ message: 'Unauthorized', code: 'session_not_authenticated' });
         }
     });
 

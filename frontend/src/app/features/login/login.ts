@@ -45,9 +45,12 @@ export class Login {
     /** The active auth provider ('Mongo' or 'Microsoft') */
     protected provider = signal<string>('Mongo');
 
-    // Human-readable messages for SSO error codes passed back via ?error= query param
+    // Human-readable messages for error codes passed back via ?error= query param.
+    // Set either by the SSO callback redirect or by authInterceptor, which maps the
+    // API's 401 reason code onto one of these so the cause is stated accurately.
     private readonly SSO_ERRORS: Record<string, string> = {
-        incomplete_profile: 'Your Microsoft account has no display name. Please ask your administrator to add one in Microsoft Entra ID.',
+        incomplete_profile: 'Your Microsoft account has no display name. Please ask your administrator to add one in Microsoft Entra ID. Signing in again will not resolve this.',
+        session_expired: 'Your session could not be restored, so you have been signed out. Please sign in again — if this keeps happening, contact your administrator.',
         auth_failed: 'Microsoft sign-in failed. Please try again or contact your administrator.',
     };
 

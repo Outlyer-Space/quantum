@@ -88,23 +88,39 @@ module.exports = function (config, mongoose) {
            * @param {*} next    - next function in call stack (either fail or success fct)
            */
                     function (req, accessToken, refreshToken, params, profile, done) {
-                        // decode token and add to profile object
-                        profile = { ...profile, ...jwt.decode(accessToken) };
+                        // This strategy targets the Azure AD v1.0 endpoint, whose ACCESS token
+                        // already carries given_name / family_name / unique_name / oid — that is
+                        // the source this app has always used successfully. Prefer an ID token
+                        // if one is returned, but never lose the access token as the fallback.
+                        const claims = (params && params.id_token && jwt.decode(params.id_token))
+                                    || jwt.decode(accessToken)
+                                    || {};
+                        profile = { ...profile, ...claims };
 
                         // Type-safe string coercion for Azure claims — guards against
                         // non-string values that would throw on .trim().
                         const toStr = v => (typeof v === 'string' ? v : '').trim();
 
-                        // Resolve display name from multiple Azure claim representations.
+                        // unique_name is the v1.0 claim this tenant returns; upn and
+                        // preferred_username cover other token versions.
+                        const email = toStr(profile.unique_name)
+                                   || toStr(profile.upn)
+                                   || toStr(profile.preferred_username);
+
+                        // Resolve display name from multiple Azure claim representations,
+                        // falling back to the mailbox name rather than rejecting the login
+                        // outright when Entra omits given_name/family_name/name.
                         const firstName = toStr(profile.given_name);
                         const lastName  = toStr(profile.family_name);
-                        const fullName  = `${firstName} ${lastName}`.trim() || toStr(profile.name);
+                        const fullName  = `${firstName} ${lastName}`.trim()
+                                       || toStr(profile.name)
+                                       || (email ? email.split('@')[0] : '');
 
                         // Shared validator — same logic used in ensureAuth so both layers
                         // agree on what constitutes a valid name.
                         const isValidDisplayName = name => name !== '' && name !== 'undefined undefined';
 
-                        if (!isValidDisplayName(fullName)) {
+                        if (!email || !isValidDisplayName(fullName)) {
                             return done(null, false, { message: 'incomplete_profile' });
                         }
 
@@ -112,13 +128,13 @@ module.exports = function (config, mongoose) {
                             auth: {
                                 id: profile.oid,
                                 token: accessToken,
-                                email: profile.unique_name,
+                                email: email,
                                 name: fullName
                             }
                         };
 
                         User.findOneOrCreate(
-                            { 'auth.email': profile.unique_name },
+                            { 'auth.email': email },
                             userInfo
                         ).then(user => {
                             if (config.node.environ === 'development') {
