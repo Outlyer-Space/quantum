@@ -3,6 +3,7 @@ const passportLocalMongoose = require('passport-local-mongoose').default || requ
 const passportAzureADoauth2 = require('passport-azure-ad-oauth2');
 const jwt = require('jsonwebtoken');
 const configRole = require('../../config/role');
+const { CODES: AUTH_CODES } = require('../lib/authCodes');
 
 /** Defines the user model, exports to mongoose
  *
@@ -88,13 +89,22 @@ module.exports = function (config, mongoose) {
            * @param {*} next    - next function in call stack (either fail or success fct)
            */
                     function (req, accessToken, refreshToken, params, profile, done) {
-                        // This strategy targets the Azure AD v1.0 endpoint, whose ACCESS token
-                        // already carries given_name / family_name / unique_name / oid — that is
-                        // the source this app has always used successfully. Prefer an ID token
-                        // if one is returned, but never lose the access token as the fallback.
+                        // This strategy targets the Azure AD v1.0 endpoint, whose access
+                        // token already carries given_name / family_name / unique_name / oid.
+                        // Prefer the ID token when one is returned, otherwise fall back to
+                        // the access token — the source that has always worked here.
                         const claims = (params && params.id_token && jwt.decode(params.id_token))
                                     || jwt.decode(accessToken)
-                                    || {};
+                                    || null;
+
+                        // Nothing decodable at all — a token-shape fault, not a
+                        // directory fault. Reported separately so it is never
+                        // misread as "your account has no display name".
+                        if (!claims) {
+                            console.warn('[auth] SSO ' + AUTH_CODES.INVALID_TOKEN_CLAIMS.code +
+                                ' ' + JSON.stringify({ hadIdToken: Boolean(params && params.id_token), pid: process.pid }));
+                            return done(null, false, { message: AUTH_CODES.INVALID_TOKEN_CLAIMS.code });
+                        }
                         profile = { ...profile, ...claims };
 
                         // Type-safe string coercion for Azure claims — guards against
@@ -107,21 +117,33 @@ module.exports = function (config, mongoose) {
                                    || toStr(profile.upn)
                                    || toStr(profile.preferred_username);
 
-                        // Resolve display name from multiple Azure claim representations,
-                        // falling back to the mailbox name rather than rejecting the login
-                        // outright when Entra omits given_name/family_name/name.
+                        // Resolve display name from Azure's own claim representations only.
+                        // POLICY: the name must come from Entra. It is never derived from the
+                        // email local-part or any other guess — an account with no display name
+                        // in the directory is refused here so the directory gets corrected,
+                        // rather than having a fabricated name written to Mongo.
                         const firstName = toStr(profile.given_name);
                         const lastName  = toStr(profile.family_name);
                         const fullName  = `${firstName} ${lastName}`.trim()
-                                       || toStr(profile.name)
-                                       || (email ? email.split('@')[0] : '');
+                                       || toStr(profile.name);
 
                         // Shared validator — same logic used in ensureAuth so both layers
                         // agree on what constitutes a valid name.
                         const isValidDisplayName = name => name !== '' && name !== 'undefined undefined';
 
-                        if (!email || !isValidDisplayName(fullName)) {
-                            return done(null, false, { message: 'incomplete_profile' });
+                        // Two distinct directory faults, reported distinctly: a token
+                        // with no usable email claim is a claim-mapping problem on the
+                        // app registration, whereas a missing display name is a gap on
+                        // the user's own account. They are fixed in different places.
+                        if (!email) {
+                            console.warn('[auth] SSO ' + AUTH_CODES.MISSING_EMAIL_CLAIM.code +
+                                ' ' + JSON.stringify({ hasOid: Boolean(profile.oid), pid: process.pid }));
+                            return done(null, false, { message: AUTH_CODES.MISSING_EMAIL_CLAIM.code });
+                        }
+                        if (!isValidDisplayName(fullName)) {
+                            console.warn('[auth] SSO ' + AUTH_CODES.INCOMPLETE_PROFILE.code +
+                                ' ' + JSON.stringify({ hasGivenName: Boolean(firstName), hasFamilyName: Boolean(lastName), pid: process.pid }));
+                            return done(null, false, { message: AUTH_CODES.INCOMPLETE_PROFILE.code });
                         }
 
                         const userInfo = {
@@ -141,7 +163,15 @@ module.exports = function (config, mongoose) {
                                 console.log('Quantum User found/created:', user.auth.email, user._id);
                             }
                             done(undefined, user);
-                        }).catch(err => done(err));
+                        }).catch(err => {
+                            // Claims were fine; the database step failed. A transient
+                            // infrastructure fault, not a problem with the account —
+                            // so the user is told to retry rather than to go and get
+                            // their directory record corrected.
+                            console.error('[auth] SSO ' + AUTH_CODES.USER_PERSIST_FAILED.code +
+                                ' ' + JSON.stringify({ pid: process.pid }), err && err.message);
+                            done(null, false, { message: AUTH_CODES.USER_PERSIST_FAILED.code });
+                        });
                     }
                 );
                 return strategy;

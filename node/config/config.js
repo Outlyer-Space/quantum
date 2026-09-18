@@ -19,6 +19,9 @@ const fpath = './media/quantum.banner'
 const data  = fs.readFileSync(fpath, { encoding: 'utf8', flag: 'r' })
 console.log(data)
 console.log(' > NODE_ENV            : ' + process.env.NODE_ENV)
+// Printed because an unset SESSION_SECRET is invisible at runtime but fatal to
+// sessions under pm2 cluster: each worker would sign cookies with its own key.
+console.log(' > SESSION_SECRET      : ' + (process.env.SESSION_SECRET ? '****' : '(not set)'))
 console.log(' > MONGO_DB_URL        : ' + process.env.MONGO_DB_URL)
 console.log(' > MONGO_DB_USR        : ' + process.env.MONGO_DB_USR)
 console.log(' > MONGO_DB_PWD        : ' + (process.env.MONGO_DB_PWD ? '****' : '(not set)'))

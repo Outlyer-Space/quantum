@@ -41,8 +41,52 @@ module.exports = function (config, passport) {
         sessionDbUrl.search = 'retryWrites=true&w=majority';
     }
 
+    // The session secret signs the connect.sid cookie. It MUST be identical in
+    // every process that serves the app: production runs pm2 in cluster mode
+    // (pm2.config.js, instances: 0 -> one worker per CPU), and Azure Container
+    // Apps may run several replicas on top of that. A per-process random secret
+    // still "works" for whichever worker issued the cookie and fails signature
+    // verification on every other one, so a logged-in user gets an intermittent
+    // 401 session_not_authenticated as requests round-robin between workers —
+    // mid-session, with the cookie present, which looks exactly like session
+    // expiry and is not. Refuse to start rather than serve that silently.
+    //
+    // ALLOW_EPHEMERAL_SESSION_SECRET=true suppresses the hard failure for one
+    // diagnostic deploy, so the fingerprint line below can be observed in a
+    // running production container without taking the app down. Remove it from
+    // the Container App once the cause is confirmed.
+    const crypto = require('crypto');
+    const allowEphemeral = process.env.ALLOW_EPHEMERAL_SESSION_SECRET === 'true';
+    const sessionSecret = process.env.SESSION_SECRET || (function () {
+        if (isProd && !allowEphemeral) {
+            throw new Error(
+                'SESSION_SECRET is not set. Refusing to start in production: a random ' +
+                'per-process secret makes sessions fail intermittently across pm2 cluster ' +
+                'workers and Container App replicas. Set SESSION_SECRET on the Container App.'
+            );
+        }
+        console.error('WARNING: SESSION_SECRET not set — using ephemeral random fallback (sessions will not survive restarts)');
+        return crypto.randomBytes(32).toString('hex');
+    })();
+
+    // Proof line. Every process that serves the app prints this once at boot.
+    // The fingerprint is a truncated SHA-256 of the secret, not the secret — it
+    // reveals nothing, but it is identical iff the secret is identical. If the
+    // workers in one container print DIFFERENT fingerprints, cookie signatures
+    // cannot survive a hop between them and the intermittent 401 is explained.
+    // The pid is echoed on every 401 (ensureAuth.js, /api/auth/me) so a rejection
+    // can be traced back to the worker that issued it.
+    console.log('[auth] session secret fingerprint ' +
+        crypto.createHash('sha256').update(sessionSecret).digest('hex').slice(0, 12) +
+        ' (pid ' + process.pid + ', source: ' +
+        (process.env.SESSION_SECRET ? 'SESSION_SECRET' : 'EPHEMERAL RANDOM — per-process, sessions will not survive a hop between workers') + ')');
+
+    // Give the failure classifier the same secret express-session verifies with,
+    // so it can tell an untrusted cookie signature apart from a genuine expiry.
+    require('./sessionFailure').configure(sessionSecret);
+
     app.use(session({
-        secret: process.env.SESSION_SECRET || (function () { console.error('WARNING: SESSION_SECRET not set — using ephemeral random fallback (sessions will not survive restarts)'); return require('crypto').randomBytes(32).toString('hex'); })(),
+        secret: sessionSecret,
         resave: false,
         saveUninitialized: false,
         rolling: true,

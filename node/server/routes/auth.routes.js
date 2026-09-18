@@ -1,5 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { CODES, BY_CODE, reject } = require('../lib/authCodes');
+const sessionFailure = require('../lib/sessionFailure');
 
 // Rate limiter for login endpoints
 const loginLimiter = rateLimit({
@@ -7,7 +9,12 @@ const loginLimiter = rateLimit({
     max: 15,                  // 15 attempts per window
     standardHeaders: true,
     legacyHeaders: false,
-    message: { message: 'Too many login attempts, please try again later' }
+    // Carries a code like every other failure, so the SPA can say "too many
+    // attempts, wait" rather than folding it into a generic sign-in error.
+    message: {
+        message: CODES.RATE_LIMITED.note,
+        code: CODES.RATE_LIMITED.code
+    }
 });
 
 /**
@@ -56,7 +63,18 @@ module.exports.legacyRoutes = function (passport, user) {
             if (err) { return next(err); }
             if (!user) {
                 // Append the error code as a query param so the Angular SPA can render it.
-                const code = (info && info.message) || 'auth_failed';
+                // Only codes the registry knows are forwarded — an unrecognised string
+                // would reach the login page as an unrenderable param and, worse, put
+                // attacker-controlled text in a URL we then echo back to the user.
+                const reported = info && info.message;
+                const known = Object.prototype.hasOwnProperty.call(BY_CODE, reported);
+                if (!known && reported) {
+                    console.warn('[auth] SSO callback reported an unregistered code ' +
+                        JSON.stringify({ reported: String(reported).slice(0, 64), pid: process.pid }));
+                }
+                const code = known ? reported : CODES.AUTH_FAILED.code;
+                console.warn('[auth] SSO callback rejected ' +
+                    JSON.stringify({ code: code, pid: process.pid }));
                 return res.redirect(`./login?error=${encodeURIComponent(code)}`);
             }
             req.logIn(user, function (err) {
@@ -90,13 +108,10 @@ module.exports.apiRoutes = function (config, passport, user) {
             if (u.auth) { delete u.auth.token; delete u.auth.salt; }
             res.json(u);
         } else {
-            const cookieHeader = req.headers && req.headers.cookie;
-            console.warn('[auth] 401 session_not_authenticated ' + JSON.stringify({
-                sentSessionCookie: Boolean(cookieHeader && cookieHeader.indexOf('connect.sid') !== -1),
-                sessionRestored: Boolean(req.session && req.session.passport),
-                path: '/api/auth/me'
-            }));
-            res.status(401).json({ message: 'Unauthorized', code: 'session_not_authenticated' });
+            // Same classifier ensureAuth uses, so a 401 here and a 401 on a
+            // guarded route report the same cause for the same underlying fault.
+            const failure = sessionFailure.classify(req);
+            reject(res, failure, sessionFailure.detail(req, '/api/auth/me'));
         }
     });
 
@@ -115,7 +130,7 @@ module.exports.apiRoutes = function (config, passport, user) {
         function (req, res, next) {
             passport.authenticate('local', function (err, _user, info) {
                 if (err) { return res.status(500).json({ message: 'Internal server error' }); }
-                if (!_user) { return res.status(401).json({ message: 'Invalid credentials' }); }
+                if (!_user) { return reject(res, CODES.INVALID_CREDENTIALS, { path: '/api/auth/login' }); }
 
                 req.logIn(_user, function (err) {
                     if (err) { return res.status(500).json({ message: 'Login failed' }); }

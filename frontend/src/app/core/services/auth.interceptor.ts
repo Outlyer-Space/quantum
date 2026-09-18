@@ -3,34 +3,33 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { resolveAuthFailure } from './auth-failure';
 
 let isHandling401 = false;
-
-/** Reason codes the API attaches to a 401.
- *  Mirrors server/lib/ensureAuth.js and the /api/auth/me route. */
-type AuthFailureCode = 'session_not_authenticated' | 'profile_name_invalid';
 
 /**
  * Intercepts every HTTP response.
  *
- * A 401 is NOT always an expired session, and telling the user the wrong thing
- * sends them around a login loop that cannot possibly help them:
+ * A 401 is not one thing. The API classifies each rejection and returns a code
+ * (see node/server/lib/authCodes.js); this interceptor forwards that code to the
+ * login page, which renders the matching explanation from auth-failure.ts.
  *
- *   session_not_authenticated -> the session genuinely did not restore (cookie
- *                                signature or store). Signing in again is the
- *                                correct remedy, so the guard is released after
- *                                a few seconds to allow a retry.
- *   profile_name_invalid      -> the session is perfectly valid; the signed-in
- *                                account has no usable display name in Entra.
- *                                Signing in again changes nothing, so the guard
- *                                is deliberately NOT released — the user gets one
- *                                accurate explanation instead of a loop. (Module
- *                                state resets on reload, so this is not sticky
- *                                beyond the current page.)
+ * The only decision made here is whether to release the redirect guard, and it
+ * is driven entirely by the failure's `retryable` flag rather than by testing
+ * for particular codes:
  *
- * Both paths redirect to the login page with an ?error= code it already knows
- * how to render, so the explanation persists on screen rather than appearing in
- * a blocking alert the user dismisses and forgets.
+ *   retryable     -> signing in again could plausibly work (expiry, an untrusted
+ *                    cookie, a signed-out session). The guard is released after a
+ *                    few seconds so a genuine retry is possible.
+ *   not retryable -> the login flow cannot fix it (no display name in Entra, a
+ *                    deleted account, a tripped rate limiter). The guard stays
+ *                    engaged, so the user gets one accurate explanation instead
+ *                    of an endless redirect loop. Module state resets on reload,
+ *                    so this is not sticky beyond the current page.
+ *
+ * Both paths redirect to the login page with an ?error= code it knows how to
+ * render, so the explanation persists on screen rather than appearing in a
+ * blocking alert the user dismisses and forgets.
  *
  * The /api/auth/me call during APP_INITIALIZER is excluded — a 401 there is the
  * normal "not yet logged in" state, not a failure.
@@ -43,28 +42,23 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         catchError((error: unknown) => {
             if (
                 error instanceof HttpErrorResponse &&
-                error.status === 401 &&
+                (error.status === 401 || error.status === 429) &&
                 !req.url.includes('/api/auth/me') &&
                 !isHandling401
             ) {
-                const code: AuthFailureCode | undefined = error.error?.code;
+                const code: string | undefined = error.error?.code;
+                const failure = resolveAuthFailure(code);
+
                 isHandling401 = true;
                 authService.user.set(null);
 
-                if (code === 'profile_name_invalid') {
-                    // Directory problem, not a session problem.
-                    console.error(
-                        `[auth] ${req.url} rejected: the signed-in account has no usable display ` +
-                        'name in Microsoft Entra. This is a directory problem, not session expiry — ' +
-                        'signing in again will not resolve it.'
-                    );
-                    router.navigate(['/'], { queryParams: { error: 'incomplete_profile' } });
-                } else {
-                    console.error(
-                        `[auth] ${req.url} rejected: session did not restore ` +
-                        `(${code ?? 'no reason code — older server build'}).`
-                    );
-                    router.navigate(['/'], { queryParams: { error: 'session_expired' } });
+                console.error(
+                    `[auth] ${req.url} rejected (${code ?? 'no code — older server build'}): ${failure.diagnostic}`
+                );
+
+                router.navigate(['/'], { queryParams: { error: code ?? 'auth_failed' } });
+
+                if (failure.retryable) {
                     setTimeout(() => { isHandling401 = false; }, 5000);
                 }
             }

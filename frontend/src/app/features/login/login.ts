@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { resolveAuthFailure } from '../../core/services/auth-failure';
 
 interface BackgroundImage {
     src: string;
@@ -45,22 +46,18 @@ export class Login {
     /** The active auth provider ('Mongo' or 'Microsoft') */
     protected provider = signal<string>('Mongo');
 
-    // Human-readable messages for error codes passed back via ?error= query param.
-    // Set either by the SSO callback redirect or by authInterceptor, which maps the
-    // API's 401 reason code onto one of these so the cause is stated accurately.
-    private readonly SSO_ERRORS: Record<string, string> = {
-        incomplete_profile: 'Your Microsoft account has no display name. Please ask your administrator to add one in Microsoft Entra ID. Signing in again will not resolve this.',
-        session_expired: 'Your session could not be restored, so you have been signed out. Please sign in again — if this keeps happening, contact your administrator.',
-        auth_failed: 'Microsoft sign-in failed. Please try again or contact your administrator.',
-    };
-
     constructor() {
         this.titleService.setTitle('Login | Quantum');
 
-        // Surface SSO errors redirected back with ?error=<code>
+        // Surface auth failures redirected back with ?error=<code>, set either by
+        // the SSO callback or by authInterceptor. The wording lives in the shared
+        // taxonomy (auth-failure.ts) so the server, the interceptor and this page
+        // all describe the same fault the same way.
         const errorCode = this.route.snapshot.queryParamMap.get('error');
         if (errorCode) {
-            this.flashMessage.set(this.SSO_ERRORS[errorCode] ?? 'Sign-in failed. Please try again.');
+            const failure = resolveAuthFailure(errorCode);
+            this.flashMessage.set(failure.message);
+            console.error(`[auth] login page showing "${errorCode}": ${failure.diagnostic}`);
         }
 
         this.authService.getAuthConfig().subscribe({

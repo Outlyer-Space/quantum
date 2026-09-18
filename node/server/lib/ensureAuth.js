@@ -2,21 +2,21 @@
 // for any legacy records that pre-date the OAuth callback validation.
 // Passport already loads req.user from MongoDB on every request — no extra DB lookup needed.
 //
-// The two 401s below are DIFFERENT faults and must stay distinguishable:
-//   session_not_authenticated -> the session did not restore (cookie signature or store)
-//   profile_name_invalid      -> session restored fine, stored display name is unusable
-// The log lines carry no tokens, no cookie values and no emails — booleans, a path and an _id.
+// Every rejection carries a machine-readable code from lib/authCodes.js. The
+// session-level faults are told apart by lib/sessionFailure.js, which verifies
+// the cookie signature so that "we do not trust this cookie" is never reported
+// as "your session expired" — they have different causes and different fixes.
+//
+// Log lines carry no tokens, no cookie values and no emails — booleans, a pid,
+// a path and an _id.
+
+const { CODES, reject } = require('./authCodes');
+const sessionFailure = require('./sessionFailure');
+
 module.exports = function ensureAuth (req, res, next) {
     if (!req.isAuthenticated || !req.isAuthenticated() || !req.user || !req.user._id) {
-        // A cookie that arrived but did not restore a session points at signature
-        // verification (differing signing keys across workers) or the session store.
-        const cookieHeader = req.headers && req.headers.cookie;
-        console.warn('[auth] 401 session_not_authenticated ' + JSON.stringify({
-            sentSessionCookie: Boolean(cookieHeader && cookieHeader.indexOf('connect.sid') !== -1),
-            sessionRestored: Boolean(req.session && req.session.passport),
-            path: req.originalUrl
-        }));
-        return res.status(401).json({ message: 'Unauthorized', code: 'session_not_authenticated' });
+        const failure = sessionFailure.classify(req);
+        return reject(res, failure, sessionFailure.detail(req));
     }
 
     // Matches the validator used in the OAuth callback (user.js) — both layers must agree.
@@ -24,13 +24,9 @@ module.exports = function ensureAuth (req, res, next) {
     const isValidDisplayName = n => n !== '' && n !== 'undefined undefined';
 
     if (!isValidDisplayName(name || '')) {
-        console.warn('[auth] 401 profile_name_invalid ' + JSON.stringify({
+        return reject(res, CODES.PROFILE_NAME_INVALID, {
             userId: String(req.user._id),
             path: req.originalUrl
-        }));
-        return res.status(401).json({
-            message: 'Incomplete user profile. Please contact your administrator.',
-            code: 'profile_name_invalid'
         });
     }
 
