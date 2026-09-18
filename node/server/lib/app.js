@@ -7,6 +7,7 @@ const flash = require('connect-flash');   // flash messages
 const MongoStore = require('connect-mongo').default || require('connect-mongo'); // session store in MongoDB
 const helmet = require('helmet');           // security headers
 const mongoSanitize = require('express-mongo-sanitize');
+const crypto = require('crypto');
 
 /** creaye the express quantum app
  *
@@ -84,6 +85,31 @@ module.exports = function (config, passport) {
     // so it can tell an untrusted cookie signature apart from a genuine expiry.
     require('./sessionFailure').configure(sessionSecret);
 
+    // Browser-visible diagnostics. These values are safe to compare across
+    // requests, but never reveal a secret, cookie, or raw session identifier.
+    const fingerprint = value => value
+        ? crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12)
+        : 'none';
+    const diagnosticContext = {
+        build: process.env.GIT_COMMIT || process.env.APP_VERSION || 'unknown',
+        container: process.env.HOSTNAME || 'local',
+        revision: process.env.CONTAINER_APP_REVISION || 'unknown',
+        secretFingerprint: fingerprint(sessionSecret)
+    };
+
+    // Run before routing so every response, including 401s, identifies the
+    // deployment and worker that produced it.
+    app.use((req, res, next) => {
+        res.setHeader('X-Quantum-Debug', 'auth-session-v1');
+        res.setHeader('X-Quantum-Build', diagnosticContext.build);
+        res.setHeader('X-Quantum-Container', diagnosticContext.container);
+        res.setHeader('X-Quantum-Revision', diagnosticContext.revision);
+        res.setHeader('X-Quantum-Worker', String(process.pid));
+        res.setHeader('X-Quantum-Worker-Uptime-Sec', String(Math.floor(process.uptime())));
+        res.setHeader('X-Quantum-Secret-Fingerprint', diagnosticContext.secretFingerprint);
+        next();
+    });
+
     app.use(session({
         secret: sessionSecret,
         resave: false,
@@ -119,6 +145,22 @@ module.exports = function (config, passport) {
     });
     app.use(passport.initialize());
     app.use(passport.session());
+
+    // Passport has now restored req.session and req.user. Add safe
+    // per-request state for correlation with the SSO callback and failures.
+    app.use((req, res, next) => {
+        const session = req.session;
+        const passportUser = session && session.passport && session.passport.user;
+
+        res.setHeader('X-Quantum-Session-Fingerprint', fingerprint(req.sessionID));
+        res.setHeader('X-Quantum-Session-State', !session
+            ? 'absent'
+            : passportUser
+                ? 'authenticated'
+                : 'unauthenticated');
+        res.setHeader('X-Quantum-Request-Authenticated', String(Boolean(req.isAuthenticated && req.isAuthenticated())));
+        next();
+    });
 
     app.use(express.static(path.join(pwd, '/public')));
     app.use(flash());

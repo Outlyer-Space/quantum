@@ -1,7 +1,31 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const { CODES, BY_CODE, reject } = require('../lib/authCodes');
 const sessionFailure = require('../lib/sessionFailure');
+
+function sessionFingerprint (sessionId) {
+    return sessionId
+        ? crypto.createHash('sha256').update(String(sessionId)).digest('hex').slice(0, 12)
+        : 'none';
+}
+
+function reportLoginSession (req, res, source) {
+    const authenticated = Boolean(req.session && req.session.passport && req.session.passport.user);
+    const detail = {
+        source,
+        pid: process.pid,
+        sessionFingerprint: sessionFingerprint(req.sessionID),
+        hasPassportUser: authenticated
+    };
+    console.info('[auth] login_session_saved ' + JSON.stringify(detail));
+
+    // The app-level diagnostic middleware observes state before this route
+    // calls req.logIn. Refresh these safe headers with the final login state.
+    res.setHeader('X-Quantum-Session-Fingerprint', detail.sessionFingerprint);
+    res.setHeader('X-Quantum-Session-State', authenticated ? 'authenticated' : 'unauthenticated');
+    res.setHeader('X-Quantum-Request-Authenticated', String(Boolean(req.isAuthenticated && req.isAuthenticated())));
+}
 
 // Rate limiter for login endpoints
 const loginLimiter = rateLimit({
@@ -74,17 +98,18 @@ module.exports.legacyRoutes = function (passport, user) {
                 }
                 const code = known ? reported : CODES.AUTH_FAILED.code;
                 console.warn('[auth] SSO callback rejected ' +
-                    JSON.stringify({ code: code, pid: process.pid }));
+                    JSON.stringify({ code, pid: process.pid }));
                 return res.redirect(`./login?error=${encodeURIComponent(code)}`);
             }
             req.logIn(user, function (err) {
                 if (err) { return next(err); }
                 // Await DB save before redirecting to prevent session race conditions
-                req.session.save(function(saveErr) {
+                req.session.save(function (saveErr) {
                     if (saveErr) {
                         console.error('[auth] Error saving session before redirect:', saveErr);
                         return next(saveErr);
                     }
+                    reportLoginSession(req, res, 'sso');
                     return res.redirect('./dashboard');
                 });
             });
@@ -141,6 +166,7 @@ module.exports.apiRoutes = function (config, passport, user) {
 
                 req.logIn(_user, function (err) {
                     if (err) { return res.status(500).json({ message: 'Login failed' }); }
+                    reportLoginSession(req, res, 'local');
 
                     if (req.user.auth.id == null) {
                         req.user.auth.id = req.user._id;
