@@ -1,31 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
 const { CODES, BY_CODE, reject } = require('../lib/authCodes');
 const sessionFailure = require('../lib/sessionFailure');
-
-function sessionFingerprint (sessionId) {
-    return sessionId
-        ? crypto.createHash('sha256').update(String(sessionId)).digest('hex').slice(0, 12)
-        : 'none';
-}
-
-function reportLoginSession (req, res, source) {
-    const authenticated = Boolean(req.session && req.session.passport && req.session.passport.user);
-    const detail = {
-        source,
-        pid: process.pid,
-        sessionFingerprint: sessionFingerprint(req.sessionID),
-        hasPassportUser: authenticated
-    };
-    console.info('[auth] login_session_saved ' + JSON.stringify(detail));
-
-    // The app-level diagnostic middleware observes state before this route
-    // calls req.logIn. Refresh these safe headers with the final login state.
-    res.setHeader('X-Quantum-Session-Fingerprint', detail.sessionFingerprint);
-    res.setHeader('X-Quantum-Session-State', authenticated ? 'authenticated' : 'unauthenticated');
-    res.setHeader('X-Quantum-Request-Authenticated', String(Boolean(req.isAuthenticated && req.isAuthenticated())));
-}
 
 // Rate limiter for login endpoints
 const loginLimiter = rateLimit({
@@ -33,8 +9,7 @@ const loginLimiter = rateLimit({
     max: 15,                  // 15 attempts per window
     standardHeaders: true,
     legacyHeaders: false,
-    // Carries a code like every other failure, so the SPA can say "too many
-    // attempts, wait" rather than folding it into a generic sign-in error.
+    // Returns a specific code for the SPA to handle.
     message: {
         message: CODES.RATE_LIMITED.note,
         code: CODES.RATE_LIMITED.code
@@ -86,10 +61,7 @@ module.exports.legacyRoutes = function (passport, user) {
         passport.authenticate('azure_ad_oauth2', function (err, user, info) {
             if (err) { return next(err); }
             if (!user) {
-                // Append the error code as a query param so the Angular SPA can render it.
-                // Only codes the registry knows are forwarded — an unrecognised string
-                // would reach the login page as an unrenderable param and, worse, put
-                // attacker-controlled text in a URL we then echo back to the user.
+                // Only forward registered error codes to the SPA to prevent XSS.
                 const reported = info && info.message;
                 const known = Object.prototype.hasOwnProperty.call(BY_CODE, reported);
                 if (!known && reported) {
@@ -109,7 +81,6 @@ module.exports.legacyRoutes = function (passport, user) {
                         console.error('[auth] Error saving session before redirect:', saveErr);
                         return next(saveErr);
                     }
-                    reportLoginSession(req, res, 'sso');
                     return res.redirect('./dashboard');
                 });
             });
@@ -130,18 +101,14 @@ module.exports.apiRoutes = function (config, passport, user) {
         res.json({ provider: config.auth.provider || 'Mongo' });
     });
 
-    // NOTE: this route deliberately does NOT use ensureAuth — it reports session
-    // state rather than guarding a resource, and a 401 here is a normal
-    // "not logged in yet" answer. It carries the same diagnostic code as
-    // ensureAuth so the two can be correlated; the AuthService polls it every 5s.
+    // Does not use ensureAuth; polled by AuthService to check session state.
     router.get('/me', function (req, res) {
         if (req.isAuthenticated()) {
             var u = req.user.toObject ? req.user.toObject() : Object.assign({}, req.user);
             if (u.auth) { delete u.auth.token; delete u.auth.salt; }
             res.json(u);
         } else {
-            // Same classifier ensureAuth uses, so a 401 here and a 401 on a
-            // guarded route report the same cause for the same underlying fault.
+            // Classify the 401 failure reason
             const failure = sessionFailure.classify(req);
             reject(res, failure, sessionFailure.detail(req, '/api/auth/me'));
         }

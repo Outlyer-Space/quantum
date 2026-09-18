@@ -7,7 +7,6 @@ const flash = require('connect-flash');   // flash messages
 const MongoStore = require('connect-mongo').default || require('connect-mongo'); // session store in MongoDB
 const helmet = require('helmet');           // security headers
 const mongoSanitize = require('express-mongo-sanitize');
-const crypto = require('crypto');
 
 /** creaye the express quantum app
  *
@@ -41,63 +40,12 @@ module.exports = function (config, passport) {
         sessionDbUrl.search = 'retryWrites=true&w=majority';
     }
 
-    // The session secret signs the connect.sid cookie. It MUST be identical in
-    // every process that serves the app: production runs pm2 in cluster mode
-    // (pm2.config.js, instances: 0 -> one worker per CPU), and Azure Container
-    // Apps may run several replicas on top of that. A per-process random secret
-    // still "works" for whichever worker issued the cookie and fails signature
-    // verification on every other one, so a logged-in user gets an intermittent
-    // 401 session_not_authenticated as requests round-robin between workers —
-    // mid-session, with the cookie present, which looks exactly like session
-    // expiry and is not. Refuse to start rather than serve that silently.
-    //
-    // ALLOW_EPHEMERAL_SESSION_SECRET=true suppresses the hard failure for one
-    // diagnostic deploy, so the fingerprint line below can be observed in a
-    // running production container without taking the app down. Remove it from
-    // the Container App once the cause is confirmed.
-    const crypto = require('crypto');
+    // The session secret signs the connect.sid cookie.
     const sessionSecret = process.env.SESSION_SECRET || 'quantum_fallback_shared_secret_8f9e1d2c3b4a5';
-
-    // Proof line. Every process that serves the app prints this once at boot.
-    // The fingerprint is a truncated SHA-256 of the secret, not the secret — it
-    // reveals nothing, but it is identical iff the secret is identical. If the
-    // workers in one container print DIFFERENT fingerprints, cookie signatures
-    // cannot survive a hop between them and the intermittent 401 is explained.
-    // The pid is echoed on every 401 (ensureAuth.js, /api/auth/me) so a rejection
-    // can be traced back to the worker that issued it.
-    console.log('[auth] session secret fingerprint ' +
-        crypto.createHash('sha256').update(sessionSecret).digest('hex').slice(0, 12) +
-        ' (pid ' + process.pid + ', source: ' +
-        (process.env.SESSION_SECRET ? 'SESSION_SECRET' : 'EPHEMERAL RANDOM — per-process, sessions will not survive a hop between workers') + ')');
 
     // Give the failure classifier the same secret express-session verifies with,
     // so it can tell an untrusted cookie signature apart from a genuine expiry.
     require('./sessionFailure').configure(sessionSecret);
-
-    // Browser-visible diagnostics. These values are safe to compare across
-    // requests, but never reveal a secret, cookie, or raw session identifier.
-    const fingerprint = value => value
-        ? crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12)
-        : 'none';
-    const diagnosticContext = {
-        build: process.env.GIT_COMMIT || process.env.APP_VERSION || 'unknown',
-        container: process.env.HOSTNAME || 'local',
-        revision: process.env.CONTAINER_APP_REVISION || 'unknown',
-        secretFingerprint: fingerprint(sessionSecret)
-    };
-
-    // Run before routing so every response, including 401s, identifies the
-    // deployment and worker that produced it.
-    app.use((req, res, next) => {
-        res.setHeader('X-Quantum-Debug', 'auth-session-v1');
-        res.setHeader('X-Quantum-Build', diagnosticContext.build);
-        res.setHeader('X-Quantum-Container', diagnosticContext.container);
-        res.setHeader('X-Quantum-Revision', diagnosticContext.revision);
-        res.setHeader('X-Quantum-Worker', String(process.pid));
-        res.setHeader('X-Quantum-Worker-Uptime-Sec', String(Math.floor(process.uptime())));
-        res.setHeader('X-Quantum-Secret-Fingerprint', diagnosticContext.secretFingerprint);
-        next();
-    });
 
     app.use(session({
         secret: sessionSecret,
@@ -134,22 +82,6 @@ module.exports = function (config, passport) {
     });
     app.use(passport.initialize());
     app.use(passport.session());
-
-    // Passport has now restored req.session and req.user. Add safe
-    // per-request state for correlation with the SSO callback and failures.
-    app.use((req, res, next) => {
-        const session = req.session;
-        const passportUser = session && session.passport && session.passport.user;
-
-        res.setHeader('X-Quantum-Session-Fingerprint', fingerprint(req.sessionID));
-        res.setHeader('X-Quantum-Session-State', !session
-            ? 'absent'
-            : passportUser
-                ? 'authenticated'
-                : 'unauthenticated');
-        res.setHeader('X-Quantum-Request-Authenticated', String(Boolean(req.isAuthenticated && req.isAuthenticated())));
-        next();
-    });
 
     app.use(express.static(path.join(pwd, '/public')));
     app.use(flash());
