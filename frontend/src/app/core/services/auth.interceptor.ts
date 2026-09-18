@@ -27,6 +27,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 if (!isLoggingOut) {
                     isLoggingOut = true;
                     console.error('Session expired. Redirecting to login...');
+                    alert('Your session has expired. Please log in again.');
                     authService.user.set(null);
                     router.navigate(['/']);
                     setTimeout(() => isLoggingOut = false, 5000); // Allow re-trigger after 5s

@@ -43,9 +43,16 @@ export class AuthService {
                 this.user.set(user);
                 this.initializeGlobalMission(user);
             }),
-            catchError(err => {
-                this.user.set(null);
-                this.globalActiveMission.set('');
+            catchError((err: HttpErrorResponse) => {
+                if (err.status === 401) {
+                    const wasLoggedIn = this.user() !== null;
+                    this.user.set(null);
+                    this.globalActiveMission.set('');
+                    if (wasLoggedIn) {
+                        alert('Your session has expired. Please log in again.');
+                        this.router.navigate(['/']);
+                    }
+                }
                 return throwError(() => err);
             })
         );

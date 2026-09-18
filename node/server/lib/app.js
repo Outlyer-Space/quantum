@@ -45,6 +45,7 @@ module.exports = function (config, passport) {
         secret: process.env.SESSION_SECRET || (function () { console.error('WARNING: SESSION_SECRET not set — using ephemeral random fallback (sessions will not survive restarts)'); return require('crypto').randomBytes(32).toString('hex'); })(),
         resave: false,
         saveUninitialized: false,
+        rolling: true,
         // Persist sessions in MongoDB so they survive restarts and work across
         // multiple container replicas (Azure Container Apps horizontal scaling)
         store: MongoStore.create({
