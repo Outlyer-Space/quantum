@@ -51,12 +51,20 @@ module.exports.legacyRoutes = function (passport, user) {
     router.get('/login_oauth2', passport.authenticate('azure_ad_oauth2'));
 
     // "Microsoft" strategy callback (redirect)
-    router.get('/redirect',
-        passport.authenticate('azure_ad_oauth2', { failureRedirect: './login' }),
-        function (req, res) {
-            res.redirect('./dashboard');
-        }
-    );
+    router.get('/redirect', function (req, res, next) {
+        passport.authenticate('azure_ad_oauth2', function (err, user, info) {
+            if (err) { return next(err); }
+            if (!user) {
+                // Append the error code as a query param so the Angular SPA can render it.
+                const code = (info && info.message) || 'auth_failed';
+                return res.redirect(`./login?error=${encodeURIComponent(code)}`);
+            }
+            req.logIn(user, function (err) {
+                if (err) { return next(err); }
+                return res.redirect('./dashboard');
+            });
+        })(req, res, next);
+    });
 
     return router;
 };

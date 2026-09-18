@@ -9,6 +9,11 @@
             @if (provider().toLowerCase() === 'microsoft') {
                 <div class="sso-container">
                     <p class="sso-subtitle">This secure flight operation workspace is protected via Enterprise Single Sign-On (SSO).</p>
+                    @if (flashMessage()) {
+                    <div class="flash-message" role="alert">
+                        {{ flashMessage() }}
+                    </div>
+                    }
                     <button type="button" class="sso-btn microsoft-btn" (click)="onMicrosoftLogin()" aria-label="Sign in with Microsoft">
                         <svg class="sso-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" width="20" height="20" aria-hidden="true">
                             <path fill="#f35325" d="M0 0h11v11H0z"/>

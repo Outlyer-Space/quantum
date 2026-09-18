@@ -91,31 +91,41 @@ module.exports = function (config, mongoose) {
                         // decode token and add to profile object
                         profile = { ...profile, ...jwt.decode(accessToken) };
 
-                        // assemble user mongo document (in case of new user)
+                        // Type-safe string coercion for Azure claims — guards against
+                        // non-string values that would throw on .trim().
+                        const toStr = v => (typeof v === 'string' ? v : '').trim();
+
+                        // Resolve display name from multiple Azure claim representations.
+                        const firstName = toStr(profile.given_name);
+                        const lastName  = toStr(profile.family_name);
+                        const fullName  = `${firstName} ${lastName}`.trim() || toStr(profile.name);
+
+                        // Shared validator — same logic used in ensureAuth so both layers
+                        // agree on what constitutes a valid name.
+                        const isValidDisplayName = name => name !== '' && name !== 'undefined undefined';
+
+                        if (!isValidDisplayName(fullName)) {
+                            return done(null, false, { message: 'incomplete_profile' });
+                        }
+
                         const userInfo = {
                             auth: {
                                 id: profile.oid,
                                 token: accessToken,
                                 email: profile.unique_name,
-                                name: `${profile.given_name} ${profile.family_name}`
+                                name: fullName
                             }
                         };
 
-                        // find or create user in quantum db, and return
-                        // "user._id" which is used in session serialization
                         User.findOneOrCreate(
                             { 'auth.email': profile.unique_name },
                             userInfo
-                        ).then(userInfo => {
+                        ).then(user => {
                             if (config.node.environ === 'development') {
-                                console.log('Quantum User found/created:');
-                                console.log(`${userInfo.auth.email} : ${userInfo._id}`);
-                                console.log('next function is');
-                                console.log(done.toString());
+                                console.log('Quantum User found/created:', user.auth.email, user._id);
                             }
-                            // call next fct in stack: function(err, user, info)
-                            done(undefined, userInfo);
-                        });
+                            done(undefined, user);
+                        }).catch(err => done(err));
                     }
                 );
                 return strategy;
@@ -171,6 +181,12 @@ module.exports = function (config, mongoose) {
             return self.findOne(condition)
                 .then((result) => {
                     if (result) {
+                        const incomingName = newDoc.auth && typeof newDoc.auth.name === 'string' && newDoc.auth.name.trim();
+                        const storedNameBad = !result.auth || typeof result.auth.name !== 'string' || !result.auth.name.trim() || result.auth.name.trim() === 'undefined undefined';
+                        if (storedNameBad && incomingName && incomingName !== 'undefined undefined') {
+                            result.auth.name = incomingName;
+                            return result.save().then(() => resolve(result)).catch(err => reject(err));
+                        }
                         return resolve(result);
                     }
                     return self.create(newDoc)

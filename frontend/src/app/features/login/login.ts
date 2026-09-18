@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 interface BackgroundImage {
@@ -39,12 +40,26 @@ export class Login {
     private fb = inject(FormBuilder);
     private authService = inject(AuthService);
     private titleService = inject(Title);
+    private route = inject(ActivatedRoute);
 
     /** The active auth provider ('Mongo' or 'Microsoft') */
     protected provider = signal<string>('Mongo');
 
+    // Human-readable messages for SSO error codes passed back via ?error= query param
+    private readonly SSO_ERRORS: Record<string, string> = {
+        incomplete_profile: 'Your Microsoft account has no display name. Please ask your administrator to add one in Microsoft Entra ID.',
+        auth_failed: 'Microsoft sign-in failed. Please try again or contact your administrator.',
+    };
+
     constructor() {
         this.titleService.setTitle('Login | Quantum');
+
+        // Surface SSO errors redirected back with ?error=<code>
+        const errorCode = this.route.snapshot.queryParamMap.get('error');
+        if (errorCode) {
+            this.flashMessage.set(this.SSO_ERRORS[errorCode] ?? 'Sign-in failed. Please try again.');
+        }
+
         this.authService.getAuthConfig().subscribe({
             next: (config) => {
                 this.provider.set(config.provider);
